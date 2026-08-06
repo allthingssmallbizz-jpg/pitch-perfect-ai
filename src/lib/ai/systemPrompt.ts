@@ -2,11 +2,18 @@ import fs from "node:fs";
 import path from "node:path";
 import type { GenerationMode } from "@/types/database";
 
-// Order matters: philosophy/PPOS/discovery first (universal), then format-specific.
+// Order matters: universal strategic layers first (philosophy/PPOS/discovery/awareness/
+// value/offer/campaign — the sequence the playbooks say must happen before writing),
+// then format-specific frameworks. The VSL's 25-part structure is loaded separately, per
+// generator, since it's only relevant to one asset type (see getKnowledgeFile below).
 const KNOWLEDGE_FILES = [
   "00-philosophy.md",
   "01-ppos.md",
   "02-discovery.md",
+  "07-customer-awareness.md",
+  "06-value-proposition.md",
+  "08-offer-creation.md",
+  "09-campaign-architecture.md",
   "03-webinar.md",
   "04-sales-presentation.md",
 ];

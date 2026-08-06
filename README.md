@@ -90,12 +90,15 @@ Before launch, work through the spec's math: (cost per generation) × (expected
 generations/member/month) × (member count) should stay comfortably under what your
 membership price + the daily cap can absorb.
 
-## Adding the remaining knowledge base docs
+## Knowledge base
 
-The build spec references more Pitch Perfect AI playbooks than were available when this was
-built (the 25-part VSL structure is currently a placeholder — see
-`src/lib/ai/knowledge/05-vsl-25-part.md`). See `src/lib/ai/knowledge/README.md` for how to
-fold in the rest as they're provided.
+Nine Pitch Perfect AI playbooks are currently encoded into `src/lib/ai/knowledge/`: The
+Philosophy, PPOS, Discovery, Customer Awareness, Value Proposition, Offer Creation,
+Campaign Architecture (PPCOS), the Webinar Manual (PPWOS), the Sales Presentation
+Playbook (PPSOS), and the VSL Manual's real 25-stage structure. See
+`src/lib/ai/knowledge/README.md` for what's loaded where, what's still missing (a dedicated
+sales-page/landing-page and email-sequence playbook), and how to fold in more as they're
+provided.
 
 ## Build order (matches the spec)
 
