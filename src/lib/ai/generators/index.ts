@@ -6,8 +6,13 @@ import { buildLandingPagePrompt, LANDING_PAGE_CREDIT_COST, LANDING_PAGE_MAX_OUTP
 import { buildEmailSequencePrompt, EMAIL_SEQUENCE_CREDIT_COST, EMAIL_SEQUENCE_MAX_OUTPUT_TOKENS } from "./emailSequence";
 import { buildPptOutlinePrompt, PPT_OUTLINE_CREDIT_COST, PPT_OUTLINE_MAX_OUTPUT_TOKENS } from "./pptOutline";
 
+// Excludes "presentation_analysis" — that feature isn't driven by a project's discovery
+// fields (its input is pasted presentation content), so it isn't part of this registry.
+// See src/lib/ai/analyzer.ts and src/lib/ai/assetLabels.ts.
+export type GeneratorAssetType = Exclude<AssetType, "presentation_analysis">;
+
 export interface AssetGenerator {
-  assetType: AssetType;
+  assetType: GeneratorAssetType;
   label: string;
   description: string;
   creditCost: number;
@@ -15,7 +20,7 @@ export interface AssetGenerator {
   buildPrompt: (project: Project) => string;
 }
 
-export const ASSET_GENERATORS: Record<AssetType, AssetGenerator> = {
+export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
   webinar_outline: {
     assetType: "webinar_outline",
     label: "Webinar Outline",
@@ -66,4 +71,4 @@ export const ASSET_GENERATORS: Record<AssetType, AssetGenerator> = {
   },
 };
 
-export const ASSET_TYPES = Object.keys(ASSET_GENERATORS) as AssetType[];
+export const ASSET_TYPES = Object.keys(ASSET_GENERATORS) as GeneratorAssetType[];

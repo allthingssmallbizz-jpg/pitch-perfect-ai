@@ -1,21 +1,18 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
-import GenerateClient from "./GenerateClient";
+import { ANALYZER_CREDIT_COST } from "@/lib/ai/analyzer";
+import AnalyzeClient from "./AnalyzeClient";
 
-export default async function GenerateAssetPage({
+export default async function AnalyzePage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string; assetType: string }>;
+  params: Promise<{ id: string }>;
   searchParams: Promise<{ generationId?: string }>;
 }) {
-  const { id, assetType } = await params;
+  const { id } = await params;
   const { generationId } = await searchParams;
-
-  if (!(assetType in ASSET_GENERATORS)) notFound();
-  const generator = ASSET_GENERATORS[assetType as GeneratorAssetType];
 
   const supabase = await createClient();
   const {
@@ -25,7 +22,7 @@ export default async function GenerateAssetPage({
 
   const { data: project } = await supabase
     .from("projects")
-    .select("*")
+    .select("id, name")
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
@@ -52,15 +49,14 @@ export default async function GenerateAssetPage({
       <Link href={`/projects/${id}`} className="text-sm text-indigo-600 hover:underline">
         ← {project.name}
       </Link>
-      <h1 className="mt-2 mb-1 text-2xl font-semibold">{generator.label}</h1>
+      <h1 className="mt-2 mb-1 text-2xl font-semibold">Presentation Analyzer</h1>
       <p className="mb-6 text-sm text-neutral-500">
-        {generator.description} · {generator.creditCost} credits per generation · {project.mode} mode
+        Conversion-readiness critique against a 19-point rubric · {ANALYZER_CREDIT_COST} credits per
+        analysis
       </p>
 
-      <GenerateClient
+      <AnalyzeClient
         projectId={id}
-        assetType={generator.assetType}
-        mode={project.mode}
         initialContent={initialContent}
         initialGenerationId={initialGenerationId}
       />

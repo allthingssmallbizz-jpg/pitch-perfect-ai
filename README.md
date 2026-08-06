@@ -2,8 +2,9 @@
 
 A metered SaaS that wraps the Pitch Perfect Method™ (Discovery → Positioning → Presentation)
 in accounts, credit metering, and billing, so members get 12 months of access to generate
-webinars, VSL scripts, sales pages, landing pages, email sequences, and PPT outlines — without
-a heavy user bleeding the API budget.
+webinars, VSL scripts, sales pages, landing pages, email sequences, and PPT outlines — plus
+run any presentation through a 19-point conversion-readiness Analyzer — without a heavy
+user bleeding the API budget.
 
 Built per the Demo & Build Spec: MVP = auth + one metered generator, proven guardrails, then
 expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized.
@@ -19,10 +20,12 @@ expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized
 ## 1. Supabase setup
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. In the SQL Editor, run `supabase/migrations/0001_init.sql`. This creates:
+2. In the SQL Editor, run the migrations in order: `supabase/migrations/0001_init.sql`, then
+   `supabase/migrations/0002_presentation_analysis.sql`. Together they create:
    - `profiles` — one row per user, with the 12-month access window and credit meter
    - `projects` — one per offer, with discovery fields
-   - `generations` — every generation + full token/cost telemetry
+   - `generations` — every generation/analysis + full token/cost telemetry (`asset_type`
+     includes `presentation_analysis`; `input_content` holds pasted analyzer input)
    - `admin_settings` — the global kill switch + daily spend cap (singleton row)
    - `credit_topups` — Stripe top-up purchase history
    - RLS policies, an `on_auth_user_created` trigger that provisions a `profiles` row on
@@ -81,7 +84,8 @@ All server-side, per the build spec — see `src/lib/credits.ts`:
 - **Rate limiting** — max N generations per minute/hour per user (`RATE_LIMIT_PER_MINUTE` /
   `RATE_LIMIT_PER_HOUR`).
 - **Output token caps** — every asset type has a `maxOutputTokens` ceiling
-  (`src/lib/ai/generators/index.ts`), so no single call can run away.
+  (`src/lib/ai/generators/index.ts`, `ANALYZER_MAX_OUTPUT_TOKENS` for the analyzer), so no
+  single call can run away. Analyzer input is also capped (`ANALYZER_MAX_INPUT_CHARS`).
 - **Cost telemetry** — every generation logs input/output tokens and estimated cost
   (`generations` table), visible per-member on `/admin`.
 - **12-month access window** — enforced before any generation runs, independent of credits.
@@ -89,6 +93,22 @@ All server-side, per the build spec — see `src/lib/credits.ts`:
 Before launch, work through the spec's math: (cost per generation) × (expected
 generations/member/month) × (member count) should stay comfortably under what your
 membership price + the daily cap can absorb.
+
+## Presentation Analyzer
+
+`/projects/[id]/analyze` (API: `/api/analyze`) runs a pasted webinar/VSL/sales-presentation/
+investor-pitch script through a 19-point conversion-readiness rubric (structure, hook,
+credibility, offer quality, objection handling, ethics/factual-accuracy flags, scored
+readiness, missing components, prioritized fixes) and returns a structured critique. It's not
+a generator — the input is pasted text, not a project's discovery fields — but it runs through
+the same guardrail pipeline (credits, rate limits, kill switch, cost telemetry) as everything
+else, via `checkGuardrails`/`generateAsset` in `src/app/api/analyze/route.ts`.
+
+The system prompt (`ANALYZER_SYSTEM_PROMPT` in `src/lib/ai/analyzer.ts`) assumes it may be
+given video/audio; since this app only accepts pasted text, the user-message wrapper tells
+the model explicitly that no video/audio was provided so it doesn't fabricate delivery
+critique (voice, eye contact, lighting, etc.) — see the comment in that file before editing.
+Video upload + frame/audio analysis isn't implemented.
 
 ## Knowledge base
 
@@ -108,3 +128,4 @@ provided.
 4. ✅ Save/export (copy, PDF, .docx)
 5. ✅ Stripe billing + credit top-ups
 6. ✅ Admin: cost telemetry dashboard + global kill switch
+7. ✅ Presentation Analyzer (19-point conversion-readiness critique)

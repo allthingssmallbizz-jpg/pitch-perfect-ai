@@ -12,7 +12,10 @@ export type AssetType =
   | "sales_page"
   | "landing_page"
   | "email_sequence"
-  | "ppt_outline";
+  | "ppt_outline"
+  | "presentation_analysis";
+
+export type PresentationType = "webinar" | "vsl" | "sales_presentation" | "investor_pitch" | "other";
 
 export type GenerationMode = "coach" | "expert";
 export type GenerationStatus = "pending" | "complete" | "failed";
@@ -60,6 +63,10 @@ export type Generation = {
   mode: GenerationMode;
   status: GenerationStatus;
   content: string | null;
+  // The pasted presentation script/transcript being analyzed — only set for
+  // asset_type "presentation_analysis". Null for ordinary generators, whose input is
+  // always reconstructable from the project's discovery fields.
+  input_content: string | null;
   model: string | null;
   input_tokens: number;
   output_tokens: number;

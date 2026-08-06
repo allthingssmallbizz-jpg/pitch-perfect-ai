@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Document, Packer, Paragraph, HeadingLevel } from "docx";
 import { createClient } from "@/lib/supabase/server";
-import { ASSET_GENERATORS } from "@/lib/ai/generators";
-import type { AssetType } from "@/types/database";
+import { getAssetLabel } from "@/lib/ai/assetLabels";
 
 export const runtime = "nodejs";
 
@@ -27,7 +26,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Generation not found" }, { status: 404 });
   }
 
-  const label = ASSET_GENERATORS[generation.asset_type as AssetType].label;
+  const label = getAssetLabel(generation.asset_type);
 
   const doc = new Document({
     sections: [

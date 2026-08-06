@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
+import { getAssetLabel, getAssetHref } from "@/lib/ai/assetLabels";
+import { ANALYZER_CREDIT_COST } from "@/lib/ai/analyzer";
 import DiscoveryForm from "./DiscoveryForm";
 
 export default async function ProjectPage({
@@ -74,6 +76,26 @@ export default async function ProjectPage({
           </div>
 
           <h2 className="mt-8 mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+            Analyze a presentation
+          </h2>
+          <Link
+            href={`/projects/${project.id}/analyze`}
+            className="block rounded-lg border border-neutral-200 bg-white p-4 hover:border-indigo-300 hover:shadow-sm"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium">Presentation Analyzer</h3>
+              <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-500">
+                {ANALYZER_CREDIT_COST} credits
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-neutral-500">
+              Paste a webinar, VSL, sales presentation, or investor pitch script and get a
+              19-point conversion-readiness critique with scores, missing components, and a
+              prioritized fix list.
+            </p>
+          </Link>
+
+          <h2 className="mt-8 mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">
             History
           </h2>
           {!generations || generations.length === 0 ? (
@@ -83,11 +105,11 @@ export default async function ProjectPage({
               {generations.map((g) => (
                 <li key={g.id}>
                   <Link
-                    href={`/projects/${project.id}/generate/${g.asset_type}?generationId=${g.id}`}
+                    href={getAssetHref(project.id, g.asset_type, g.id)}
                     className="flex items-center justify-between rounded-md border border-neutral-200 bg-white px-4 py-2 text-sm hover:border-indigo-300"
                   >
                     <span>
-                      {ASSET_GENERATORS[g.asset_type].label}{" "}
+                      {getAssetLabel(g.asset_type)}{" "}
                       <span className="text-neutral-400">· {g.mode}</span>
                     </span>
                     <span
