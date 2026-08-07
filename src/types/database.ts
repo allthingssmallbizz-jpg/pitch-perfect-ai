@@ -13,7 +13,10 @@ export type AssetType =
   | "landing_page"
   | "email_sequence"
   | "ppt_outline"
-  | "presentation_analysis";
+  | "presentation_analysis"
+  | "ad_copy"
+  | "offer_ladder"
+  | "headline_lab";
 
 export type PresentationType = "webinar" | "vsl" | "sales_presentation" | "investor_pitch" | "other";
 
@@ -58,7 +61,8 @@ export type Project = {
 export type Generation = {
   id: string;
   user_id: string;
-  project_id: string;
+  // Null for asset_type "headline_lab" — the only tool that isn't scoped to a project.
+  project_id: string | null;
   asset_type: AssetType;
   mode: GenerationMode;
   status: GenerationStatus;
@@ -94,6 +98,17 @@ export type CreditTopup = {
   created_at: string;
 };
 
+export type BrandVoice = {
+  user_id: string;
+  tone: string;
+  forbidden_words: string;
+  preferred_words: string;
+  sample_writing: string;
+  extra_notes: string;
+  created_at: string;
+  updated_at: string;
+};
+
 // Minimal Database type shape for @supabase/ssr / @supabase/supabase-js generics.
 // Matches the GenericSchema/GenericTable shape those packages expect (Row/Insert/Update/
 // Relationships, plus Views/Functions on the schema) — see
@@ -113,6 +128,7 @@ export type Database = {
       generations: Table<Generation>;
       admin_settings: Table<AdminSettings>;
       credit_topups: Table<CreditTopup>;
+      brand_voices: Table<BrandVoice>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

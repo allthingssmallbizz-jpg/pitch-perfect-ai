@@ -5,11 +5,14 @@ import { buildSalesPagePrompt, SALES_PAGE_CREDIT_COST, SALES_PAGE_MAX_OUTPUT_TOK
 import { buildLandingPagePrompt, LANDING_PAGE_CREDIT_COST, LANDING_PAGE_MAX_OUTPUT_TOKENS } from "./landingPage";
 import { buildEmailSequencePrompt, EMAIL_SEQUENCE_CREDIT_COST, EMAIL_SEQUENCE_MAX_OUTPUT_TOKENS } from "./emailSequence";
 import { buildPptOutlinePrompt, PPT_OUTLINE_CREDIT_COST, PPT_OUTLINE_MAX_OUTPUT_TOKENS } from "./pptOutline";
+import { buildAdCopyPrompt, AD_COPY_CREDIT_COST, AD_COPY_MAX_OUTPUT_TOKENS } from "./adCopy";
+import { buildOfferLadderPrompt, OFFER_LADDER_CREDIT_COST, OFFER_LADDER_MAX_OUTPUT_TOKENS } from "./offerLadder";
 
-// Excludes "presentation_analysis" — that feature isn't driven by a project's discovery
-// fields (its input is pasted presentation content), so it isn't part of this registry.
-// See src/lib/ai/analyzer.ts and src/lib/ai/assetLabels.ts.
-export type GeneratorAssetType = Exclude<AssetType, "presentation_analysis">;
+// Excludes "presentation_analysis" and "headline_lab" — neither is driven by a project's
+// discovery fields (their input is pasted content / a topic brief), so they aren't part
+// of this registry. See src/lib/ai/analyzer.ts, src/lib/ai/headlineLab.ts, and
+// src/lib/ai/assetLabels.ts.
+export type GeneratorAssetType = Exclude<AssetType, "presentation_analysis" | "headline_lab">;
 
 export interface AssetGenerator {
   assetType: GeneratorAssetType;
@@ -68,6 +71,22 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
     creditCost: PPT_OUTLINE_CREDIT_COST,
     maxOutputTokens: PPT_OUTLINE_MAX_OUTPUT_TOKENS,
     buildPrompt: buildPptOutlinePrompt,
+  },
+  ad_copy: {
+    assetType: "ad_copy",
+    label: "Ad Copy",
+    description: "Facebook/Instagram ad variations + a YouTube pre-roll script.",
+    creditCost: AD_COPY_CREDIT_COST,
+    maxOutputTokens: AD_COPY_MAX_OUTPUT_TOKENS,
+    buildPrompt: buildAdCopyPrompt,
+  },
+  offer_ladder: {
+    assetType: "offer_ladder",
+    label: "Offer Ladder",
+    description: "Lead magnet → low → mid → high-ticket ascension journey.",
+    creditCost: OFFER_LADDER_CREDIT_COST,
+    maxOutputTokens: OFFER_LADDER_MAX_OUTPUT_TOKENS,
+    buildPrompt: buildOfferLadderPrompt,
   },
 };
 

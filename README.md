@@ -20,14 +20,18 @@ expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized
 ## 1. Supabase setup
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. In the SQL Editor, run the migrations in order: `supabase/migrations/0001_init.sql`, then
-   `supabase/migrations/0002_presentation_analysis.sql`. Together they create:
+2. In the SQL Editor, run the migrations **in order**: `0001_init.sql`, then
+   `0002_presentation_analysis.sql`, then `0003_redesign_features.sql`. Together they create:
    - `profiles` — one row per user, with the 12-month access window and credit meter
    - `projects` — one per offer, with discovery fields
    - `generations` — every generation/analysis + full token/cost telemetry (`asset_type`
-     includes `presentation_analysis`; `input_content` holds pasted analyzer input)
+     covers all generators plus `presentation_analysis` and `headline_lab`;
+     `project_id` is nullable for `headline_lab`, the one tool that isn't project-scoped;
+     `input_content` holds pasted analyzer input / headline brief)
    - `admin_settings` — the global kill switch + daily spend cap (singleton row)
    - `credit_topups` — Stripe top-up purchase history
+   - `brand_voices` — one row per user (tone, preferred/forbidden words, writing sample,
+     notes), folded into every generation's system prompt
    - RLS policies, an `on_auth_user_created` trigger that provisions a `profiles` row on
      signup, and `updated_at` triggers.
 3. Copy the Project URL, anon key, and service role key into `.env.local` (see
@@ -109,6 +113,42 @@ given video/audio; since this app only accepts pasted text, the user-message wra
 the model explicitly that no video/audio was provided so it doesn't fabricate delivery
 critique (voice, eye contact, lighting, etc.) — see the comment in that file before editing.
 Video upload + frame/audio analysis isn't implemented.
+
+## Design system
+
+Redesigned to match a design produced in Lovable (repo: `pitch-perfect-pal-36`) — dark
+navy/royal-blue/silver theme (Sora display font + Inter body, `src/app/globals.css`), a
+collapsible sidebar app shell (`src/components/AppSidebar.tsx`, `src/app/(app)/layout.tsx`)
+replacing the old top-nav for authenticated pages, and shadcn/ui primitives in
+`src/components/ui/` (ported from that repo's generated components, not hand-written — see
+the comment at the top of `src/types/database.ts`-adjacent files for the pattern if you add
+more). Public pages (`/`, `/login`, `/signup`) keep a lighter marketing header via
+`src/app/(marketing)/layout.tsx`.
+
+The redesign deliberately did **not** carry over Lovable's backend — that version had no
+credit limits, rate limiting, kill switch, or cost telemetry. Every new feature below still
+goes through this app's existing guardrail pipeline.
+
+## New tools (ported from the Lovable design pass)
+
+- **Ad Copy** and **Offer Ladder** — two more discovery-driven generators, same pattern as
+  the original six (`src/lib/ai/generators/adCopy.ts`, `offerLadder.ts`).
+- **Brand Voice** (`/brand-voice`) — save a tone description, preferred/forbidden words, a
+  writing sample, and notes once; every generator and Headline Lab call folds it into the
+  system prompt automatically (`src/lib/ai/brandVoice.ts`). The Presentation Analyzer
+  deliberately skips it — it critiques someone else's copy, not the user's own.
+- **Headline Lab** (`/headline-lab`, API: `/api/headlines`) — generates 20 headlines rated
+  1-10 with reasoning from a topic/audience/promise brief; not project-scoped, but still
+  metered through the same `checkGuardrails`/`generateAsset` pipeline. Winner-picking is
+  client-side only for now (not persisted) — see "Not yet done" below.
+
+## Not yet done
+
+Deferred from the Lovable feature set to avoid shipping anything half-finished: rich-text
+editing of generated content (currently plain text), persisted version history per
+generation, autosave, an onboarding tour, the sample-project dialog, and TTS playback. None
+of these affect the guardrails or core generation pipeline — they're pure UX additions for a
+future pass.
 
 ## Knowledge base
 

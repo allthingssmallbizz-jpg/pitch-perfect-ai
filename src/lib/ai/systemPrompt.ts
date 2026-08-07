@@ -59,11 +59,12 @@ const OUTPUT_RULES = `Output rules:
 - Be concrete: real headlines, real section copy, real bullet beats — not placeholders like "[insert benefit here]" unless a specific fact is genuinely missing, in which case write "[NEEDS: <what's missing>]" so it's easy to find.
 - Keep the response focused on the requested asset only.`;
 
-export function buildSystemPrompt(mode: GenerationMode): string {
+export function buildSystemPrompt(mode: GenerationMode, brandVoiceBlock?: string | null): string {
   return [
     PERSONA,
     MODE_INSTRUCTIONS[mode],
     OUTPUT_RULES,
+    ...(brandVoiceBlock ? [brandVoiceBlock] : []),
     "REFERENCE — Pitch Perfect Knowledge Library (use this to structure and validate the asset; do not quote it back verbatim):",
     getKnowledgeContext(),
   ].join("\n\n");
