@@ -59,9 +59,14 @@ const OUTPUT_RULES = `Output rules:
 - Be concrete: real headlines, real section copy, real bullet beats — not placeholders like "[insert benefit here]" unless a specific fact is genuinely missing, in which case write "[NEEDS: <what's missing>]" so it's easy to find.
 - Keep the response focused on the requested asset only.`;
 
-export function buildSystemPrompt(mode: GenerationMode, brandVoiceBlock?: string | null): string {
+export function buildSystemPrompt(
+  mode: GenerationMode,
+  brandVoiceBlock?: string | null,
+  agentPersona?: string | null
+): string {
   return [
     PERSONA,
+    ...(agentPersona ? [agentPersona] : []),
     MODE_INSTRUCTIONS[mode],
     OUTPUT_RULES,
     ...(brandVoiceBlock ? [brandVoiceBlock] : []),

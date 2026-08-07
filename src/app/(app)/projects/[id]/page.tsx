@@ -4,8 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
 import { getAssetLabel, getAssetHref } from "@/lib/ai/assetLabels";
 import { ANALYZER_CREDIT_COST } from "@/lib/ai/analyzer";
+import { AGENTS, getAgent } from "@/lib/agents/config";
 import { Badge } from "@/components/ui/badge";
-import { Gauge } from "lucide-react";
+import AgentBadge from "@/components/AgentBadge";
 import DiscoveryForm from "./DiscoveryForm";
 
 export default async function ProjectPage({
@@ -54,22 +55,25 @@ export default async function ProjectPage({
 
         <div className="lg:col-span-3">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Generate an asset
+            Your AI marketing team
           </h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {ASSET_TYPES.map((type) => {
               const gen = ASSET_GENERATORS[type];
+              const agent = AGENTS[type];
               return (
                 <Link
                   key={type}
                   href={`/projects/${project.id}/generate/${type}`}
                   className="card-elevated rounded-xl p-4 transition-colors hover:border-primary/40"
                 >
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium">{gen.label}</h3>
-                    <Badge variant="secondary">{gen.creditCost} credits</Badge>
+                  <div className="flex items-start justify-between gap-2">
+                    <AgentBadge agent={agent} size="sm" />
+                    <Badge variant="secondary" className="shrink-0">
+                      {gen.creditCost} credits
+                    </Badge>
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{gen.description}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{gen.description}</p>
                 </Link>
               );
             })}
@@ -82,14 +86,13 @@ export default async function ProjectPage({
             href={`/projects/${project.id}/analyze`}
             className="card-elevated block rounded-xl p-4 transition-colors hover:border-primary/40"
           >
-            <div className="flex items-center justify-between">
-              <h3 className="flex items-center gap-2 font-medium">
-                <Gauge className="h-4 w-4 text-primary" />
-                Presentation Analyzer
-              </h3>
-              <Badge variant="secondary">{ANALYZER_CREDIT_COST} credits</Badge>
+            <div className="flex items-start justify-between gap-2">
+              <AgentBadge agent={AGENTS.presentation_analysis} size="sm" />
+              <Badge variant="secondary" className="shrink-0">
+                {ANALYZER_CREDIT_COST} credits
+              </Badge>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-2 text-sm text-muted-foreground">
               Paste a webinar, VSL, sales presentation, or investor pitch script and get a
               19-point conversion-readiness critique with scores, missing components, and a
               prioritized fix list.
@@ -110,6 +113,7 @@ export default async function ProjectPage({
                     className="flex items-center justify-between rounded-lg border border-border bg-card/40 px-4 py-2 text-sm transition-colors hover:border-primary/40"
                   >
                     <span>
+                      {getAgent(g.asset_type) ? `${getAgent(g.asset_type)!.emoji} ` : ""}
                       {getAssetLabel(g.asset_type)}{" "}
                       <span className="text-muted-foreground">· {g.mode}</span>
                     </span>

@@ -1,4 +1,5 @@
 import type { PresentationType } from "@/types/database";
+import { AGENTS } from "@/lib/agents/config";
 
 export const ANALYZER_CREDIT_COST = 8;
 export const ANALYZER_MAX_OUTPUT_TOKENS = 8000;
@@ -203,4 +204,10 @@ PRESENTATION CONTENT TO ANALYZE:
 """
 ${content}
 """`;
+}
+
+// Wraps the verbatim rubric above with Agent Annie's identity, without editing the rubric
+// text itself — the persona is additive framing, the rubric stays exactly as supplied.
+export function getAnalyzerSystemPrompt(): string {
+  return `${AGENTS.presentation_analysis.personaInstructions}\n\n${ANALYZER_SYSTEM_PROMPT}`;
 }

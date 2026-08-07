@@ -1,5 +1,18 @@
 import Link from "next/link";
-import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
+import { AGENTS, type AgentAssetType } from "@/lib/agents/config";
+import AgentBadge from "@/components/AgentBadge";
+
+const AGENT_ORDER: AgentAssetType[] = [
+  "webinar_outline",
+  "vsl_script",
+  "sales_page",
+  "landing_page",
+  "email_sequence",
+  "ppt_outline",
+  "ad_copy",
+  "offer_ladder",
+  "presentation_analysis",
+];
 
 export default function Home() {
   return (
@@ -30,19 +43,19 @@ export default function Home() {
       </section>
 
       <section className="mx-auto max-w-5xl px-4 pb-24">
-        <h2 className="mb-6 text-center text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Every asset generator, one brain
+        <h2 className="mb-2 text-center font-display text-2xl font-semibold text-gradient-silver">
+          Meet your AI marketing team
         </h2>
+        <p className="mx-auto mb-8 max-w-2xl text-center text-sm text-muted-foreground">
+          Every asset runs on the same Pitch Perfect Method™ brain — each specialist just
+          brings a different focus to it.
+        </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {ASSET_TYPES.map((type) => {
-            const gen = ASSET_GENERATORS[type];
-            return (
-              <div key={type} className="card-elevated rounded-xl p-5">
-                <h3 className="font-display font-semibold">{gen.label}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{gen.description}</p>
-              </div>
-            );
-          })}
+          {AGENT_ORDER.map((type) => (
+            <div key={type} className="card-elevated rounded-xl p-5">
+              <AgentBadge agent={AGENTS[type]} showTagline />
+            </div>
+          ))}
         </div>
       </section>
     </div>

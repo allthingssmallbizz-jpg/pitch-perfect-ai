@@ -5,12 +5,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { checkGuardrails, decrementCredits } from "@/lib/credits";
 import { generateAsset } from "@/lib/ai/anthropic";
 import {
-  ANALYZER_SYSTEM_PROMPT,
   ANALYZER_CREDIT_COST,
   ANALYZER_MAX_OUTPUT_TOKENS,
   ANALYZER_MAX_INPUT_CHARS,
   PRESENTATION_TYPE_LABELS,
   buildAnalyzerUserPrompt,
+  getAnalyzerSystemPrompt,
 } from "@/lib/ai/analyzer";
 
 export const runtime = "nodejs";
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const userPrompt = buildAnalyzerUserPrompt(presentationType, content);
-    const result = await generateAsset(ANALYZER_SYSTEM_PROMPT, userPrompt, ANALYZER_MAX_OUTPUT_TOKENS);
+    const result = await generateAsset(getAnalyzerSystemPrompt(), userPrompt, ANALYZER_MAX_OUTPUT_TOKENS);
 
     await admin
       .from("generations")

@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
+import { AGENTS } from "@/lib/agents/config";
+import AgentBadge from "@/components/AgentBadge";
 import GenerateClient from "./GenerateClient";
 
 export default async function GenerateAssetPage({
@@ -47,14 +49,18 @@ export default async function GenerateAssetPage({
     }
   }
 
+  const agent = AGENTS[generator.assetType];
+
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       <Link href={`/projects/${id}`} className="text-sm text-primary hover:underline">
         ← {project.name}
       </Link>
-      <h1 className="mt-2 mb-1 font-display text-2xl font-semibold text-gradient-silver">{generator.label}</h1>
+      <div className="mt-4 mb-1">
+        <AgentBadge agent={agent} size="lg" showTagline />
+      </div>
       <p className="mb-6 text-sm text-muted-foreground">
-        {generator.description} · {generator.creditCost} credits per generation · {project.mode} mode
+        {generator.label} · {generator.creditCost} credits per generation · {project.mode} mode
       </p>
 
       <GenerateClient

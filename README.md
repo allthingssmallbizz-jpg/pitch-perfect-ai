@@ -142,6 +142,33 @@ goes through this app's existing guardrail pipeline.
   metered through the same `checkGuardrails`/`generateAsset` pipeline. Winner-picking is
   client-side only for now (not persisted) — see "Not yet done" below.
 
+## AI Agent system
+
+Every generator and the analyzer is fronted by a named specialist agent, so the app feels
+like an AI marketing team rather than a grid of buttons — Agent Sarah (Webinar), Agent
+Vicky (VSL), Agent Sally (Sales Page), Agent Paige (Landing Page), Agent Ellie (Emails),
+Agent Polly (PPT), Agent Addie (Ad Copy), Agent Olivia (Offer Ladder), and Agent Annie
+(Presentation Analyzer). This is a branding + persona layer, **not** a parallel system:
+
+- `src/lib/agents/config.ts` is the single source of truth — name, title, emoji, tagline,
+  description, and `personaInstructions` per agent, keyed 1:1 to the existing asset types.
+  Add a 10th agent by adding one entry here (plus a generator, if it's a new capability) —
+  never a parallel prompt/route/UI system.
+- Each agent's `personaInstructions` folds into the *same* system prompt call its asset type
+  already used — `buildSystemPrompt(mode, brandVoiceBlock, agentPersona)` in
+  `src/app/api/generate/route.ts` for the eight generators, and a thin
+  `getAnalyzerSystemPrompt()` wrapper in `src/lib/ai/analyzer.ts` that prepends Annie's
+  identity in front of the verbatim analyzer rubric (that rubric text itself is untouched —
+  see the comment above it).
+- `src/components/AgentBadge.tsx` is the one place the emoji/name/title/tagline render —
+  used on the project page's generator grid, each generate/analyze page header, and the
+  landing page's team teaser. No page hand-rolls this markup itself.
+- `headline_lab` intentionally has no agent (wasn't part of the requested roster).
+- Per-generator-type "upload and analyze" isn't duplicated eight times — Agent Annie's
+  existing Presentation Analyzer already covers webinar/VSL/sales-presentation/pitch-deck
+  analysis generically, so that's the one place "analyze what I built" lives for every
+  asset type. Video upload/frame analysis is still not implemented (see below).
+
 ## Not yet done
 
 Deferred from the Lovable feature set to avoid shipping anything half-finished: rich-text

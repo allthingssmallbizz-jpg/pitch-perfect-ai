@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ANALYZER_CREDIT_COST } from "@/lib/ai/analyzer";
+import { AGENTS } from "@/lib/agents/config";
+import AgentBadge from "@/components/AgentBadge";
 import AnalyzeClient from "./AnalyzeClient";
 
 export default async function AnalyzePage({
@@ -49,7 +51,9 @@ export default async function AnalyzePage({
       <Link href={`/projects/${id}`} className="text-sm text-primary hover:underline">
         ← {project.name}
       </Link>
-      <h1 className="mt-2 mb-1 font-display text-2xl font-semibold text-gradient-silver">Presentation Analyzer</h1>
+      <div className="mt-4 mb-1">
+        <AgentBadge agent={AGENTS.presentation_analysis} size="lg" showTagline />
+      </div>
       <p className="mb-6 text-sm text-muted-foreground">
         Conversion-readiness critique against a 19-point rubric · {ANALYZER_CREDIT_COST} credits per
         analysis

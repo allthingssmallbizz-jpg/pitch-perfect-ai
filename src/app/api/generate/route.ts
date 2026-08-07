@@ -7,6 +7,7 @@ import { generateAsset } from "@/lib/ai/anthropic";
 import { buildSystemPrompt } from "@/lib/ai/systemPrompt";
 import { getBrandVoiceBlock } from "@/lib/ai/brandVoice";
 import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
+import { getAgent } from "@/lib/agents/config";
 import type { GenerationMode } from "@/types/database";
 
 export const runtime = "nodejs";
@@ -80,7 +81,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const brandVoiceBlock = await getBrandVoiceBlock(supabase, user.id);
-    const systemPrompt = buildSystemPrompt(mode, brandVoiceBlock);
+    const agentPersona = getAgent(assetType)?.personaInstructions;
+    const systemPrompt = buildSystemPrompt(mode, brandVoiceBlock, agentPersona);
     const userPrompt = generator.buildPrompt(project);
 
     const result = await generateAsset(systemPrompt, userPrompt, generator.maxOutputTokens);
