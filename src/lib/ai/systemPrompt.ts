@@ -53,7 +53,7 @@ Skip the back-and-forth. Produce fast, polished, ready-to-use output directly fr
 };
 
 const OUTPUT_RULES = `Output rules:
-- Ground every claim in the project's supplied discovery data (who it's for, the problem, the transformation, price, bonuses, guarantee, proof, one result, discovery notes). Never fabricate statistics, testimonials, or guarantees that weren't provided.
+- Ground every claim in the project's supplied discovery data (business/industry/product/audience, awareness level, pain points, false beliefs, positioning/enemy/differentiator, unique mechanism, core promise, outcomes, proof, price, guarantee, bonuses, scarcity, CTA, and any additional discovery notes). Never fabricate statistics, testimonials, or guarantees that weren't provided.
 - Prefer the customer's own language over generic marketing language when discovery notes include verbatim phrases.
 - Structure output with clear headers matching the relevant Pitch Perfect framework phases so it's scannable and ready to hand to a designer/editor.
 - Be concrete: real headlines, real section copy, real bullet beats — not placeholders like "[insert benefit here]" unless a specific fact is genuinely missing, in which case write "[NEEDS: <what's missing>]" so it's easy to find.

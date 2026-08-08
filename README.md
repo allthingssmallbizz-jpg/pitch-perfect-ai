@@ -22,9 +22,10 @@ expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized
 1. Create a project at [supabase.com](https://supabase.com).
 2. In the SQL Editor, run the migrations **in order**: `0001_init.sql`, then
    `0002_presentation_analysis.sql`, then `0003_redesign_features.sql`, then
-   `0004_video_analysis.sql`. Together they create:
+   `0004_video_analysis.sql`, then `0005_full_discovery.sql`. Together they create:
    - `profiles` — one row per user, with the 12-month access window and credit meter
-   - `projects` — one per offer, with discovery fields
+   - `projects` — one per offer, with the full Discovery → Customer Awareness → Positioning →
+     Value Proposition → Offer intake (see "Project discovery" below)
    - `generations` — every generation/analysis + full token/cost telemetry (`asset_type`
      covers all generators plus `presentation_analysis` and `headline_lab`;
      `project_id` is nullable for `headline_lab`, the one tool that isn't project-scoped;
@@ -96,6 +97,30 @@ free/Hobby tier caps functions at 60s regardless of `maxDuration`, so that route
 mid-pipeline and leave the generation stuck instead of marked "failed". Vercel Pro (or
 self-hosting) is required for this feature to actually finish; the text-paste analyzer and every
 other generator are unaffected either way.
+
+## Project discovery
+
+Every project's intake (`src/app/(app)/projects/[id]/DiscoveryForm.tsx`, saved via
+`updateProjectDiscovery` in `src/lib/actions/projects.ts`) matches the fuller Discovery →
+Customer Awareness → Positioning → Value Proposition → Offer brief from the Lovable prototype's
+wizard, not just a handful of fields — this is what a real VSL/webinar/sales page needs, not a
+short summary:
+
+- **Discovery** — business/brand name, industry/niche, product or service, target audience,
+  existing marketing assets
+- **Customer Awareness** — awareness level (Unaware → Most Aware), biggest pain points, false
+  beliefs/objections, desired transformation
+- **Positioning** — market category, the enemy/villain, primary differentiator, competitive
+  alternatives
+- **Value Proposition** — unique mechanism, core promise, top outcomes/benefits, proof available
+- **Offer** — price point, guarantee, bonuses, scarcity/urgency, primary call to action
+
+`formatDiscoveryBlock` (`src/lib/ai/generators/shared.ts`) renders the whole brief, grouped the
+same way, into every generator's and Agent Annie's system prompt — this is the single place
+"discovery-before-copy" is enforced, so no generator sees a different or partial brief. Migration
+`0005_full_discovery.sql` added these columns without dropping the earlier flat fields
+(`who_its_for`, `the_problem`, etc.) — existing project data was backfilled into the closest new
+field, and the old columns are simply unused by the app now.
 
 ## The guardrails (margin protection)
 

@@ -47,18 +47,45 @@ export type Profile = {
   updated_at: string;
 };
 
+export type AwarenessLevel =
+  | ""
+  | "Unaware"
+  | "Problem-Aware"
+  | "Solution-Aware"
+  | "Product-Aware"
+  | "Most Aware";
+
 export type Project = {
   id: string;
   user_id: string;
   name: string;
-  who_its_for: string;
-  the_problem: string;
-  the_transformation: string;
-  price: string;
-  bonuses: string;
-  guarantee: string;
+  // Discovery
+  business_name: string;
+  industry: string;
+  product: string;
+  audience: string;
+  existing_assets: string;
+  // Customer Awareness
+  awareness_level: AwarenessLevel;
+  pain_points: string;
+  false_beliefs: string;
+  desired_transformation: string;
+  // Positioning
+  category: string;
+  enemy: string;
+  differentiator: string;
+  competitive_alternatives: string;
+  // Value Proposition
+  unique_mechanism: string;
+  core_promise: string;
+  outcomes: string;
   proof: string;
-  one_result: string;
+  // Offer
+  price: string;
+  guarantee: string;
+  bonuses: string;
+  scarcity_urgency: string;
+  cta: string;
   discovery_notes: string;
   mode: GenerationMode;
   created_at: string;

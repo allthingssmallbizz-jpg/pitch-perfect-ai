@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import type { AwarenessLevel } from "@/types/database";
 
 export async function createProject(_prevState: unknown, formData: FormData) {
   const supabase = await createClient();
@@ -40,17 +41,38 @@ export async function updateProjectDiscovery(_prevState: unknown, formData: Form
 
   const projectId = String(formData.get("projectId") || "");
 
+  const text = (key: string) => String(formData.get(key) || "");
+
   const fields = {
-    name: String(formData.get("name") || "").trim(),
-    one_result: String(formData.get("one_result") || ""),
-    who_its_for: String(formData.get("who_its_for") || ""),
-    the_problem: String(formData.get("the_problem") || ""),
-    the_transformation: String(formData.get("the_transformation") || ""),
-    price: String(formData.get("price") || ""),
-    bonuses: String(formData.get("bonuses") || ""),
-    guarantee: String(formData.get("guarantee") || ""),
-    proof: String(formData.get("proof") || ""),
-    discovery_notes: String(formData.get("discovery_notes") || ""),
+    name: text("name").trim(),
+    // Discovery
+    business_name: text("business_name"),
+    industry: text("industry"),
+    product: text("product"),
+    audience: text("audience"),
+    existing_assets: text("existing_assets"),
+    // Customer Awareness
+    awareness_level: text("awareness_level") as AwarenessLevel,
+    pain_points: text("pain_points"),
+    false_beliefs: text("false_beliefs"),
+    desired_transformation: text("desired_transformation"),
+    // Positioning
+    category: text("category"),
+    enemy: text("enemy"),
+    differentiator: text("differentiator"),
+    competitive_alternatives: text("competitive_alternatives"),
+    // Value Proposition
+    unique_mechanism: text("unique_mechanism"),
+    core_promise: text("core_promise"),
+    outcomes: text("outcomes"),
+    proof: text("proof"),
+    // Offer
+    price: text("price"),
+    guarantee: text("guarantee"),
+    bonuses: text("bonuses"),
+    scarcity_urgency: text("scarcity_urgency"),
+    cta: text("cta"),
+    discovery_notes: text("discovery_notes"),
     mode: (formData.get("mode") === "coach" ? "coach" : "expert") as "coach" | "expert",
   };
 

@@ -55,7 +55,7 @@ export default async function DashboardPage() {
             >
               <h3 className="font-display font-semibold">{project.name}</h3>
               <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                {project.one_result || project.the_transformation || "No discovery notes yet."}
+                {project.core_promise || project.desired_transformation || "No discovery notes yet."}
               </p>
               <p className="mt-3 text-xs text-muted-foreground/70">Updated {formatDate(project.updated_at)}</p>
             </Link>
