@@ -23,7 +23,8 @@ expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized
 2. In the SQL Editor, run the migrations **in order**: `0001_init.sql`, then
    `0002_presentation_analysis.sql`, then `0003_redesign_features.sql`, then
    `0004_video_analysis.sql`, then `0005_full_discovery.sql`, then
-   `0006_generation_versions.sql`, then `0007_tts.sql`. Together they create:
+   `0006_generation_versions.sql`, then `0007_tts.sql`, then
+   `0008_headline_winners.sql`. Together they create:
    - `profiles` — one row per user, with the 12-month access window and credit meter
    - `projects` — one per offer, with the full Discovery → Customer Awareness → Positioning →
      Value Proposition → Offer intake (see "Project discovery" below)
@@ -222,9 +223,11 @@ goes through this app's existing guardrail pipeline.
   deliberately skips it — it critiques someone else's copy, not the user's own.
 - **Headline Lab** (`/headline-lab`, API: `/api/headlines`) — generates 20 headlines rated
   1-10 with reasoning from a topic/audience/promise brief; not project-scoped, but still
-  metered through the same `checkGuardrails`/`generateAsset` pipeline. Winner-picking is still
-  client-side only (not persisted) — the Lovable prototype's `headline_sets.winners` column
-  isn't ported yet.
+  metered through the same `checkGuardrails`/`generateAsset` pipeline. Winner picks are
+  persisted (`generations.winners`, migration `0008_headline_winners.sql`, ported from the
+  Lovable prototype's `headline_sets.winners` column) via `POST
+  /api/generations/[id]/winners`, so reopening a past set via `?generationId=...` restores
+  which headlines were marked as winners, not just the list itself.
 - **Sidebar "Create" shortcuts** — one link per generator (`/projects/new?type=webinar_outline`
   etc.), matching the Lovable nav's Webinar/VSL/Sales Letter/Presentation/Landing
   Page/Emails/Ad Copy/Offer Ladder list, plus Analyzer. Picking one, then naming a project,

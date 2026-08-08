@@ -17,14 +17,23 @@ function scoreColor(score: number) {
   return "text-muted-foreground border-border bg-card/40";
 }
 
-export default function HeadlineLabClient({ initialHeadlines }: { initialHeadlines: RatedHeadline[] }) {
+export default function HeadlineLabClient({
+  initialHeadlines,
+  initialWinners,
+  initialGenerationId,
+}: {
+  initialHeadlines: RatedHeadline[];
+  initialWinners: string[];
+  initialGenerationId: string | null;
+}) {
   const [topic, setTopic] = useState("");
   const [audience, setAudience] = useState("");
   const [promise, setPromise] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [headlines, setHeadlines] = useState<RatedHeadline[]>(initialHeadlines);
-  const [winners, setWinners] = useState<Set<string>>(new Set());
+  const [generationId, setGenerationId] = useState<string | null>(initialGenerationId);
+  const [winners, setWinners] = useState<Set<string>>(new Set(initialWinners));
   const [sortByScore, setSortByScore] = useState(true);
 
   async function handleGenerate(e: React.FormEvent) {
@@ -34,6 +43,7 @@ export default function HeadlineLabClient({ initialHeadlines }: { initialHeadlin
     setError(null);
     setHeadlines([]);
     setWinners(new Set());
+    setGenerationId(null);
     try {
       const res = await fetch("/api/headlines", {
         method: "POST",
@@ -46,6 +56,7 @@ export default function HeadlineLabClient({ initialHeadlines }: { initialHeadlin
         return;
       }
       setHeadlines(data.headlines);
+      setGenerationId(data.generationId);
       toast.success(`Generated ${data.headlines.length} headlines. Pick your winners.`);
     } catch {
       setError("Network error — try again.");
@@ -59,6 +70,13 @@ export default function HeadlineLabClient({ initialHeadlines }: { initialHeadlin
       const next = new Set(prev);
       if (next.has(h)) next.delete(h);
       else next.add(h);
+      if (generationId) {
+        fetch(`/api/generations/${generationId}/winners`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ winners: Array.from(next) }),
+        }).catch(() => {});
+      }
       return next;
     });
   }

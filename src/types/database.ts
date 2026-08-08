@@ -121,6 +121,9 @@ export type Generation = {
   transcript: string | null;
   progress_message: string | null;
   transcription_cost_usd: number;
+  // Headline Lab's winner picks (the headline strings) — only meaningful for
+  // asset_type "headline_lab". Empty array for everything else.
+  winners: string[];
 };
 
 export type GenerationVersionSource = "generate" | "edit" | "snapshot";

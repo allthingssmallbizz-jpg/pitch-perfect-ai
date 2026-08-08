@@ -17,11 +17,13 @@ export default async function HeadlineLabPage({
   if (!user) redirect("/login");
 
   let initialHeadlines: RatedHeadline[] = [];
+  let initialWinners: string[] = [];
+  let initialGenerationId: string | null = null;
 
   if (generationId) {
     const { data: generation } = await supabase
       .from("generations")
-      .select("content")
+      .select("content, winners")
       .eq("id", generationId)
       .eq("user_id", user.id)
       .eq("asset_type", "headline_lab")
@@ -30,11 +32,19 @@ export default async function HeadlineLabPage({
     if (generation?.content) {
       try {
         initialHeadlines = parseRatedHeadlines(generation.content);
+        initialWinners = generation.winners ?? [];
+        initialGenerationId = generationId;
       } catch {
         initialHeadlines = [];
       }
     }
   }
 
-  return <HeadlineLabClient initialHeadlines={initialHeadlines} />;
+  return (
+    <HeadlineLabClient
+      initialHeadlines={initialHeadlines}
+      initialWinners={initialWinners}
+      initialGenerationId={initialGenerationId}
+    />
+  );
 }
