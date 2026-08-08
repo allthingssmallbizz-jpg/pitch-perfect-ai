@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ANALYZER_CREDIT_COST } from "@/lib/ai/analyzer";
+import { VIDEO_ANALYZER_CREDIT_COST } from "@/lib/ai/videoAnalyzer";
 import { AGENTS } from "@/lib/agents/config";
 import AgentBadge from "@/components/AgentBadge";
 import AnalyzeClient from "./AnalyzeClient";
@@ -55,8 +56,9 @@ export default async function AnalyzePage({
         <AgentBadge agent={AGENTS.presentation_analysis} size="lg" showTagline />
       </div>
       <p className="mb-6 text-sm text-muted-foreground">
-        Conversion-readiness critique against a 19-point rubric · {ANALYZER_CREDIT_COST} credits per
-        analysis
+        Conversion-readiness critique against a 19-point rubric · {ANALYZER_CREDIT_COST} credits to
+        analyze pasted text, {VIDEO_ANALYZER_CREDIT_COST} credits for a full video upload (up to 90
+        minutes) with delivery review
       </p>
 
       <AnalyzeClient

@@ -13,7 +13,7 @@ expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized
 
 - **Frontend/Backend:** Next.js 16 (App Router, TypeScript, Tailwind)
 - **Auth/DB:** Supabase (Postgres + built-in auth, Row Level Security)
-- **AI:** Anthropic Claude API
+- **AI:** Anthropic Claude API (text + vision), OpenAI Whisper (video transcription)
 - **Billing:** Stripe (12-month membership subscription + one-off credit top-ups)
 - **Export:** jsPDF / docx for PDF and Word export
 
@@ -21,7 +21,8 @@ expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized
 
 1. Create a project at [supabase.com](https://supabase.com).
 2. In the SQL Editor, run the migrations **in order**: `0001_init.sql`, then
-   `0002_presentation_analysis.sql`, then `0003_redesign_features.sql`. Together they create:
+   `0002_presentation_analysis.sql`, then `0003_redesign_features.sql`, then
+   `0004_video_analysis.sql`. Together they create:
    - `profiles` — one row per user, with the 12-month access window and credit meter
    - `projects` — one per offer, with discovery fields
    - `generations` — every generation/analysis + full token/cost telemetry (`asset_type`
@@ -32,6 +33,10 @@ expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized
    - `credit_topups` — Stripe top-up purchase history
    - `brand_voices` — one row per user (tone, preferred/forbidden words, writing sample,
      notes), folded into every generation's system prompt
+   - `presentation-videos` Storage bucket (private, owner-only) + the `generations` columns
+     the video analysis pipeline needs (`video_path`, `video_duration_seconds`, `transcript`,
+     `progress_message`, `transcription_cost_usd`) and an expanded `status` enum for the
+     staged upload → transcribe → extract frames → analyze flow
    - RLS policies, an `on_auth_user_created` trigger that provisions a `profiles` row on
      signup, and `updated_at` triggers.
 3. Copy the Project URL, anon key, and service role key into `.env.local` (see
@@ -49,6 +54,13 @@ Get an API key from [console.anthropic.com](https://console.anthropic.com) and s
 `ANTHROPIC_API_KEY`. Double-check `ANTHROPIC_INPUT_COST_PER_MTOK` /
 `ANTHROPIC_OUTPUT_COST_PER_MTOK` against current pricing before relying on the cost
 telemetry for real budgeting decisions.
+
+## 2b. OpenAI setup (for video analysis)
+
+Agent Annie's video upload path transcribes audio with Whisper before analyzing it. Get an
+API key from [platform.openai.com](https://platform.openai.com) and set `OPENAI_API_KEY`.
+Double-check `WHISPER_COST_PER_MINUTE` against current pricing. If you don't set this, the
+text-paste analyzer still works fine — only video uploads need it.
 
 ## 3. Stripe setup
 
@@ -76,6 +88,14 @@ npm run dev
 Deploy to Vercel (or any Next.js host). Set the same environment variables in your hosting
 provider's dashboard, and point the Stripe webhook and Supabase redirect URL at your
 production domain.
+
+**Video analysis needs a plan that allows longer function execution.** The video pipeline
+(`/api/analyze/video/process`, `maxDuration = 300`) transcribes and analyzes a full webinar in
+the background via `after()`, which can take several minutes for a 60-90 minute video. Vercel's
+free/Hobby tier caps functions at 60s regardless of `maxDuration`, so that route will be cut off
+mid-pipeline and leave the generation stuck instead of marked "failed". Vercel Pro (or
+self-hosting) is required for this feature to actually finish; the text-paste analyzer and every
+other generator are unaffected either way.
 
 ## The guardrails (margin protection)
 
@@ -109,10 +129,42 @@ the same guardrail pipeline (credits, rate limits, kill switch, cost telemetry) 
 else, via `checkGuardrails`/`generateAsset` in `src/app/api/analyze/route.ts`.
 
 The system prompt (`ANALYZER_SYSTEM_PROMPT` in `src/lib/ai/analyzer.ts`) assumes it may be
-given video/audio; since this app only accepts pasted text, the user-message wrapper tells
-the model explicitly that no video/audio was provided so it doesn't fabricate delivery
-critique (voice, eye contact, lighting, etc.) — see the comment in that file before editing.
-Video upload + frame/audio analysis isn't implemented.
+given video/audio. For the text-paste path, the user-message wrapper tells the model
+explicitly that no video/audio was provided so it doesn't fabricate delivery critique (voice,
+eye contact, lighting, etc.) — see the comment in that file before editing.
+
+### Video upload
+
+The same page also accepts a full video upload (up to 90 minutes / 500MB) for real delivery
+review — voice, pacing, energy, camera framing, lighting — on top of the full rubric, at
+`VIDEO_ANALYZER_CREDIT_COST` (20) credits instead of 8. It's a staged async pipeline, not a
+single request/response, because a 90-minute video can't be transcribed and analyzed inside
+one HTTP call:
+
+1. `POST /api/analyze/video/start` reserves a `generations` row and returns a Storage path.
+2. The browser uploads the file **directly to Supabase Storage** (`presentation-videos`
+   bucket, RLS-scoped to the user's own folder) — never through a Next.js route, so it isn't
+   bound by serverless request body limits.
+3. `POST /api/analyze/video/process` validates the upload, marks the generation `uploaded`,
+   and hands off to `runVideoAnalysisPipeline` (`src/lib/video/pipeline.ts`) via Next.js
+   `after()`, responding immediately.
+4. In the background, the pipeline downloads the video, extracts + chunks audio
+   (`src/lib/video/ffmpeg.ts`), transcribes each chunk in parallel with OpenAI Whisper
+   (`src/lib/video/transcription.ts`), samples ~8 frames across the runtime for Claude's
+   vision input, then runs the same rubric through `generateAsset()` — now vision-capable
+   (`images` param) — via `getAnalyzerSystemPrompt()` + `buildVideoAnalyzerUserPrompt()`
+   (`src/lib/ai/videoAnalyzer.ts`). Status moves through `uploaded` → `transcribing` →
+   `extracting_frames` → `analyzing` → `complete`/`failed` on the `generations` row at each
+   stage.
+5. The browser polls that row directly via the Supabase client (`AnalyzeClient.tsx`) — no
+   separate status API — and renders the same result view as the text path once `complete`.
+6. Credits are only decremented on success, same as every other guardrailed call; a failure
+   at any stage marks the row `failed` with an error and charges nothing.
+
+Claude's API has no native video input, so "video analysis" here means transcript + sampled
+still frames, not continuous video/audio — the video prompt says so explicitly and asks the
+model not to claim it saw things (like specific gestures) that stills can't show. See
+"Deploy" above for the hosting requirement this feature has (longer function execution).
 
 ## Design system
 
@@ -167,7 +219,7 @@ Agent Polly (PPT), Agent Addie (Ad Copy), Agent Olivia (Offer Ladder), and Agent
 - Per-generator-type "upload and analyze" isn't duplicated eight times — Agent Annie's
   existing Presentation Analyzer already covers webinar/VSL/sales-presentation/pitch-deck
   analysis generically, so that's the one place "analyze what I built" lives for every
-  asset type. Video upload/frame analysis is still not implemented (see below).
+  asset type, including the video upload path (see "Video upload" above).
 
 ## Not yet done
 
@@ -195,4 +247,4 @@ provided.
 4. ✅ Save/export (copy, PDF, .docx)
 5. ✅ Stripe billing + credit top-ups
 6. ✅ Admin: cost telemetry dashboard + global kill switch
-7. ✅ Presentation Analyzer (19-point conversion-readiness critique)
+7. ✅ Presentation Analyzer (19-point conversion-readiness critique, text + full video upload)

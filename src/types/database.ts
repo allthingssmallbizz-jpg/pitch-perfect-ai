@@ -21,7 +21,14 @@ export type AssetType =
 export type PresentationType = "webinar" | "vsl" | "sales_presentation" | "investor_pitch" | "other";
 
 export type GenerationMode = "coach" | "expert";
-export type GenerationStatus = "pending" | "complete" | "failed";
+export type GenerationStatus =
+  | "pending"
+  | "uploaded"
+  | "transcribing"
+  | "extracting_frames"
+  | "analyzing"
+  | "complete"
+  | "failed";
 export type UserRole = "member" | "admin";
 
 export type Profile = {
@@ -74,10 +81,18 @@ export type Generation = {
   model: string | null;
   input_tokens: number;
   output_tokens: number;
+  // Total cost for this generation. For video analysis this includes transcription_cost_usd.
   cost_usd: number;
   credits_charged: number;
   error: string | null;
   created_at: string;
+  // Video analysis pipeline (Agent Annie's video upload path) — null for everything else.
+  video_path: string | null;
+  video_duration_seconds: number | null;
+  video_size_bytes: number | null;
+  transcript: string | null;
+  progress_message: string | null;
+  transcription_cost_usd: number;
 };
 
 export type AdminSettings = {
