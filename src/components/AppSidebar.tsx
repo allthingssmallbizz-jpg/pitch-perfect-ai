@@ -10,7 +10,6 @@ import {
   CreditCard,
   ShieldCheck,
   LogOut,
-  Search,
   BookOpen,
   Settings,
 } from "lucide-react";
@@ -118,10 +117,16 @@ export default function AppSidebar({ email, isAdmin, credits }: Props) {
                 const agent = AGENTS[type];
                 return (
                   <SidebarMenuItem key={type}>
-                    <SidebarMenuButton asChild isActive={activeCreateType === type} tooltip={agent.name}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={activeCreateType === type}
+                      tooltip={`${agent.name} — ${CREATE_LABELS[type]}`}
+                    >
                       <Link href={`/projects/new?type=${type}`}>
                         <span aria-hidden>{agent.emoji}</span>
-                        <span>{CREATE_LABELS[type]}</span>
+                        <span className="truncate">
+                          {agent.name} <span className="text-muted-foreground">· {CREATE_LABELS[type]}</span>
+                        </span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -150,8 +155,10 @@ export default function AppSidebar({ email, isAdmin, credits }: Props) {
                   tooltip="Agent Annie — Analyzer"
                 >
                   <Link href="/projects/new?type=presentation_analysis">
-                    <Search className="h-4 w-4" />
-                    <span>Analyzer</span>
+                    <span aria-hidden>{AGENTS.presentation_analysis.emoji}</span>
+                    <span className="truncate">
+                      {AGENTS.presentation_analysis.name} <span className="text-muted-foreground">· Analyzer</span>
+                    </span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
