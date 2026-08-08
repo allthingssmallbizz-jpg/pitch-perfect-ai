@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard,
   Plus,
@@ -10,8 +10,12 @@ import {
   CreditCard,
   ShieldCheck,
   LogOut,
+  Search,
+  BookOpen,
+  Settings,
 } from "lucide-react";
 import { signOut } from "@/lib/actions/auth";
+import { AGENTS, type AgentAssetType } from "@/lib/agents/config";
 import {
   Sidebar,
   SidebarContent,
@@ -26,6 +30,35 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+// Listed directly (rather than imported from src/lib/ai/generators, the registry that also
+// carries the actual prompt-builder functions) so this client component doesn't pull the
+// Node-only knowledge-file loader (src/lib/ai/systemPrompt.ts, used by the VSL generator) into
+// the browser bundle — that reads from disk via `fs` and can't be chunked for the client.
+const CREATE_ASSET_TYPES: Exclude<AgentAssetType, "presentation_analysis">[] = [
+  "webinar_outline",
+  "vsl_script",
+  "sales_page",
+  "ppt_outline",
+  "landing_page",
+  "email_sequence",
+  "ad_copy",
+  "offer_ladder",
+];
+
+// Short label per generator for the sidebar's "Create" group — matches the Lovable prototype's
+// nav wording (Webinar, VSL, Sales Letter, Presentation...) rather than the longer labels used
+// elsewhere (ASSET_GENERATORS[type].label, e.g. "Webinar Outline").
+const CREATE_LABELS: Record<(typeof CREATE_ASSET_TYPES)[number], string> = {
+  webinar_outline: "Webinar",
+  vsl_script: "VSL",
+  sales_page: "Sales Letter",
+  ppt_outline: "Presentation",
+  landing_page: "Landing Page",
+  email_sequence: "Emails",
+  ad_copy: "Ad Copy",
+  offer_ladder: "Offer Ladder",
+};
+
 type Props = {
   email: string;
   isAdmin: boolean;
@@ -36,7 +69,9 @@ export default function AppSidebar({ email, isAdmin, credits }: Props) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const displayName = email.split("@")[0] || "You";
+  const activeCreateType = pathname === "/projects/new" ? searchParams.get("type") : null;
 
   return (
     <Sidebar collapsible="icon">
@@ -76,6 +111,27 @@ export default function AppSidebar({ email, isAdmin, credits }: Props) {
         </SidebarGroup>
 
         <SidebarGroup>
+          <SidebarGroupLabel>Create</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {CREATE_ASSET_TYPES.map((type) => {
+                const agent = AGENTS[type];
+                return (
+                  <SidebarMenuItem key={type}>
+                    <SidebarMenuButton asChild isActive={activeCreateType === type} tooltip={agent.name}>
+                      <Link href={`/projects/new?type=${type}`}>
+                        <span aria-hidden>{agent.emoji}</span>
+                        <span>{CREATE_LABELS[type]}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
           <SidebarGroupLabel>Tools</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -84,6 +140,26 @@ export default function AppSidebar({ email, isAdmin, credits }: Props) {
                   <Link href="/headline-lab">
                     <Sparkles className="h-4 w-4" />
                     <span>Headline lab</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={activeCreateType === "presentation_analysis"}
+                  tooltip="Agent Annie — Analyzer"
+                >
+                  <Link href="/projects/new?type=presentation_analysis">
+                    <Search className="h-4 w-4" />
+                    <span>Analyzer</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === "/templates"} tooltip="Templates">
+                  <Link href="/templates">
+                    <BookOpen className="h-4 w-4" />
+                    <span>Templates</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -121,6 +197,14 @@ export default function AppSidebar({ email, isAdmin, credits }: Props) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === "/settings"} tooltip="Settings">
+                  <Link href="/settings">
+                    <Settings className="h-4 w-4" />
+                    <span>Settings</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <form action={signOut}>
                   <SidebarMenuButton type="submit" tooltip="Sign out">

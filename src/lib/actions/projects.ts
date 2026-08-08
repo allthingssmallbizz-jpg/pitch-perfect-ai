@@ -4,6 +4,17 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { AwarenessLevel } from "@/types/database";
+import { ASSET_TYPES } from "@/lib/ai/generators";
+import { getTemplate } from "@/lib/templates";
+
+// Where to land after creating a project, mirroring the sidebar's "Create" links
+// (`/projects/new?type=webinar_outline`) and the Analyzer link (`?type=presentation_analysis`)
+// — skip the empty project overview and go straight to the tool the user picked.
+function projectDestination(projectId: string, type: string | null): string {
+  if (type === "presentation_analysis") return `/projects/${projectId}/analyze`;
+  if (type && (ASSET_TYPES as string[]).includes(type)) return `/projects/${projectId}/generate/${type}`;
+  return `/projects/${projectId}`;
+}
 
 export async function createProject(_prevState: unknown, formData: FormData) {
   const supabase = await createClient();
@@ -17,6 +28,7 @@ export async function createProject(_prevState: unknown, formData: FormData) {
   if (!name) {
     return { error: "Give your project a name." };
   }
+  const type = String(formData.get("type") || "") || null;
 
   const { data, error } = await supabase
     .from("projects")
@@ -27,6 +39,37 @@ export async function createProject(_prevState: unknown, formData: FormData) {
   if (error || !data) {
     return { error: "Could not create project. Try again." };
   }
+
+  redirect(projectDestination(data.id, type));
+}
+
+// Clones a swipe-file template (src/lib/templates.ts) into a new, pre-filled project — same
+// discovery fields the form saves, just populated up front so the user can review/tweak
+// instead of starting blank. Lands on the project overview (not straight into the generator)
+// so they can check the pre-filled brief before spending credits.
+export async function createProjectFromTemplate(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const templateId = String(formData.get("templateId") || "");
+  const template = getTemplate(templateId);
+  if (!template) redirect("/templates");
+
+  const { data, error } = await supabase
+    .from("projects")
+    .insert({
+      user_id: user.id,
+      name: `${template.name} (from template)`,
+      ...template.answers,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) redirect("/templates");
 
   redirect(`/projects/${data.id}`);
 }

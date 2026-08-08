@@ -218,6 +218,21 @@ goes through this app's existing guardrail pipeline.
   1-10 with reasoning from a topic/audience/promise brief; not project-scoped, but still
   metered through the same `checkGuardrails`/`generateAsset` pipeline. Winner-picking is
   client-side only for now (not persisted) — see "Not yet done" below.
+- **Sidebar "Create" shortcuts** — one link per generator (`/projects/new?type=webinar_outline`
+  etc.), matching the Lovable nav's Webinar/VSL/Sales Letter/Presentation/Landing
+  Page/Emails/Ad Copy/Offer Ladder list, plus Analyzer. Picking one, then naming a project,
+  skips the empty project overview and lands directly on that generator/analyzer
+  (`projectDestination()` in `src/lib/actions/projects.ts`). `AppSidebar.tsx` lists these from
+  a small local array, not the generator registry — that registry pulls in the VSL generator's
+  Node-only knowledge-file loader (`fs`), which can't go in a client bundle.
+- **Templates** (`/templates`) — six pre-filled example briefs (coach launch, SaaS trial,
+  info-product tripwire, agency lead-gen, high-ticket mastermind, physical product launch;
+  `src/lib/templates.ts`) ported from the Lovable prototype's swipe file. "Use this template"
+  clones one into a new project with the discovery fields pre-filled, landing on the project
+  overview so the brief can be reviewed/edited before generating.
+- **Settings** (`/settings`) — read-only account info (name/email), a credits/billing summary
+  linking to `/billing`, and sign out. Same info the sidebar footer and `/billing` already
+  show, just gathered on one page to match the Lovable nav's Settings entry.
 
 ## AI Agent system
 
