@@ -70,7 +70,13 @@ export async function checkGuardrails(userId: string, creditCost: number): Promi
     if (refreshed) effectiveProfile = refreshed;
   }
 
-  if (effectiveProfile.credits_balance < creditCost) {
+  // Admin accounts are the unlimited internal test account — every other guardrail below
+  // (kill switch, daily cap, rate limits) still applies, since those protect real dollar
+  // spend and runaway-loop risk regardless of whose account is generating. Only the personal
+  // credit balance — an accounting device for members, not a real cost cap — is skipped.
+  const isAdmin = effectiveProfile.role === "admin";
+
+  if (!isAdmin && effectiveProfile.credits_balance < creditCost) {
     return { ok: false, reason: "insufficient_credits", message: "Not enough credits for this generation. Buy a top-up or wait for your monthly reset.", profile: effectiveProfile };
   }
 
@@ -101,10 +107,11 @@ export async function checkGuardrails(userId: string, creditCost: number): Promi
 
 // Decrements the user's balance by the asset's credit cost. Called only after a
 // successful generation so a failed API call never costs the user credits.
+// No-op for admin accounts — see the comment in checkGuardrails above.
 export async function decrementCredits(userId: string, creditCost: number): Promise<void> {
   const supabase = createAdminClient();
-  const { data: profile } = await supabase.from("profiles").select("credits_balance").eq("id", userId).single();
-  if (!profile) return;
+  const { data: profile } = await supabase.from("profiles").select("credits_balance, role").eq("id", userId).single();
+  if (!profile || profile.role === "admin") return;
   await supabase
     .from("profiles")
     .update({ credits_balance: Math.max(0, profile.credits_balance - creditCost) })

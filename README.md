@@ -136,7 +136,8 @@ All server-side, per the build spec — see `src/lib/credits.ts`:
 - **Kill switch** — an admin can instantly pause all generations (`/admin`).
 - **Daily global spend cap** — blocks all generation once today's total cost hits the cap.
 - **Per-user credit balance + monthly allotment** — checked and decremented server-side on
-  every call; the browser is never trusted for limits.
+  every call; the browser is never trusted for limits. Admin accounts are the exception — see
+  "Owner / Admin Controls" below.
 - **Rate limiting** — max N generations per minute/hour per user (`RATE_LIMIT_PER_MINUTE` /
   `RATE_LIMIT_PER_HOUR`).
 - **Output token caps** — every asset type has a `maxOutputTokens` ceiling
@@ -149,6 +150,32 @@ All server-side, per the build spec — see `src/lib/credits.ts`:
 Before launch, work through the spec's math: (cost per generation) × (expected
 generations/member/month) × (member count) should stay comfortably under what your
 membership price + the daily cap can absorb.
+
+## Owner / Admin Controls
+
+Two pieces, both gated on `profiles.role = 'admin'`:
+
+- **Unlimited test account** — an admin's own credit balance is never checked or decremented
+  (`checkGuardrails`/`decrementCredits` in `src/lib/credits.ts` both short-circuit on
+  `role === "admin"`), so you can generate all day while testing without burning through
+  credits or having to keep topping yourself up. This is narrowly scoped to the personal
+  credit balance only — the kill switch, the daily global spend cap, and rate limiting still
+  apply to admin accounts exactly like everyone else, since those protect real Anthropic API
+  spend and runaway-loop risk regardless of whose account triggered it. An admin's real
+  `cost_usd` is still logged on every generation and still counts toward the daily cap.
+- **Admin panel member management** (`/admin`, `src/lib/actions/admin.ts`) — search any member
+  by email, then per row: **set** their credit balance to an exact number, **add** (or
+  subtract) a delta, and change their **role** between member/admin. Each row also shows
+  this-month usage (generation count, tokens, cost) reusing the same per-user telemetry the
+  cost-by-member table already computed. This is how you refill your own test account, top up
+  a member who needs more credits, or comp a founding member with an admin role. Guardrail:
+  you can't demote your own account away from `admin` (redirects with an error instead) — have
+  a second admin do it if you genuinely need to, so a solo founder can't accidentally lock
+  themselves out of this page.
+
+The very first admin still has to be granted via SQL (step 4 of Supabase setup, above) — the
+panel needs at least one existing admin to be reachable at all. After that, promoting/demoting
+further admins can happen entirely from `/admin`.
 
 ## Presentation Analyzer
 
@@ -338,3 +365,4 @@ provided.
 7. ✅ Presentation Analyzer (19-point conversion-readiness critique, text + full video upload)
 8. ✅ Rich text editing, autosave, persisted version history, TTS Read Aloud, onboarding
    tour, sample project dialog
+9. ✅ Owner/Admin Controls: unlimited admin test account, per-member credit/role management
