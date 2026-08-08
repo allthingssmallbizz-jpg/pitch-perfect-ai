@@ -12,7 +12,7 @@ import { buildOfferLadderPrompt, OFFER_LADDER_CREDIT_COST, OFFER_LADDER_MAX_OUTP
 // discovery fields (their input is pasted content / a topic brief), so they aren't part
 // of this registry. See src/lib/ai/analyzer.ts, src/lib/ai/headlineLab.ts, and
 // src/lib/ai/assetLabels.ts.
-export type GeneratorAssetType = Exclude<AssetType, "presentation_analysis" | "headline_lab">;
+export type GeneratorAssetType = Exclude<AssetType, "presentation_analysis" | "headline_lab" | "tts_narration">;
 
 export interface AssetGenerator {
   assetType: GeneratorAssetType;

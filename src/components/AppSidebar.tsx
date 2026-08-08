@@ -99,7 +99,7 @@ export default function AppSidebar({ email, isAdmin, credits }: Props) {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === "/projects/new"} tooltip="New project">
-                  <Link href="/projects/new">
+                  <Link href="/projects/new" data-tour="sidebar-new-project">
                     <Plus className="h-4 w-4" />
                     <span>New project</span>
                   </Link>
@@ -109,7 +109,7 @@ export default function AppSidebar({ email, isAdmin, credits }: Props) {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
+        <SidebarGroup data-tour="sidebar-create">
           <SidebarGroupLabel>Create</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -154,7 +154,7 @@ export default function AppSidebar({ email, isAdmin, credits }: Props) {
                   isActive={activeCreateType === "presentation_analysis"}
                   tooltip="Agent Annie — Analyzer"
                 >
-                  <Link href="/projects/new?type=presentation_analysis">
+                  <Link href="/projects/new?type=presentation_analysis" data-tour="sidebar-analyzer">
                     <span aria-hidden>{AGENTS.presentation_analysis.emoji}</span>
                     <span className="truncate">
                       {AGENTS.presentation_analysis.name} <span className="text-muted-foreground">· Analyzer</span>
@@ -164,7 +164,7 @@ export default function AppSidebar({ email, isAdmin, credits }: Props) {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === "/templates"} tooltip="Templates">
-                  <Link href="/templates">
+                  <Link href="/templates" data-tour="sidebar-templates">
                     <BookOpen className="h-4 w-4" />
                     <span>Templates</span>
                   </Link>
@@ -188,7 +188,7 @@ export default function AppSidebar({ email, isAdmin, credits }: Props) {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === "/billing"} tooltip="Billing">
-                  <Link href="/billing">
+                  <Link href="/billing" data-tour="sidebar-billing">
                     <CreditCard className="h-4 w-4" />
                     <span>Billing{credits !== null ? ` · ${credits} credits` : ""}</span>
                   </Link>

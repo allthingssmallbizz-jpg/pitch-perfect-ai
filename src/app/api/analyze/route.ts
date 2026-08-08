@@ -12,6 +12,7 @@ import {
   buildAnalyzerUserPrompt,
   getAnalyzerSystemPrompt,
 } from "@/lib/ai/analyzer";
+import { recordGenerationVersion } from "@/lib/generations";
 
 export const runtime = "nodejs";
 
@@ -101,6 +102,7 @@ export async function POST(req: NextRequest) {
       })
       .eq("id", generationId);
 
+    await recordGenerationVersion(generationId, user.id, result.content, "generate", "Generated analysis");
     await decrementCredits(user.id, ANALYZER_CREDIT_COST);
 
     return NextResponse.json({

@@ -16,7 +16,8 @@ export type AssetType =
   | "presentation_analysis"
   | "ad_copy"
   | "offer_ladder"
-  | "headline_lab";
+  | "headline_lab"
+  | "tts_narration";
 
 export type PresentationType = "webinar" | "vsl" | "sales_presentation" | "investor_pitch" | "other";
 
@@ -122,6 +123,18 @@ export type Generation = {
   transcription_cost_usd: number;
 };
 
+export type GenerationVersionSource = "generate" | "edit" | "snapshot";
+
+export type GenerationVersion = {
+  id: string;
+  generation_id: string;
+  user_id: string;
+  content: string;
+  source: GenerationVersionSource;
+  label: string | null;
+  created_at: string;
+};
+
 export type AdminSettings = {
   id: true;
   daily_spend_cap_usd: number;
@@ -168,6 +181,7 @@ export type Database = {
       profiles: Table<Profile>;
       projects: Table<Project>;
       generations: Table<Generation>;
+      generation_versions: Table<GenerationVersion>;
       admin_settings: Table<AdminSettings>;
       credit_topups: Table<CreditTopup>;
       brand_voices: Table<BrandVoice>;

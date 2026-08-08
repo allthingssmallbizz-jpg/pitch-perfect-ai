@@ -7,7 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createClient } from "@/lib/supabase/client";
-import { Gauge, Copy, FileDown, Upload, Video, X } from "lucide-react";
+import { Gauge, Copy, FileDown, Upload, Video, X, Save, Loader2 } from "lucide-react";
+import RichTextEditor from "@/components/RichTextEditor";
+import VersionHistory from "@/components/VersionHistory";
+import TtsPlayer from "@/components/TtsPlayer";
+import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 
 const PRESENTATION_TYPE_OPTIONS: { value: PresentationType; label: string }[] = [
   { value: "webinar", label: "Webinar" },
@@ -52,6 +56,8 @@ export default function AnalyzeClient({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -174,6 +180,39 @@ export default function AnalyzeClient({
     setTimeout(() => setCopied(false), 1500);
   }
 
+  const autosave = useDebouncedCallback((newContent: string, id: string) => {
+    fetch(`/api/generations/${id}/autosave`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: newContent }),
+    }).catch(() => {});
+  }, 1200);
+
+  function handleEditorChange(markdown: string) {
+    setContent(markdown);
+    setSaved(false);
+    if (generationId) autosave(markdown, generationId);
+  }
+
+  async function saveVersion() {
+    if (!generationId || content === null) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/generations/${generationId}/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      if (!res.ok) throw new Error();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setError("Could not save.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (content) {
     return (
       <div>
@@ -196,6 +235,11 @@ export default function AnalyzeClient({
           </Button>
           {generationId && (
             <>
+              <Button variant="outline" onClick={saveVersion} disabled={saving}>
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {saved ? "Saved!" : "Save"}
+              </Button>
+              <VersionHistory generationId={generationId} currentContent={content} onRestored={(restored) => setContent(restored)} />
               <Button variant="outline" asChild>
                 <a href={`/api/export/pdf?generationId=${generationId}`}>
                   <FileDown className="mr-2 h-4 w-4" />
@@ -211,7 +255,10 @@ export default function AnalyzeClient({
             </>
           )}
         </div>
-        <pre className="card-elevated whitespace-pre-wrap rounded-2xl p-6 text-sm leading-relaxed">{content}</pre>
+        <div className="space-y-4">
+          <TtsPlayer text={content} title="Analysis" />
+          <RichTextEditor markdown={content} onChange={handleEditorChange} />
+        </div>
       </div>
     );
   }

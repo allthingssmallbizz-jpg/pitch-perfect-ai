@@ -8,6 +8,7 @@ import { buildSystemPrompt } from "@/lib/ai/systemPrompt";
 import { getBrandVoiceBlock } from "@/lib/ai/brandVoice";
 import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
 import { getAgent } from "@/lib/agents/config";
+import { recordGenerationVersion } from "@/lib/generations";
 import type { GenerationMode } from "@/types/database";
 
 export const runtime = "nodejs";
@@ -99,6 +100,7 @@ export async function POST(req: NextRequest) {
       })
       .eq("id", generationId);
 
+    await recordGenerationVersion(generationId, user.id, result.content, "generate", "Generated draft");
     await decrementCredits(user.id, generator.creditCost);
 
     return NextResponse.json({

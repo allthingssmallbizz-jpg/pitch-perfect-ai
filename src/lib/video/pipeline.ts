@@ -26,6 +26,7 @@ import {
   buildVideoAnalyzerUserPrompt,
 } from "@/lib/ai/videoAnalyzer";
 import { decrementCredits } from "@/lib/credits";
+import { recordGenerationVersion } from "@/lib/generations";
 import type { Generation, PresentationType } from "@/types/database";
 
 export async function runVideoAnalysisPipeline(params: {
@@ -123,6 +124,7 @@ export async function runVideoAnalysisPipeline(params: {
       cost_usd: result.costUsd + transcriptionCostUsd,
     });
 
+    await recordGenerationVersion(generationId, userId, result.content, "generate", "Generated video analysis");
     await decrementCredits(userId, VIDEO_ANALYZER_CREDIT_COST);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Video analysis failed";

@@ -12,7 +12,7 @@
 
 import type { AssetType } from "@/types/database";
 
-export type AgentAssetType = Exclude<AssetType, "headline_lab">;
+export type AgentAssetType = Exclude<AssetType, "headline_lab" | "tts_narration">;
 
 export type Agent = {
   assetType: AgentAssetType;

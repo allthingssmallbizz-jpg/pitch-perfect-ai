@@ -22,7 +22,8 @@ expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized
 1. Create a project at [supabase.com](https://supabase.com).
 2. In the SQL Editor, run the migrations **in order**: `0001_init.sql`, then
    `0002_presentation_analysis.sql`, then `0003_redesign_features.sql`, then
-   `0004_video_analysis.sql`, then `0005_full_discovery.sql`. Together they create:
+   `0004_video_analysis.sql`, then `0005_full_discovery.sql`, then
+   `0006_generation_versions.sql`, then `0007_tts.sql`. Together they create:
    - `profiles` — one row per user, with the 12-month access window and credit meter
    - `projects` — one per offer, with the full Discovery → Customer Awareness → Positioning →
      Value Proposition → Offer intake (see "Project discovery" below)
@@ -38,6 +39,9 @@ expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized
      the video analysis pipeline needs (`video_path`, `video_duration_seconds`, `transcript`,
      `progress_message`, `transcription_cost_usd`) and an expanded `status` enum for the
      staged upload → transcribe → extract frames → analyze flow
+   - `generation_versions` — point-in-time snapshots of a generation's edited content (see
+     "Editing, version history, and playback" below); `tts_narration` added as an `asset_type`
+     for Read Aloud's cost telemetry
    - RLS policies, an `on_auth_user_created` trigger that provisions a `profiles` row on
      signup, and `updated_at` triggers.
 3. Copy the Project URL, anon key, and service role key into `.env.local` (see
@@ -56,12 +60,14 @@ Get an API key from [console.anthropic.com](https://console.anthropic.com) and s
 `ANTHROPIC_OUTPUT_COST_PER_MTOK` against current pricing before relying on the cost
 telemetry for real budgeting decisions.
 
-## 2b. OpenAI setup (for video analysis)
+## 2b. OpenAI setup (for video analysis + Read Aloud)
 
-Agent Annie's video upload path transcribes audio with Whisper before analyzing it. Get an
-API key from [platform.openai.com](https://platform.openai.com) and set `OPENAI_API_KEY`.
-Double-check `WHISPER_COST_PER_MINUTE` against current pricing. If you don't set this, the
-text-paste analyzer still works fine — only video uploads need it.
+Agent Annie's video upload path transcribes audio with Whisper before analyzing it, and the
+"Read Aloud" TTS button narrates generated content with the `tts-1` model. Get an API key from
+[platform.openai.com](https://platform.openai.com) and set `OPENAI_API_KEY`. Double-check
+`WHISPER_COST_PER_MINUTE` and `TTS_COST_PER_MILLION_CHARS` against current pricing. If you
+don't set this, the text-paste analyzer and every generator still work fine — only video
+uploads and Read Aloud need it.
 
 ## 3. Stripe setup
 
@@ -216,8 +222,9 @@ goes through this app's existing guardrail pipeline.
   deliberately skips it — it critiques someone else's copy, not the user's own.
 - **Headline Lab** (`/headline-lab`, API: `/api/headlines`) — generates 20 headlines rated
   1-10 with reasoning from a topic/audience/promise brief; not project-scoped, but still
-  metered through the same `checkGuardrails`/`generateAsset` pipeline. Winner-picking is
-  client-side only for now (not persisted) — see "Not yet done" below.
+  metered through the same `checkGuardrails`/`generateAsset` pipeline. Winner-picking is still
+  client-side only (not persisted) — the Lovable prototype's `headline_sets.winners` column
+  isn't ported yet.
 - **Sidebar "Create" shortcuts** — one link per generator (`/projects/new?type=webinar_outline`
   etc.), matching the Lovable nav's Webinar/VSL/Sales Letter/Presentation/Landing
   Page/Emails/Ad Copy/Offer Ladder list, plus Analyzer. Picking one, then naming a project,
@@ -261,13 +268,51 @@ Agent Polly (PPT), Agent Addie (Ad Copy), Agent Olivia (Offer Ladder), and Agent
   analysis generically, so that's the one place "analyze what I built" lives for every
   asset type, including the video upload path (see "Video upload" above).
 
-## Not yet done
+## Editing, version history, and playback
 
-Deferred from the Lovable feature set to avoid shipping anything half-finished: rich-text
-editing of generated content (currently plain text), persisted version history per
-generation, autosave, an onboarding tour, the sample-project dialog, and TTS playback. None
-of these affect the guardrails or core generation pipeline — they're pure UX additions for a
-future pass.
+Every generator's and Agent Annie's result view (`GenerateClient.tsx`, `AnalyzeClient.tsx`)
+now ships the rest of the Lovable feature set that was originally deferred:
+
+- **Rich text editing** (`src/components/RichTextEditor.tsx`) — a Tiptap editor over the
+  generated markdown. It round-trips through HTML only for editing (`src/lib/markdownHtml.ts`,
+  `marked`/`turndown`); `generations.content` stays markdown, so exports (PDF/.docx) and TTS
+  don't need to know the editor exists.
+- **Autosave** — a 1.2s debounce (`useDebouncedCallback`) posts edits to
+  `POST /api/generations/[id]/autosave`, which updates `generations.content` only. It
+  deliberately does **not** write a version row — see below.
+- **Persisted version history** (`generation_versions` table, migration
+  `0006_generation_versions.sql`; UI: `src/components/VersionHistory.tsx`) — a version is
+  recorded when a generation first completes (`source: "generate"`), when the user hits the
+  explicit **Save** button (`source: "edit"`, via `POST /api/generations/[id]/save`), and
+  automatically before a restore overwrites the current content (`source: "snapshot"`, via
+  `POST /api/generations/[id]/versions/[id]/restore`). Autosave ticks don't create versions —
+  otherwise every keystroke pause would flood the list. This is scoped per `generations` row
+  (one edit timeline per generation run), not per project+asset-type like the Lovable
+  prototype's singleton-deliverable model — regenerating already creates a new row visible in
+  the project's History list, which is the coarser-grained version history above this one.
+  Since `generations` has no owner UPDATE/INSERT/DELETE RLS policy (service-role only, by
+  design — see `0001_init.sql`), every mutating route in `src/app/api/generations/[id]/`
+  verifies ownership via the cookie-scoped client (`src/lib/generations.ts`) before writing
+  through the admin client.
+- **TTS "Read Aloud"** (`src/components/TtsPlayer.tsx`, `POST /api/tts`) — reuses the
+  `OPENAI_API_KEY` already configured for video transcription (`tts-1`, same voice IDs:
+  alloy/echo/fable/onyx/nova/shimmer). Long text is chunked client-side (~1800 chars) to stay
+  under the model's input limit. Goes through the same guardrail pipeline as everything else
+  (`checkGuardrails`/`decrementCredits`, `TTS_CREDIT_COST` in `src/lib/ai/tts.ts`) and logs its
+  own lightweight `generations` row (`asset_type: "tts_narration"`, migration
+  `0007_tts.sql`) purely for cost telemetry — there's no generated "content" to browse back to,
+  it's audio.
+- **Onboarding tour** (`src/components/OnboardingTour.tsx`) — a dependency-free spotlight tour
+  (dark overlay + clip-path cutout + floating tooltip) that walks a first-time user through the
+  sidebar's Create/Analyzer/Templates/Billing links (`data-tour` attributes in
+  `AppSidebar.tsx`). Shown once via a `localStorage` flag (`src/hooks/useLocalFlag.ts`), not
+  account state — it's a one-time nudge, not something worth a DB column.
+- **Sample project dialog** (`src/components/SampleProjectDialog.tsx`) — shown to brand-new
+  users with zero projects, offering to clone the "coach launching a $2k program" template
+  (reuses the same `createProjectFromTemplate` action Templates uses) so they see the AI
+  produce something before ever touching the discovery form.
+
+Both onboarding pieces are mounted once from `DashboardOnboarding.tsx` on `/dashboard`.
 
 ## Knowledge base
 
@@ -288,3 +333,5 @@ provided.
 5. ✅ Stripe billing + credit top-ups
 6. ✅ Admin: cost telemetry dashboard + global kill switch
 7. ✅ Presentation Analyzer (19-point conversion-readiness critique, text + full video upload)
+8. ✅ Rich text editing, autosave, persisted version history, TTS Read Aloud, onboarding
+   tour, sample project dialog
