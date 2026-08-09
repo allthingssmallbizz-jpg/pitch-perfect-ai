@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { ensureProfile } from "@/lib/profile";
 import { setKillSwitch } from "@/lib/actions/admin";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,8 +21,26 @@ export default async function AdminPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: viewerProfile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  if (viewerProfile?.role !== "admin") redirect("/dashboard");
+  // ensureProfile, not a raw select — same reasoning as billing/page.tsx: a missing profiles
+  // row shouldn't silently read as "not an admin." If the row genuinely says non-admin, show
+  // that plainly instead of a silent bounce to /dashboard with no explanation.
+  const viewerProfile = await ensureProfile(user.id, user.email ?? "");
+  if (viewerProfile?.role !== "admin") {
+    return (
+      <div className="mx-auto max-w-3xl px-6 py-10">
+        <h1 className="mb-4 font-display text-2xl font-semibold text-gradient-silver">Admin</h1>
+        <p className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Your account ({user.email}) doesn&apos;t have admin access. If you expect it to, an
+          existing admin needs to grant it from this same page, or run this once in the Supabase
+          SQL editor:
+          <br />
+          <code className="mt-2 block rounded bg-black/30 px-2 py-1 text-xs">
+            update public.profiles set role = &apos;admin&apos; where email = &apos;{user.email}&apos;;
+          </code>
+        </p>
+      </div>
+    );
+  }
 
   const [{ data: settings }, { data: profiles }] = await Promise.all([
     supabase.from("admin_settings").select("*").eq("id", true).single(),
