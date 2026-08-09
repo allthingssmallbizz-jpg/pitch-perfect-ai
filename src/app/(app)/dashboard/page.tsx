@@ -86,7 +86,7 @@ export default async function DashboardPage() {
           <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary/80">Create</div>
           <h1 className="font-display text-3xl font-bold text-gradient-silver">What are you building today?</h1>
           <p className="mt-1 text-muted-foreground">
-            Pick a deliverable — Pitch Perfect AI will guide you the rest of the way.
+            Choose your agent — Pitch Perfect AI will guide you the rest of the way.
           </p>
         </div>
         {profile && (
