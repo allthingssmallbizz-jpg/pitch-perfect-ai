@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { signOut } from "@/lib/actions/auth";
 import { AGENTS, type AgentAssetType } from "@/lib/agents/config";
+import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
   SidebarContent,
@@ -85,7 +86,12 @@ export default function AppSidebar({ email, displayName, isAdmin, credits }: Pro
           )}
         </Link>
         {!collapsed && (
-          <div className="truncate px-2 pb-1 text-xs text-muted-foreground">Hi, {resolvedName}</div>
+          <div className="flex items-center gap-1.5 truncate px-2 pb-1">
+            <span className="truncate text-xs text-muted-foreground">Hi, {resolvedName}</span>
+            <Badge variant={isAdmin ? "default" : "secondary"} className="h-4 shrink-0 px-1.5 text-[9px] uppercase tracking-wide">
+              {isAdmin ? "Admin" : "Member"}
+            </Badge>
+          </div>
         )}
       </SidebarHeader>
 
@@ -239,7 +245,12 @@ export default function AppSidebar({ email, displayName, isAdmin, credits }: Pro
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium">{resolvedName}</div>
+              <div className="flex items-center gap-1.5">
+                <span className="truncate text-sm font-medium">{resolvedName}</span>
+                <Badge variant={isAdmin ? "default" : "secondary"} className="h-4 shrink-0 px-1.5 text-[9px] uppercase tracking-wide">
+                  {isAdmin ? "Admin" : "Member"}
+                </Badge>
+              </div>
               <div className="truncate text-xs text-muted-foreground">{email}</div>
             </div>
           )}
