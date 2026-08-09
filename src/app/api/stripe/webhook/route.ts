@@ -35,7 +35,26 @@ export async function POST(req: NextRequest) {
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata?.userId;
+      let userId = session.metadata?.userId;
+
+      // No self-serve free signup exists — /api/stripe/signup-checkout is the only way to
+      // start a *new* membership, and nobody is logged in when they hit it, so there's no
+      // userId in metadata yet. Stripe collected their email during its own checkout instead;
+      // resolve it to an existing account (e.g. a lapsed member re-subscribing while logged
+      // out) or create a brand new one now that payment has actually succeeded.
+      if (!userId && session.metadata?.type === "membership") {
+        const email = session.customer_details?.email ?? session.customer_email;
+        if (email) {
+          const { data: existing } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
+          if (existing) {
+            userId = existing.id;
+          } else {
+            const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/set-password`;
+            const { data: created, error: createErr } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo });
+            if (!createErr && created.user) userId = created.user.id;
+          }
+        }
+      }
       if (!userId) break;
 
       if (session.metadata?.type === "membership") {
@@ -45,6 +64,7 @@ export async function POST(req: NextRequest) {
         await admin
           .from("profiles")
           .update({
+            stripe_customer_id: typeof session.customer === "string" ? session.customer : undefined,
             stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : null,
             access_started_at: new Date().toISOString(),
             access_expires_at: addYears(base, 1).toISOString(),

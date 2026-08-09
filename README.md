@@ -90,6 +90,35 @@ uploads and Read Aloud need it.
    `STRIPE_WEBHOOK_SECRET`.
 4. For local testing: `stripe listen --forward-to localhost:3000/api/stripe/webhook`.
 
+### Pay-first signup — there's no free account creation
+
+`/signup` is not a registration form. There is deliberately no way to create a login without
+paying first — the only two ways an account ever comes into existence are: an admin inviting
+someone from `/admin` (see "Owner / Admin Controls" below), or paying here.
+
+1. `/signup` shows the membership price (fetched live from Stripe via
+   `STRIPE_MEMBERSHIP_PRICE_ID`, so it can't drift out of sync) and a "Continue to secure
+   checkout" button.
+2. That button hits `/api/stripe/signup-checkout` — unlike `/api/stripe/checkout` (used by
+   `/billing` for an already-logged-in member renewing), this route requires no session, since
+   nobody's logged in yet. It creates a Checkout Session with no `metadata.userId`, letting
+   Stripe collect the buyer's email itself.
+3. On `checkout.session.completed`, the webhook (`src/app/api/stripe/webhook/route.ts`) checks
+   for `metadata.userId` first as usual; when it's missing and `metadata.type === "membership"`,
+   it falls back to `session.customer_details.email`, looks for an existing `profiles` row with
+   that email (handles a lapsed member re-subscribing while logged out), and otherwise creates
+   a brand new account via `supabase.auth.admin.inviteUserByEmail()` — the same mechanism the
+   admin-invite feature uses. From there it falls through to the normal membership-granting
+   logic (sets `access_expires_at`, `stripe_subscription_id`, records the payment) using
+   whichever `userId` was just resolved.
+4. The invite email sends them to `/auth/set-password` to choose a password, exactly like an
+   admin-invited member. `/signup?checkout=success` shows a "check your email" confirmation in
+   the meantime — there's no session yet at that point, so it can't show a dashboard.
+
+Net effect: nobody ever gets a `profiles` row — and therefore never gets access to anything
+under `/(app)` — without either an admin explicitly granting it or Stripe confirming a real
+charge first.
+
 ## 4. Run locally
 
 ```bash
