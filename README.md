@@ -182,8 +182,11 @@ across many different projects/offers rather than one at a time, this page aggre
 agent's completed generations across **every** project, not just one, each labeled with which
 project it belongs to. "Open" and "Delete" (via the new `DELETE /api/generations/[id]`) live
 right there — no detour through the project overview needed just to find or remove a past
-draft. It also offers "Start a new project" and, if you have existing projects, "generate for
-an existing project" to reuse one you already have discovery filled in for.
+draft, and opening one always shows its saved content directly, never a discovery detour or a
+regenerate prompt (see below). The page also offers "Start a new project."
+(An earlier version also listed "generate for an existing project" here — removed: it sat right
+above "Past generations," looked similar enough to be an easy mis-click, and every case it
+covered is still reachable from that project's own overview page.)
 
 Starting a **new** project (from that page's "Start a new project" card, or anywhere else)
 still can't skip straight to generating, since a brand-new project by definition has no
@@ -211,17 +214,24 @@ if anything required is still blank — since client-side `required` alone can b
 partially-filled brief saved anyway, which is exactly the "generating with half the options
 missing" failure mode this closes.
 
-**Every agent click lands on the discovery review, full stop — even when that project's brief
-is already complete.** This is deliberate, not just the "brand-new project" case above: the
-membership is largely new to building webinars/sales assets, so the design intentionally never
-lets an agent click skip straight into `/generate/[type]` — the project overview's tool grid and
-the agent landing page's "generate for an existing project" list both link to
-`/projects/[id]?intent=[type]` (never directly to the generator), so there's always a chance to
-look over the discovery brief and hit "Save discovery" before anything generates. The only links
-that go straight to a generator without this stop are the History list and each agent's "past
-generations" list — those open an already-**completed** generation's saved content
-(`?generationId=...`), which correctly shows the existing result directly rather than prompting
-to regenerate.
+**Every agent click that starts new work lands on the discovery review, full stop — even when
+that project's brief is already complete.** This is deliberate, not just the "brand-new
+project" case above: the membership is largely new to building webinars/sales assets, so the
+design intentionally never lets a "start work" click skip straight into `/generate/[type]` — the
+project overview's tool grid links to `/projects/[id]?intent=[type]` (never directly to the
+generator), so there's always a chance to look over the discovery brief and hit "Save discovery"
+before anything generates.
+
+That rule only applies to *starting* work, though — **opening something already made is a
+completely different action and must never be confused with it.** The History list and each
+agent's "past generations" list both link with `?generationId=...`, which the generate page
+treats as "show this saved result," skipping the discovery gate entirely — no regenerate
+prompt, no detour. Keeping these two flows visually and structurally distinct (not just two
+similar-looking lists of project names next to each other) matters more than it sounds — an
+earlier version had a "generate for an existing project" list sitting directly above "Past
+generations" on the agent landing page, and despite going to different destinations for good
+reasons, they were an easy mis-click for each other. Removed rather than just documented, since
+the mis-click was the actual bug users hit, not something a code comment fixes.
 
 ### AI Assist on stuck fields
 

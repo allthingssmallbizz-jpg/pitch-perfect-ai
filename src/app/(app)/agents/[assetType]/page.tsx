@@ -107,8 +107,6 @@ export default async function AgentLandingPage({
       };
     });
 
-  const hasProjects = !!projects && projects.length > 0;
-
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       <div className="mb-1">
@@ -133,28 +131,6 @@ export default async function AgentLandingPage({
         </div>
         <ArrowRight className="h-4 w-4 text-primary" />
       </Link>
-
-      {hasProjects && (
-        <>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Or generate for an existing project
-          </h2>
-          {/* Routes to the project's discovery page (?intent=), not straight to /generate/[type]
-              — every agent click is meant to land on a discovery review first, even for a
-              project whose brief is already complete, so nothing generates without a look-over. */}
-          <div className="mb-8 grid gap-2 sm:grid-cols-2">
-            {projects!.map((p) => (
-              <Link
-                key={p.id}
-                href={`/projects/${p.id}?intent=${generator.assetType}`}
-                className="card-elevated rounded-xl p-3 text-sm font-medium transition-colors hover:border-primary/40"
-              >
-                {p.name}
-              </Link>
-            ))}
-          </div>
-        </>
-      )}
 
       {isAddie && (
         <>
@@ -205,6 +181,9 @@ export default async function AgentLandingPage({
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
         Past generations
       </h2>
+      {/* These always carry ?generationId=, which the generate page treats as "open this saved
+          result" — it skips the discovery gate entirely and shows the content directly, no
+          regenerate prompt. Only "Start a new project" above goes through discovery first. */}
       {pastGenerations.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Nothing generated with {agent.name} yet — start above and it&apos;ll show up here.
