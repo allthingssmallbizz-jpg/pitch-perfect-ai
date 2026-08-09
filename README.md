@@ -263,6 +263,16 @@ The redesign deliberately did **not** carry over Lovable's backend — that vers
 credit limits, rate limiting, kill switch, or cost telemetry. Every new feature below still
 goes through this app's existing guardrail pipeline.
 
+`/dashboard` (`src/app/(app)/dashboard/page.tsx`) matches the Lovable layout: a "What are you
+building today?" hero above an icon grid of all 8 deliverables (same generators as the
+sidebar's Create group, same order — labels/descriptions reused from `ASSET_GENERATORS` so
+there's one source of truth, not two copies drifting apart), each linking straight to
+`/projects/new?type=...`. "Your projects" moved below that grid, as a flat list of rows
+("Last edited 3h ago" style relative timestamps) rather than the description-preview card grid
+it used to be. The empty state offers both "Try a sample project" (posts directly to
+`createProjectFromTemplate`) and "Start from scratch," on top of the first-visit sample-project
+dialog that already auto-opens via `DashboardOnboarding`.
+
 ## New tools (ported from the Lovable design pass)
 
 - **Ad Copy** and **Offer Ladder** — two more discovery-driven generators, same pattern as
