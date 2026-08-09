@@ -12,6 +12,15 @@ import { recordGenerationVersion } from "@/lib/generations";
 import type { GenerationMode } from "@/types/database";
 
 export const runtime = "nodejs";
+// Without this, the function is bound by the hosting plan's default timeout — on Vercel's free
+// Hobby tier that's a low default (configurable up to 60s max on Hobby; this route's real need
+// can exceed that once generateCompleteAsset chains multiple Claude calls back-to-back for a
+// long-form generator like the 60-90 slide PPT outline). If the platform kills the function
+// mid-generation, the row is stuck at "pending" forever — never complete, never failed —
+// which looks exactly like "it wrote nothing" and "it's not saving past generations" at once,
+// since a stuck-pending row never shows up anywhere. 300s only actually applies on a plan that
+// allows it (Vercel Pro or above); see the admin panel's reminder about this.
+export const maxDuration = 300;
 
 const requestSchema = z.object({
   projectId: z.string().uuid(),
@@ -88,7 +97,7 @@ export async function POST(req: NextRequest) {
 
     const result = await generateCompleteAsset(systemPrompt, userPrompt, generator.maxOutputTokens);
 
-    await admin
+    const { error: updateError } = await admin
       .from("generations")
       .update({
         status: "complete",
@@ -99,6 +108,10 @@ export async function POST(req: NextRequest) {
         cost_usd: result.costUsd,
       })
       .eq("id", generationId);
+    // Generation succeeded but persisting it failed — surface this loudly (throw into the
+    // catch block below) instead of returning content the user can see on screen right now but
+    // that silently isn't actually saved, which is worse than an honest error.
+    if (updateError) throw new Error(`Generated successfully but could not save: ${updateError.message}`);
 
     await recordGenerationVersion(generationId, user.id, result.content, "generate", "Generated draft");
     await decrementCredits(user.id, generator.creditCost);

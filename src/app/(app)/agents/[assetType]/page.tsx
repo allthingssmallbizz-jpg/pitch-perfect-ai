@@ -139,11 +139,14 @@ export default async function AgentLandingPage({
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Or generate for an existing project
           </h2>
+          {/* Routes to the project's discovery page (?intent=), not straight to /generate/[type]
+              — every agent click is meant to land on a discovery review first, even for a
+              project whose brief is already complete, so nothing generates without a look-over. */}
           <div className="mb-8 grid gap-2 sm:grid-cols-2">
             {projects!.map((p) => (
               <Link
                 key={p.id}
-                href={`/projects/${p.id}/generate/${generator.assetType}`}
+                href={`/projects/${p.id}?intent=${generator.assetType}`}
                 className="card-elevated rounded-xl p-3 text-sm font-medium transition-colors hover:border-primary/40"
               >
                 {p.name}

@@ -211,6 +211,18 @@ if anything required is still blank — since client-side `required` alone can b
 partially-filled brief saved anyway, which is exactly the "generating with half the options
 missing" failure mode this closes.
 
+**Every agent click lands on the discovery review, full stop — even when that project's brief
+is already complete.** This is deliberate, not just the "brand-new project" case above: the
+membership is largely new to building webinars/sales assets, so the design intentionally never
+lets an agent click skip straight into `/generate/[type]` — the project overview's tool grid and
+the agent landing page's "generate for an existing project" list both link to
+`/projects/[id]?intent=[type]` (never directly to the generator), so there's always a chance to
+look over the discovery brief and hit "Save discovery" before anything generates. The only links
+that go straight to a generator without this stop are the History list and each agent's "past
+generations" list — those open an already-**completed** generation's saved content
+(`?generationId=...`), which correctly shows the existing result directly rather than prompting
+to regenerate.
+
 ### AI Assist on stuck fields
 
 Every substantive discovery field has a small **AI Assist** link next to its label (ported from
@@ -278,6 +290,15 @@ All server-side, per the build spec — see `src/lib/credits.ts`:
   the cap before finishing naturally (`stop_reason: "max_tokens"`), it automatically continues
   in the same conversation ("continue exactly where you left off") up to 4 more times and
   stitches the results together, rather than silently truncating mid-slide.
+- **`maxDuration = 300` on `/api/generate`** — without this the route is bound by the hosting
+  plan's default function timeout, which on Vercel's free Hobby tier is a low default
+  (configurable up to 60s max). A long-form generation chaining several `generateCompleteAsset`
+  continuation calls can genuinely exceed that; if the platform kills the function mid-request,
+  the `generations` row is stuck at `"pending"` forever — never `complete`, never `failed` —
+  which looks exactly like "it wrote nothing" and "it's not saving past generations" at once,
+  since a stuck-pending row never shows up in any past-generations list (all of which filter to
+  `status: "complete"`). `maxDuration = 300` only actually grants 300s on a plan that allows
+  it — see the admin panel's reminder card, which now also covers this, not just video analysis.
 - **Cost telemetry** — every generation logs input/output tokens and estimated cost
   (`generations` table), visible per-member on `/admin`.
 - **12-month access window** — enforced before any generation runs, independent of credits.

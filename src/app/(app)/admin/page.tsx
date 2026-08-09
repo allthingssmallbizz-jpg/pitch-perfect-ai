@@ -125,11 +125,11 @@ export default async function AdminPage({
         </div>
       </div>
 
-      <div className="card-elevated mb-8 rounded-2xl border-primary/30 p-5">
-        <h2 className="font-display font-semibold">Before video analysis works in production</h2>
+      <div className="card-elevated mb-8 rounded-2xl border-destructive/40 p-5">
+        <h2 className="font-display font-semibold">Before video analysis or long generations work reliably</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Deliberately not upgraded yet to avoid a monthly cost before launch — do these when
-          you&apos;re ready to turn video analysis on for real:
+          Deliberately not upgraded yet to avoid a monthly cost before launch — but this is no
+          longer just about video. Do these when you&apos;re ready:
         </p>
         <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
           <li>
@@ -139,12 +139,20 @@ export default async function AdminPage({
           </li>
           <li>
             <span className="font-medium text-foreground">Vercel Pro</span> (~$20/mo) — Free
-            tier caps function execution at 60s; analyzing a full video takes longer than that.
+            (Hobby) tier caps a single generation request at 60 seconds, regardless of what the
+            code requests. Video analysis needs longer than that, and so does a genuinely large
+            text generation — the PPT outline&apos;s required 60-90 slides, or a 7-email sequence
+            that needs to auto-continue, can both take several sequential AI calls that add up to
+            more than 60 seconds. On the free tier, a generation that runs past that gets killed
+            mid-request: it looks like &quot;wrote nothing&quot; or &quot;didn&apos;t save&quot;
+            to the member, when what actually happened is the platform cut it off before it
+            could finish and record the result.
           </li>
         </ul>
         <p className="mt-3 text-xs text-muted-foreground">
-          Nothing else in the app needs either of these — every generator, the discovery form,
-          billing, and text-based analysis all work fine on free tiers.
+          Shorter generators (webinar outline, sales page, landing page, ad copy) usually finish
+          well under 60 seconds and are fine either way — it&apos;s specifically the PPT outline
+          and video analysis that need the longer ceiling Vercel Pro allows.
         </p>
       </div>
 

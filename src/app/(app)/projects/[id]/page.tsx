@@ -88,6 +88,11 @@ export default async function ProjectPage({
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Your AI marketing team
           </h2>
+          {/* Every tool card here links back to this same page with ?intent= set, not straight
+              to /generate/[type] — even when this project's discovery is already complete.
+              The membership is largely new to this process, so every agent click is meant to
+              land on a review of the discovery brief first (highlighted card + banner above,
+              "Save discovery" continues on), never skip straight into generating. */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {ASSET_TYPES.map((type) => {
               const gen = ASSET_GENERATORS[type];
@@ -95,7 +100,7 @@ export default async function ProjectPage({
               return (
                 <Link
                   key={type}
-                  href={`/projects/${project.id}/generate/${type}`}
+                  href={`/projects/${project.id}?intent=${type}`}
                   className={`card-elevated rounded-xl p-4 transition-colors hover:border-primary/40 ${
                     intent === type ? "border-primary/60 ring-1 ring-primary/40" : ""
                   }`}
@@ -116,7 +121,7 @@ export default async function ProjectPage({
             Image ads
           </h2>
           <Link
-            href={`/projects/${project.id}/ad-image`}
+            href={`/projects/${project.id}?intent=ad_image`}
             className={`card-elevated block rounded-xl p-4 transition-colors hover:border-primary/40 ${
               intent === "ad_image" ? "border-primary/60 ring-1 ring-primary/40" : ""
             }`}
