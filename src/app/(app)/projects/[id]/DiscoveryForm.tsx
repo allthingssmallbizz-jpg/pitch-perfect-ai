@@ -1,14 +1,57 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { Sparkles } from "lucide-react";
 import type { Project } from "@/types/database";
 import { updateProjectDiscovery, deleteProject } from "@/lib/actions/projects";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import DiscoveryAssistDialog, { type AssistTarget } from "@/components/DiscoveryAssistDialog";
 
 const AWARENESS_LEVELS = ["Unaware", "Problem-Aware", "Solution-Aware", "Product-Aware", "Most Aware"];
+
+// Every field name that can be a discovery-assist target — used to collect "other answers"
+// context (from the DOM, since this form is uncontrolled/defaultValue-based) when the assist
+// dialog opens, and to write an accepted AI draft back into the right input.
+const DISCOVERY_FIELD_NAMES = [
+  "business_name",
+  "industry",
+  "product",
+  "audience",
+  "existing_assets",
+  "awareness_level",
+  "pain_points",
+  "false_beliefs",
+  "desired_transformation",
+  "category",
+  "enemy",
+  "differentiator",
+  "competitive_alternatives",
+  "unique_mechanism",
+  "core_promise",
+  "outcomes",
+  "proof",
+  "price",
+  "guarantee",
+  "bonuses",
+  "scarcity_urgency",
+  "cta",
+];
+
+function AssistButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+    >
+      <Sparkles className="h-3 w-3" />
+      AI Assist
+    </button>
+  );
+}
 
 function Field({
   label,
@@ -17,6 +60,7 @@ function Field({
   textarea = true,
   placeholder,
   required = false,
+  onAssist,
 }: {
   label: string;
   name: string;
@@ -24,13 +68,21 @@ function Field({
   textarea?: boolean;
   placeholder?: string;
   required?: boolean;
+  onAssist?: (target: AssistTarget) => void;
 }) {
   return (
     <div>
-      <Label htmlFor={name}>
-        {label}
-        {required && <span className="text-primary"> *</span>}
-      </Label>
+      <div className="flex items-center justify-between gap-2">
+        <Label htmlFor={name}>
+          {label}
+          {required && <span className="text-primary"> *</span>}
+        </Label>
+        {onAssist && (
+          <AssistButton
+            onClick={() => onAssist({ key: name, label, type: textarea ? "textarea" : "text", placeholder })}
+          />
+        )}
+      </div>
       {textarea ? (
         <Textarea id={name} name={name} defaultValue={defaultValue} placeholder={placeholder} rows={2} className="mt-1" />
       ) : (
@@ -54,6 +106,21 @@ function Section({ title, subtitle, children }: { title: string; subtitle: strin
 
 export default function DiscoveryForm({ project }: { project: Project }) {
   const [state, formAction, pending] = useActionState(updateProjectDiscovery, undefined);
+  const [assistTarget, setAssistTarget] = useState<AssistTarget | null>(null);
+
+  function collectOtherAnswers(): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const key of DISCOVERY_FIELD_NAMES) {
+      const el = document.getElementById(key) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+      if (el) out[key] = el.value;
+    }
+    return out;
+  }
+
+  function handleAssistAccept(key: string, text: string) {
+    const el = document.getElementById(key) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+    if (el) el.value = text;
+  }
 
   return (
     <form action={formAction} className="card-elevated space-y-6 rounded-2xl p-6">
@@ -62,7 +129,14 @@ export default function DiscoveryForm({ project }: { project: Project }) {
       <Field label="Project name" name="name" defaultValue={project.name} textarea={false} required />
 
       <Section title="Discovery" subtitle="The foundation — who you are and who you serve.">
-        <Field label="Business or brand name" name="business_name" defaultValue={project.business_name} textarea={false} required />
+        <Field
+          label="Business or brand name"
+          name="business_name"
+          defaultValue={project.business_name}
+          textarea={false}
+          required
+          onAssist={setAssistTarget}
+        />
         <Field
           label="Industry / niche"
           name="industry"
@@ -70,6 +144,7 @@ export default function DiscoveryForm({ project }: { project: Project }) {
           textarea={false}
           placeholder="e.g. Fitness coaching for busy professionals"
           required
+          onAssist={setAssistTarget}
         />
         <Field
           label="Product or service"
@@ -77,6 +152,7 @@ export default function DiscoveryForm({ project }: { project: Project }) {
           defaultValue={project.product}
           placeholder="What are you selling? Describe it in a few sentences."
           required
+          onAssist={setAssistTarget}
         />
         <Field
           label="Target audience"
@@ -84,20 +160,34 @@ export default function DiscoveryForm({ project }: { project: Project }) {
           defaultValue={project.audience}
           placeholder="Who is this for? Demographics, job, life stage, income, values."
           required
+          onAssist={setAssistTarget}
         />
         <Field
           label="Existing marketing assets"
           name="existing_assets"
           defaultValue={project.existing_assets}
           placeholder="Website, email list, ads, testimonials, case studies — anything you already have."
+          onAssist={setAssistTarget}
         />
       </Section>
 
       <Section title="Customer Awareness" subtitle="Where your prospect is on the awareness ladder.">
         <div>
-          <Label htmlFor="awareness_level">
-            Awareness level<span className="text-primary"> *</span>
-          </Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="awareness_level">
+              Awareness level<span className="text-primary"> *</span>
+            </Label>
+            <AssistButton
+              onClick={() =>
+                setAssistTarget({
+                  key: "awareness_level",
+                  label: "Awareness level",
+                  type: "select",
+                  options: AWARENESS_LEVELS,
+                })
+              }
+            />
+          </div>
           <select
             id="awareness_level"
             name="awareness_level"
@@ -118,12 +208,14 @@ export default function DiscoveryForm({ project }: { project: Project }) {
           defaultValue={project.pain_points}
           placeholder="What keeps them up at night? Be specific."
           required
+          onAssist={setAssistTarget}
         />
         <Field
           label="False beliefs / objections"
           name="false_beliefs"
           defaultValue={project.false_beliefs}
           placeholder="What do they wrongly believe about the problem or solution?"
+          onAssist={setAssistTarget}
         />
         <Field
           label="Desired transformation"
@@ -131,6 +223,7 @@ export default function DiscoveryForm({ project }: { project: Project }) {
           defaultValue={project.desired_transformation}
           placeholder="What does life look like after your solution works?"
           required
+          onAssist={setAssistTarget}
         />
       </Section>
 
@@ -142,12 +235,14 @@ export default function DiscoveryForm({ project }: { project: Project }) {
           textarea={false}
           placeholder="e.g. 'Online sales training' or 'Metabolic coaching'"
           required
+          onAssist={setAssistTarget}
         />
         <Field
           label="The enemy / villain"
           name="enemy"
           defaultValue={project.enemy}
           placeholder="What common industry idea, method, or 'guru' are you against?"
+          onAssist={setAssistTarget}
         />
         <Field
           label="Primary differentiator"
@@ -155,12 +250,14 @@ export default function DiscoveryForm({ project }: { project: Project }) {
           defaultValue={project.differentiator}
           placeholder="What makes your approach different from everyone else's?"
           required
+          onAssist={setAssistTarget}
         />
         <Field
           label="Competitive alternatives"
           name="competitive_alternatives"
           defaultValue={project.competitive_alternatives}
           placeholder="What are they doing today instead of buying from you?"
+          onAssist={setAssistTarget}
         />
       </Section>
 
@@ -171,6 +268,7 @@ export default function DiscoveryForm({ project }: { project: Project }) {
           defaultValue={project.unique_mechanism}
           placeholder="The 'how' behind your promise — a named framework, method, or system."
           required
+          onAssist={setAssistTarget}
         />
         <Field
           label="Core promise"
@@ -178,6 +276,7 @@ export default function DiscoveryForm({ project }: { project: Project }) {
           defaultValue={project.core_promise}
           placeholder="What one outcome do you guarantee?"
           required
+          onAssist={setAssistTarget}
         />
         <Field
           label="Top outcomes / benefits"
@@ -185,12 +284,14 @@ export default function DiscoveryForm({ project }: { project: Project }) {
           defaultValue={project.outcomes}
           placeholder="Bullet list of results the buyer gets."
           required
+          onAssist={setAssistTarget}
         />
         <Field
           label="Proof available"
           name="proof"
           defaultValue={project.proof}
           placeholder="Testimonials, case studies, credentials, data, media — used verbatim, never invented."
+          onAssist={setAssistTarget}
         />
       </Section>
 
@@ -203,6 +304,7 @@ export default function DiscoveryForm({ project }: { project: Project }) {
             textarea={false}
             placeholder="e.g. $1,997 one-time or $297/month"
             required
+            onAssist={setAssistTarget}
           />
           <div>
             <Label htmlFor="mode">Mode</Label>
@@ -217,18 +319,26 @@ export default function DiscoveryForm({ project }: { project: Project }) {
             </select>
           </div>
         </div>
-        <Field label="Guarantee" name="guarantee" defaultValue={project.guarantee} placeholder="Money-back? Results-based? Describe it." />
+        <Field
+          label="Guarantee"
+          name="guarantee"
+          defaultValue={project.guarantee}
+          placeholder="Money-back? Results-based? Describe it."
+          onAssist={setAssistTarget}
+        />
         <Field
           label="Bonuses (if any)"
           name="bonuses"
           defaultValue={project.bonuses}
           placeholder="List each bonus and its perceived value."
+          onAssist={setAssistTarget}
         />
         <Field
           label="Scarcity / urgency"
           name="scarcity_urgency"
           defaultValue={project.scarcity_urgency}
           placeholder="Deadlines, seat limits, price increases, cohort dates."
+          onAssist={setAssistTarget}
         />
         <Field
           label="Primary call to action"
@@ -237,6 +347,7 @@ export default function DiscoveryForm({ project }: { project: Project }) {
           textarea={false}
           placeholder="e.g. Book a call, Buy now, Apply today"
           required
+          onAssist={setAssistTarget}
         />
       </Section>
 
@@ -264,6 +375,14 @@ export default function DiscoveryForm({ project }: { project: Project }) {
           </button>
         </form>
       </details>
+
+      <DiscoveryAssistDialog
+        target={assistTarget}
+        onOpenChange={(open) => !open && setAssistTarget(null)}
+        projectId={project.id}
+        otherAnswers={collectOtherAnswers}
+        onAccept={handleAssistAccept}
+      />
     </form>
   );
 }

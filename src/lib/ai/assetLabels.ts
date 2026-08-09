@@ -11,6 +11,7 @@ export function getAssetLabel(assetType: AssetType): string {
   if (assetType === "presentation_analysis") return "Presentation Analysis";
   if (assetType === "headline_lab") return "Headline Lab";
   if (assetType === "tts_narration") return "Read Aloud (TTS)";
+  if (assetType === "discovery_assist") return "AI Assist (discovery field)";
   return ASSET_GENERATORS[assetType as GeneratorAssetType].label;
 }
 
@@ -22,8 +23,8 @@ export function getAssetHref(projectId: string, assetType: AssetType, generation
   if (assetType === "headline_lab") {
     return `/headline-lab${suffix}`;
   }
-  if (assetType === "tts_narration") {
-    // No dedicated page — it's a narration of already-generated content, not a browsable asset.
+  if (assetType === "tts_narration" || assetType === "discovery_assist") {
+    // No dedicated page — not a browsable asset (audio / a single field draft).
     return `/projects/${projectId}`;
   }
   return `/projects/${projectId}/generate/${assetType}${suffix}`;

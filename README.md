@@ -24,7 +24,7 @@ expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized
    `0002_presentation_analysis.sql`, then `0003_redesign_features.sql`, then
    `0004_video_analysis.sql`, then `0005_full_discovery.sql`, then
    `0006_generation_versions.sql`, then `0007_tts.sql`, then
-   `0008_headline_winners.sql`. Together they create:
+   `0008_headline_winners.sql`, then `0009_discovery_assist.sql`. Together they create:
    - `profiles` — one row per user, with the 12-month access window and credit meter
    - `projects` — one per offer, with the full Discovery → Customer Awareness → Positioning →
      Value Proposition → Offer intake (see "Project discovery" below)
@@ -128,6 +128,29 @@ same way, into every generator's and Agent Annie's system prompt — this is the
 `0005_full_discovery.sql` added these columns without dropping the earlier flat fields
 (`who_its_for`, `the_problem`, etc.) — existing project data was backfilled into the closest new
 field, and the old columns are simply unused by the app now.
+
+### AI Assist on stuck fields
+
+Every substantive discovery field has a small **AI Assist** link next to its label (ported from
+the Lovable prototype's wizard-assist-dialog) — for a user who doesn't know how to answer, or
+just wants a more professional pass. Clicking it opens a dialog where they describe their
+situation in plain language (or leave it blank), and get back a drafted answer for **that one
+field only**, which they can edit before accepting.
+
+The quality of the draft comes from `DISCOVERY_FIELD_GUIDANCE` in
+`src/lib/ai/discoveryAssist.ts` — a hand-written brief per field (what the field actually
+captures, what a great answer looks like, common failure modes, a gold-standard exemplar) that
+gets folded into the prompt alongside the user's other already-filled-in answers, so e.g. the
+"pain points" draft stays consistent with the "audience" they already described. `POST
+/api/discovery/assist` runs it through the same `checkGuardrails`/`generateAsset`/
+`decrementCredits` pipeline as everything else and logs a lightweight `generations` row
+(`asset_type: "discovery_assist"`, migration `0009_discovery_assist.sql`) purely for cost
+telemetry, at `DISCOVERY_ASSIST_CREDIT_COST` (1 credit) per draft.
+
+Since `DiscoveryForm.tsx` is an uncontrolled form (fields use `defaultValue`, not React state,
+and submit via `FormData`), the assist dialog reads "other answers" and writes an accepted
+draft back by DOM id (`document.getElementById`) rather than through component state — avoids
+converting 22 fields to controlled inputs just for this.
 
 ## The guardrails (margin protection)
 
@@ -366,3 +389,4 @@ provided.
 8. ✅ Rich text editing, autosave, persisted version history, TTS Read Aloud, onboarding
    tour, sample project dialog
 9. ✅ Owner/Admin Controls: unlimited admin test account, per-member credit/role management
+10. ✅ AI Assist on every discovery field for users stuck on how to answer

@@ -17,7 +17,8 @@ export type AssetType =
   | "ad_copy"
   | "offer_ladder"
   | "headline_lab"
-  | "tts_narration";
+  | "tts_narration"
+  | "discovery_assist";
 
 export type PresentationType = "webinar" | "vsl" | "sales_presentation" | "investor_pitch" | "other";
 
