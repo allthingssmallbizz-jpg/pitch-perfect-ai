@@ -86,6 +86,20 @@
     font-family: var(--font-display);
     letter-spacing: 0;
   }
+
+  /* `color-scheme: dark` on <html> isn't reliably enough on its own to make every browser
+     render a native <select> popup with a dark background — some fall back to a white system
+     popup while the <option> text still inherits this app's light foreground color, making the
+     list unreadable (white text on white). Forcing the option colors directly fixes it
+     regardless of what the browser does with color-scheme. */
+  select {
+    color-scheme: dark;
+  }
+
+  select option {
+    background-color: var(--color-popover);
+    color: var(--color-popover-foreground);
+  }
 }
 
 @utility text-gradient-silver {
