@@ -10,6 +10,9 @@ export const runtime = "nodejs";
 
 let client: OpenAI | null = null;
 function getClient(): OpenAI {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("Read Aloud isn't configured yet — OPENAI_API_KEY is missing. Add it in your hosting provider's environment variables.");
+  }
   if (!client) client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   return client;
 }

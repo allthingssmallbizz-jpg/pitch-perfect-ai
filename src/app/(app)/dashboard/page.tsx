@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import DashboardOnboarding from "@/components/DashboardOnboarding";
+import DeleteProjectButton from "@/components/DeleteProjectButton";
 import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
 import { createProjectFromTemplate } from "@/lib/actions/projects";
@@ -185,6 +186,7 @@ export default async function DashboardPage() {
                   Open <ArrowRight className="ml-1 h-4 w-4" />
                 </Link>
               </Button>
+              <DeleteProjectButton projectId={project.id} />
             </div>
           ))}
         </div>
