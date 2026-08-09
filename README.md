@@ -165,10 +165,22 @@ same way, into every generator's and Agent Annie's system prompt — this is the
 (`who_its_for`, `the_problem`, etc.) — existing project data was backfilled into the closest new
 field, and the old columns are simply unused by the app now.
 
-### Discovery-first routing
+### Discovery-first routing, and an agent landing page for every generator
 
-Clicking an agent (sidebar "Create" links, the dashboard's deliverable grid, or the Analyzer
-link — all `/projects/new?type=...`) creates a brand-new project, which by definition has no
+The sidebar's "Create" links and the dashboard's deliverable grid point at
+`/agents/[assetType]` (`src/app/(app)/agents/[assetType]/page.tsx`) — an agent-specific landing
+page, not straight into `/projects/new`. It mirrors `/analyze`'s landing page (built earlier
+for the same reason — re-opening past work shouldn't force creating a brand-new project every
+time you click an agent) but goes one step further: since a generator like Ad Copy gets reused
+across many different projects/offers rather than one at a time, this page aggregates that
+agent's completed generations across **every** project, not just one, each labeled with which
+project it belongs to. "Open" and "Delete" (via the new `DELETE /api/generations/[id]`) live
+right there — no detour through the project overview needed just to find or remove a past
+draft. It also offers "Start a new project" and, if you have existing projects, "generate for
+an existing project" to reuse one you already have discovery filled in for.
+
+Starting a **new** project (from that page's "Start a new project" card, or anywhere else)
+still can't skip straight to generating, since a brand-new project by definition has no
 discovery data yet. `createProject` (`src/lib/actions/projects.ts`) always lands a fresh
 project on its overview page (`/projects/[id]`, where `DiscoveryForm` lives) rather than
 skipping straight to the generator — carrying the originally-picked tool along as

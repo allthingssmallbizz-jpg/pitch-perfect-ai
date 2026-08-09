@@ -73,6 +73,10 @@ export default function AppSidebar({ email, displayName, isAdmin, credits }: Pro
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const resolvedName = displayName?.trim() || email.split("@")[0] || "You";
+  // An agent is "active" either on its own landing page (/agents/[type], where past
+  // generations across every project live — see the comment on that page) or mid-creation of
+  // a brand-new project for it (/projects/new?type=...), which the landing page's "Start a new
+  // project" card also routes through.
   const activeCreateType = pathname === "/projects/new" ? searchParams.get("type") : null;
 
   return (
@@ -130,10 +134,10 @@ export default function AppSidebar({ email, displayName, isAdmin, credits }: Pro
                   <SidebarMenuItem key={type}>
                     <SidebarMenuButton
                       asChild
-                      isActive={activeCreateType === type}
+                      isActive={pathname === `/agents/${type}` || activeCreateType === type}
                       tooltip={`${agent.name} — ${CREATE_LABELS[type]}`}
                     >
-                      <Link href={`/projects/new?type=${type}`}>
+                      <Link href={`/agents/${type}`}>
                         <span aria-hidden>{agent.emoji}</span>
                         <span className="truncate">
                           {agent.name} <span className="text-muted-foreground">· {CREATE_LABELS[type]}</span>

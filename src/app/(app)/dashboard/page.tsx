@@ -106,7 +106,7 @@ export default async function DashboardPage() {
           return (
             <Link
               key={type}
-              href={`/projects/new?type=${type}`}
+              href={`/agents/${type}`}
               className="card-elevated group rounded-2xl p-6 transition-colors hover:border-primary/50"
             >
               <div className="mb-4 flex items-center gap-3">
