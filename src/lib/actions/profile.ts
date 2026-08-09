@@ -33,6 +33,9 @@ export async function updateDisplayName(_prevState: unknown, formData: FormData)
     return { error: "Could not save. Try again." };
   }
 
-  revalidatePath("/settings");
+  // "layout" (not the default "page") revalidates the shared (app) layout that renders
+  // AppSidebar — otherwise the sidebar's display name (server-fetched in that layout) wouldn't
+  // pick up the change until some unrelated full reload happened to re-run it.
+  revalidatePath("/settings", "layout");
   return { success: true };
 }

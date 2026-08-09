@@ -60,16 +60,18 @@ const CREATE_LABELS: Record<(typeof CREATE_ASSET_TYPES)[number], string> = {
 
 type Props = {
   email: string;
+  // The account's saved display name (profiles.full_name), if they've set one via /settings.
+  displayName: string | null;
   isAdmin: boolean;
   credits: number | null;
 };
 
-export default function AppSidebar({ email, isAdmin, credits }: Props) {
+export default function AppSidebar({ email, displayName, isAdmin, credits }: Props) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const displayName = email.split("@")[0] || "You";
+  const resolvedName = displayName?.trim() || email.split("@")[0] || "You";
   const activeCreateType = pathname === "/projects/new" ? searchParams.get("type") : null;
 
   return (
@@ -82,6 +84,9 @@ export default function AppSidebar({ email, isAdmin, credits }: Props) {
             </span>
           )}
         </Link>
+        {!collapsed && (
+          <div className="truncate px-2 pb-1 text-xs text-muted-foreground">Hi, {resolvedName}</div>
+        )}
       </SidebarHeader>
 
       <SidebarContent>
@@ -230,11 +235,11 @@ export default function AppSidebar({ email, isAdmin, credits }: Props) {
       <SidebarFooter>
         <div className="flex items-center gap-2 px-2 py-2">
           <div className="h-8 w-8 shrink-0 rounded-full border border-primary/30 bg-primary/15 flex items-center justify-center text-xs font-semibold text-primary">
-            {displayName.charAt(0).toUpperCase()}
+            {resolvedName.charAt(0).toUpperCase()}
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium">{displayName}</div>
+              <div className="truncate text-sm font-medium">{resolvedName}</div>
               <div className="truncate text-xs text-muted-foreground">{email}</div>
             </div>
           )}

@@ -22,6 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="flex min-h-screen w-full">
         <AppSidebar
           email={user.email ?? ""}
+          displayName={profile?.full_name || null}
           isAdmin={profile?.role === "admin"}
           credits={profile?.credits_balance ?? null}
         />

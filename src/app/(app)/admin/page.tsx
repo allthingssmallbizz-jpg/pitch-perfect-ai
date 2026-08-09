@@ -106,6 +106,29 @@ export default async function AdminPage({
         </div>
       </div>
 
+      <div className="card-elevated mb-8 rounded-2xl border-primary/30 p-5">
+        <h2 className="font-display font-semibold">Before video analysis works in production</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Deliberately not upgraded yet to avoid a monthly cost before launch — do these when
+          you&apos;re ready to turn video analysis on for real:
+        </p>
+        <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+          <li>
+            <span className="font-medium text-foreground">Supabase Pro</span> ($25/mo) — Free
+            tier&apos;s 1GB storage and low upload-size limit will reject most videos. Settings →
+            Storage → &quot;Upload file size limit&quot; needs raising after upgrading.
+          </li>
+          <li>
+            <span className="font-medium text-foreground">Vercel Pro</span> (~$20/mo) — Free
+            tier caps function execution at 60s; analyzing a full video takes longer than that.
+          </li>
+        </ul>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Nothing else in the app needs either of these — every generator, the discovery form,
+          billing, and text-based analysis all work fine on free tiers.
+        </p>
+      </div>
+
       <div className="card-elevated mb-8 rounded-2xl p-5">
         <h2 className="font-display font-semibold">Kill switch</h2>
         <p className="mt-1 text-sm text-muted-foreground">
