@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
 import { getAssetLabel, getAssetHref } from "@/lib/ai/assetLabels";
 import { ANALYZER_CREDIT_COST } from "@/lib/ai/analyzer";
+import { AD_IMAGE_CREDIT_COST } from "@/lib/ai/generators/adImage";
 import { AGENTS, getAgent } from "@/lib/agents/config";
 import { Badge } from "@/components/ui/badge";
 import AgentBadge from "@/components/AgentBadge";
@@ -38,13 +39,18 @@ export default async function ProjectPage({
   // links land on ?intent=webinar_outline instead of skipping straight to the generator — see
   // the comment on projectDestination in src/lib/actions/projects.ts). Used to highlight which
   // tool the user actually wanted and to send DiscoveryForm's "Save" straight there.
-  const isValidIntent = intent === "presentation_analysis" || (intent && (ASSET_TYPES as string[]).includes(intent));
-  const intentAgent = isValidIntent ? AGENTS[intent as keyof typeof AGENTS] : null;
+  const isValidIntent =
+    intent === "presentation_analysis" || intent === "ad_image" || (intent && (ASSET_TYPES as string[]).includes(intent));
+  // "ad_image" isn't a key in AGENTS (it's Addie's sub-capability, not a separate agent
+  // identity — see the comment on AgentAssetType) so it needs its own lookup here.
+  const intentAgent = !isValidIntent ? null : intent === "ad_image" ? AGENTS.ad_copy : AGENTS[intent as keyof typeof AGENTS];
   const intentHref = !isValidIntent
     ? null
     : intent === "presentation_analysis"
       ? `/projects/${id}/analyze`
-      : `/projects/${id}/generate/${intent}`;
+      : intent === "ad_image"
+        ? `/projects/${id}/ad-image`
+        : `/projects/${id}/generate/${intent}`;
 
   const { data: generations } = await supabase
     .from("generations")
@@ -101,6 +107,27 @@ export default async function ProjectPage({
               );
             })}
           </div>
+
+          <h2 className="mt-8 mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Image ads
+          </h2>
+          <Link
+            href={`/projects/${project.id}/ad-image`}
+            className={`card-elevated block rounded-xl p-4 transition-colors hover:border-primary/40 ${
+              intent === "ad_image" ? "border-primary/60 ring-1 ring-primary/40" : ""
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <AgentBadge agent={AGENTS.ad_copy} size="sm" />
+              <Badge variant="secondary" className="shrink-0">
+                {AD_IMAGE_CREDIT_COST} credits
+              </Badge>
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Upload a photo and Addie writes the headline, subheadline, and CTA, then overlays
+              them onto it — a finished, downloadable ad image.
+            </p>
+          </Link>
 
           <h2 className="mt-8 mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Analyze a presentation

@@ -18,7 +18,8 @@ export type AssetType =
   | "offer_ladder"
   | "headline_lab"
   | "tts_narration"
-  | "discovery_assist";
+  | "discovery_assist"
+  | "ad_image";
 
 export type PresentationType =
   | "webinar"
@@ -150,6 +151,10 @@ export type Generation = {
   // Headline Lab's winner picks (the headline strings) — only meaningful for
   // asset_type "headline_lab". Empty array for everything else.
   winners: string[];
+  // Agent Addie's Image Ads pipeline (asset_type "ad_image") — null for everything else.
+  // `content` holds the generated copy as JSON: {"headline","subheadline","cta"}.
+  image_source_path: string | null;
+  image_result_path: string | null;
 };
 
 export type GenerationVersionSource = "generate" | "edit" | "snapshot";

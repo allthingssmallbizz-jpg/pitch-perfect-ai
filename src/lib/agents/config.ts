@@ -12,7 +12,9 @@
 
 import type { AssetType } from "@/types/database";
 
-export type AgentAssetType = Exclude<AssetType, "headline_lab" | "tts_narration" | "discovery_assist">;
+// Excludes "ad_image" — Agent Addie's Image Ads is a sub-capability reached from her own
+// ad_copy landing page, not a separate agent identity with its own AGENTS entry.
+export type AgentAssetType = Exclude<AssetType, "headline_lab" | "tts_narration" | "discovery_assist" | "ad_image">;
 
 export type Agent = {
   assetType: AgentAssetType;
@@ -170,7 +172,7 @@ export const AGENTS: Record<AgentAssetType, Agent> = {
     emoji: "📣",
     tagline: "Addie will generate ad angles that stop the scroll.",
     description:
-      "Creates and optimizes advertising copy — Facebook/Instagram, YouTube, and other short-form ad formats — across multiple hooks and angles.",
+      "Creates and optimizes advertising copy — Facebook/Instagram, YouTube, and other short-form ad formats — across multiple hooks and angles. Also builds finished image ads from an uploaded photo.",
     primaryObjective:
       "Generate multiple distinct hooks and angles for the same offer while maintaining factual accuracy and avoiding unsupported claims.",
     focusAreas: [
@@ -179,6 +181,7 @@ export const AGENTS: Record<AgentAssetType, Agent> = {
       "Platform-appropriate length and tone",
       "Specific CTAs",
       "Factual accuracy in claims",
+      "Image ad creation from an uploaded photo",
     ],
     personaInstructions:
       "You are Agent Addie, The Ad Assassin, Pitch Perfect AI's ad copy specialist. You work in angles, not paragraphs — every ad you write earns its place by being genuinely different from the last one, not a reworded copy of it. Fast, specific, platform-native, and strict about never inflating a claim just because ad copy is short.",
@@ -229,5 +232,9 @@ export const AGENTS: Record<AgentAssetType, Agent> = {
 };
 
 export function getAgent(assetType: string): Agent | undefined {
+  // "ad_image" isn't a key in AGENTS (see AgentAssetType's comment) — it's Addie's own
+  // sub-capability, so it should still visually attribute to her everywhere an asset_type
+  // gets looked up (History lists, admin telemetry, etc.).
+  if (assetType === "ad_image") return AGENTS.ad_copy;
   return AGENTS[assetType as AgentAssetType];
 }

@@ -42,7 +42,9 @@ export default async function AgentLandingPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: projects }, { data: generations }] = await Promise.all([
+  const isAddie = generator.assetType === "ad_copy";
+
+  const [{ data: projects }, { data: generations }, { data: imageAdRows }] = await Promise.all([
     supabase.from("projects").select("id, name").eq("user_id", user.id).order("updated_at", { ascending: false }),
     supabase
       .from("generations")
@@ -52,6 +54,18 @@ export default async function AgentLandingPage({
       .eq("status", "complete")
       .order("created_at", { ascending: false })
       .limit(50),
+    // Addie's Image Ads is a sub-capability, not its own agent/generator entry (see the
+    // comment on AgentAssetType) — only fetched on her own landing page.
+    isAddie
+      ? supabase
+          .from("generations")
+          .select("id, project_id, content, image_result_path, created_at")
+          .eq("user_id", user.id)
+          .eq("asset_type", "ad_image")
+          .eq("status", "complete")
+          .order("created_at", { ascending: false })
+          .limit(24)
+      : Promise.resolve({ data: null }),
   ]);
 
   // No FK-relationship typing on the hand-written Database type (Relationships: [] on every
@@ -67,6 +81,31 @@ export default async function AgentLandingPage({
       preview: (g.content ?? "").replace(/\s+/g, " ").trim().slice(0, 140),
       createdAt: g.created_at,
     }));
+
+  const imageResultPaths = (imageAdRows ?? []).map((r) => r.image_result_path).filter((p): p is string => !!p);
+  const { data: signedImageUrls } = imageResultPaths.length
+    ? await supabase.storage.from("ad-images").createSignedUrls(imageResultPaths, 3600)
+    : { data: [] as { path: string | null; signedUrl: string }[] };
+  const signedImageUrlByPath = new Map((signedImageUrls ?? []).map((s) => [s.path, s.signedUrl]));
+
+  const pastImageAds = (imageAdRows ?? [])
+    .filter((g) => g.project_id && projectNameById.has(g.project_id))
+    .map((g) => {
+      let headline = "";
+      try {
+        if (g.content) headline = JSON.parse(g.content).headline ?? "";
+      } catch {
+        // ignore malformed content
+      }
+      return {
+        id: g.id,
+        projectId: g.project_id as string,
+        projectName: projectNameById.get(g.project_id as string) ?? "Untitled project",
+        headline,
+        createdAt: g.created_at,
+        thumbnailUrl: g.image_result_path ? (signedImageUrlByPath.get(g.image_result_path) ?? null) : null,
+      };
+    });
 
   const hasProjects = !!projects && projects.length > 0;
 
@@ -111,6 +150,52 @@ export default async function AgentLandingPage({
               </Link>
             ))}
           </div>
+        </>
+      )}
+
+      {isAddie && (
+        <>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Image ads
+          </h2>
+          <Link
+            href="/projects/new?type=ad_image"
+            className="card-elevated mb-3 flex items-center justify-between rounded-2xl border-dashed p-4 transition-colors hover:border-primary/50"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
+                <Plus className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <div className="font-display font-semibold">Create an image ad</div>
+                <div className="text-sm text-muted-foreground">
+                  Upload a photo — Addie writes the headline, subheadline, and CTA and overlays them onto it.
+                </div>
+              </div>
+            </div>
+            <ArrowRight className="h-4 w-4 text-primary" />
+          </Link>
+          {pastImageAds.length > 0 && (
+            <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {pastImageAds.map((g) => (
+                <div key={g.id} className="card-elevated overflow-hidden rounded-xl">
+                  <Link href={`/projects/${g.projectId}/ad-image?generationId=${g.id}`} className="block">
+                    {g.thumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- a signed Supabase Storage URL
+                      <img src={g.thumbnailUrl} alt={g.headline || "Ad"} className="aspect-square w-full object-cover" />
+                    ) : (
+                      <div className="flex aspect-square w-full items-center justify-center bg-card/40 text-xs text-muted-foreground">
+                        No preview
+                      </div>
+                    )}
+                  </Link>
+                  <div className="p-2">
+                    <p className="truncate text-xs text-muted-foreground">{g.projectName}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 

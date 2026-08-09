@@ -15,7 +15,8 @@ import { getTemplate } from "@/lib/templates";
 // is carried along as `?intent=` so the overview page can highlight which tool the user
 // actually wanted and send them straight there the moment discovery is saved.
 function projectDestination(projectId: string, type: string | null): string {
-  const isValidIntent = type === "presentation_analysis" || (type && (ASSET_TYPES as string[]).includes(type));
+  const isValidIntent =
+    type === "presentation_analysis" || type === "ad_image" || (type && (ASSET_TYPES as string[]).includes(type));
   return isValidIntent ? `/projects/${projectId}?intent=${type}` : `/projects/${projectId}`;
 }
 

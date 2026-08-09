@@ -25,7 +25,7 @@ expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized
    `0004_video_analysis.sql`, then `0005_full_discovery.sql`, then
    `0006_generation_versions.sql`, then `0007_tts.sql`, then
    `0008_headline_winners.sql`, then `0009_discovery_assist.sql`, then
-   `0010_member_directory.sql`. Together they create:
+   `0010_member_directory.sql`, then `0011_ad_image.sql`. Together they create:
    - `profiles` — one row per user, with the 12-month access window and credit meter
    - `projects` — one per offer, with the full Discovery → Customer Awareness → Positioning →
      Value Proposition → Offer intake (see "Project discovery" below)
@@ -50,6 +50,9 @@ expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized
    - `payments` — every Stripe payment (initial membership checkout, membership renewals,
      credit top-ups), written by the webhook alongside the existing `credit_topups` inserts —
      the source of truth for per-member lifetime revenue in the admin panel
+   - `ad-images` Storage bucket (private, owner-only) + `generations.image_source_path`/
+     `image_result_path`, and `ad_image` added as an `asset_type`, for Agent Addie's Image Ads
+     (see that section below)
    - RLS policies, an `on_auth_user_created` trigger that provisions a `profiles` row on
      signup, and `updated_at` triggers.
 3. Copy the Project URL, anon key, and service role key into `.env.local` (see
@@ -354,6 +357,51 @@ Claude's API has no native video input, so "video analysis" here means transcrip
 still frames, not continuous video/audio — the video prompt says so explicitly and asks the
 model not to claim it saw things (like specific gestures) that stills can't show. See
 "Deploy" above for the hosting requirement this feature has (longer function execution).
+
+## Agent Addie's Image Ads
+
+`/projects/[id]/ad-image` — a member uploads a photo of themselves or their product, Addie
+writes short, image-fitted copy (headline/subheadline/CTA — not the long-form multi-angle
+`ad_copy` output), and the app composites that copy onto the photo **client-side**, into a
+finished, downloadable square (1080×1080) ad creative. Deliberately not AI image generation —
+current image models can't reliably render legible, accurate text, which would make headlines a
+coin-flip on something a member is paying for; this instead deterministically overlays the same
+AI-written strings onto their real photo via `<canvas>` (`AdImageClient.tsx`'s `renderAdCanvas`
+— cover-fit photo, bottom gradient for legibility, wrapped headline/subheadline, a CTA pill).
+
+It's `asset_type: "ad_image"` (migration `0011_ad_image.sql`), but deliberately **not** a
+standalone agent/generator entry — it's Addie's (`ad_copy`) sub-capability, excluded from both
+`GeneratorAssetType` and `AgentAssetType` so it doesn't need its own `AGENTS`/`ASSET_GENERATORS`
+row. `getAgent("ad_image")` special-cases it back to `AGENTS.ad_copy` so History lists, admin
+telemetry, etc. still attribute it to her correctly.
+
+Three-step pipeline, split across requests because compositing needs the browser and the
+storage upload happens in between:
+
+1. `POST /api/agents/ad-image/start` reserves a `generations` row (mirrors
+   `/api/analyze/video/start`'s reasoning) and returns a Storage path under the private
+   `ad-images` bucket.
+2. The browser uploads the photo **directly to Storage** at that path, then
+   `POST /api/agents/ad-image/[id]/generate` runs the actual paid Claude call
+   (`buildAdImageCopyPrompt`/`parseImageAdCopy` in `src/lib/ai/generators/adImage.ts` — strict
+   JSON output, same defensive-parse pattern as `headlineLab.ts`), marks the generation
+   complete, and charges credits.
+3. The browser composites the photo + returned copy on canvas and immediately uploads the
+   finished PNG back to Storage, then `POST /api/agents/ad-image/[id]/result` records that path
+   (`image_result_path`) — done automatically, not behind a manual "Save" click, so a finished
+   ad is never a click away from disappearing the way plain-text generations were before
+   past-generations tracking existed.
+
+Editable after generation: the headline/subheadline/CTA fields stay live-editable, redrawing
+the canvas preview on every keystroke; "Save changes" re-uploads the edited composite to the
+same result path (no new Claude call, no new credit charge).
+
+Reachable from three places: Addie's own `/agents/ad_copy` landing page (an "Image ads" section
+listing past ones across every project, with thumbnails via signed Storage URLs), each
+project's overview page (an "Image ads" tile alongside the other generator tiles), and
+`/projects/new?type=ad_image` for starting a brand-new project — which, like every other agent
+entry point, always lands on the Discovery form first (see "Discovery-first routing" above)
+since a brand-new project has no discovery data yet for Addie to write from.
 
 ## Design system
 
