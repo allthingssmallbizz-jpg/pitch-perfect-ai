@@ -221,13 +221,16 @@ incomplete, and to only follow the `redirectTo` intent (jumping straight into th
 once nothing required is missing; otherwise it stays put with that message rather than bouncing
 straight to the generate page just to have `projectNeedsDiscovery` immediately bounce it back.
 
-**Every agent click that starts new work lands on the discovery review, full stop — even when
-that project's brief is already complete.** This is deliberate, not just the "brand-new
-project" case above: the membership is largely new to building webinars/sales assets, so the
-design intentionally never lets a "start work" click skip straight into `/generate/[type]` — the
-project overview's tool grid links to `/projects/[id]?intent=[type]` (never directly to the
-generator), so there's always a chance to look over the discovery brief and hit "Save discovery"
-before anything generates.
+**An agent click that starts new work lands on the discovery review only while that project's
+brief is still incomplete — once discovery is genuinely complete, it goes straight into
+`/generate/[type]`.** This is deliberate: the membership is largely new to building
+webinars/sales assets, so while there's still something to fill in, a "start work" click
+shouldn't skip past discovery into `/generate/[type]` — but once every required field is
+already filled in, looping back to a review of the exact brief you just finished isn't a
+safeguard anymore, it's just an extra click in the way. The project overview computes
+`discoveryComplete = !projectNeedsDiscovery(project)` and the tool grid (and the Image Ads tile)
+link to `/projects/[id]?intent=[type]` only when that's false; once true, they link directly to
+`/projects/[id]/generate/[type]` (or `/projects/[id]/ad-image`).
 
 That rule only applies to *starting* work, though — **opening something already made is a
 completely different action and must never be confused with it.** The History list and each

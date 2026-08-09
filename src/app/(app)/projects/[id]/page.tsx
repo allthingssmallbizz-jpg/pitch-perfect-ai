@@ -7,6 +7,7 @@ import { getAssetLabel, getAssetHref } from "@/lib/ai/assetLabels";
 import { ANALYZER_CREDIT_COST } from "@/lib/ai/analyzer";
 import { AD_IMAGE_CREDIT_COST } from "@/lib/ai/generators/adImage";
 import { AGENTS, getAgent } from "@/lib/agents/config";
+import { projectNeedsDiscovery } from "@/lib/projects";
 import { Badge } from "@/components/ui/badge";
 import AgentBadge from "@/components/AgentBadge";
 import DiscoveryForm from "./DiscoveryForm";
@@ -54,6 +55,11 @@ export default async function ProjectPage({
         ? `/projects/${id}/ad-image`
         : `/projects/${id}/generate/${intent}`;
 
+  // Once discovery is genuinely complete, a tool-card click should go straight into that
+  // generator, not loop back to a review of the exact brief you're already looking at — the
+  // discovery-first detour only makes sense while there's still something to fill in.
+  const discoveryComplete = !projectNeedsDiscovery(project);
+
   const [{ data: generations }, { data: settings }] = await Promise.all([
     supabase.from("generations").select("*").eq("project_id", id).order("created_at", { ascending: false }).limit(20),
     // admin_settings' RLS is admin-select-only (see 0001_init.sql) — this value isn't
@@ -88,11 +94,11 @@ export default async function ProjectPage({
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Your AI marketing team
           </h2>
-          {/* Every tool card here links back to this same page with ?intent= set, not straight
-              to /generate/[type] — even when this project's discovery is already complete.
-              The membership is largely new to this process, so every agent click is meant to
-              land on a review of the discovery brief first (highlighted card + banner above,
-              "Save discovery" continues on), never skip straight into generating. */}
+          {/* While discovery is still incomplete, every tool card links back to this same page
+              with ?intent= set instead of straight to /generate/[type] — a review step before
+              anything can generate. Once discovery is complete, cards go straight into the
+              generator; looping back to a brief you've already finished isn't a review, it's
+              just in the way. */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {ASSET_TYPES.map((type) => {
               const gen = ASSET_GENERATORS[type];
@@ -100,7 +106,7 @@ export default async function ProjectPage({
               return (
                 <Link
                   key={type}
-                  href={`/projects/${project.id}?intent=${type}`}
+                  href={discoveryComplete ? `/projects/${project.id}/generate/${type}` : `/projects/${project.id}?intent=${type}`}
                   className={`card-elevated rounded-xl p-4 transition-colors hover:border-primary/40 ${
                     intent === type ? "border-primary/60 ring-1 ring-primary/40" : ""
                   }`}
@@ -121,7 +127,7 @@ export default async function ProjectPage({
             Image ads
           </h2>
           <Link
-            href={`/projects/${project.id}?intent=ad_image`}
+            href={discoveryComplete ? `/projects/${project.id}/ad-image` : `/projects/${project.id}?intent=ad_image`}
             className={`card-elevated block rounded-xl p-4 transition-colors hover:border-primary/40 ${
               intent === "ad_image" ? "border-primary/60 ring-1 ring-primary/40" : ""
             }`}

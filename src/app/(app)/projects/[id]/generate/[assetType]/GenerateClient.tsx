@@ -138,11 +138,12 @@ export default function GenerateClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
       });
-      if (!res.ok) throw new Error();
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "Could not save.");
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch {
-      setError("Could not save.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save.");
     } finally {
       setSaving(false);
     }
