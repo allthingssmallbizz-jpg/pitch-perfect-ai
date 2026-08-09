@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { AwarenessLevel } from "@/types/database";
 import { ASSET_TYPES } from "@/lib/ai/generators";
 import { getTemplate } from "@/lib/templates";
+import { getMissingDiscoveryFieldLabels } from "@/lib/projects";
 
 // Where to land after creating a project. A brand-new project has no discovery data yet, so
 // generating anything from it immediately would just come back empty ("I don't have enough
@@ -125,6 +126,16 @@ export async function updateProjectDiscovery(_prevState: unknown, formData: Form
 
   if (!fields.name) {
     return { error: "Project name can't be empty." };
+  }
+
+  // The asterisked fields aren't just a visual hint — a generator working from an incomplete
+  // brief comes back with gaps or "I don't have enough information," with no indication a form
+  // was ever supposed to be filled in. The browser's own `required` attributes on these same
+  // fields (DiscoveryForm.tsx) catch this first in the common case, but that's client-side only
+  // and can be bypassed, so this is the actual enforcement.
+  const missing = getMissingDiscoveryFieldLabels(fields);
+  if (missing.length > 0) {
+    return { error: `Fill in before saving: ${missing.join(", ")}.` };
   }
 
   const { error } = await supabase

@@ -1,9 +1,41 @@
 import type { Project } from "@/types/database";
 
-// A project is "ready to generate from" once the handful of load-bearing discovery fields are
-// filled in — the ones every generator's prompt actually depends on (see DiscoveryForm.tsx's
-// required fields). Doesn't require the full brief, just enough that a generator has something
-// real to work with instead of Claude coming back with "I don't have enough information."
-export function projectNeedsDiscovery(project: Pick<Project, "business_name" | "product" | "audience">): boolean {
-  return !project.business_name.trim() || !project.product.trim() || !project.audience.trim();
+// The discovery fields DiscoveryForm.tsx marks with a required asterisk — the single source
+// of truth for "is this project's brief actually complete," shared by the form's own
+// server-side validation (updateProjectDiscovery) and the generate-page gate
+// (projectNeedsDiscovery) so neither can drift out of sync with what the UI actually asks for.
+export const REQUIRED_DISCOVERY_FIELDS: { key: keyof Project; label: string }[] = [
+  { key: "business_name", label: "Business or brand name" },
+  { key: "industry", label: "Industry / niche" },
+  { key: "product", label: "Product or service" },
+  { key: "audience", label: "Target audience" },
+  { key: "awareness_level", label: "Awareness level" },
+  { key: "pain_points", label: "Biggest pain points" },
+  { key: "desired_transformation", label: "Desired transformation" },
+  { key: "category", label: "Market category" },
+  { key: "differentiator", label: "Primary differentiator" },
+  { key: "unique_mechanism", label: "Unique mechanism" },
+  { key: "core_promise", label: "Core promise" },
+  { key: "outcomes", label: "Top outcomes / benefits" },
+  { key: "price", label: "Price point" },
+  { key: "cta", label: "Primary call to action" },
+];
+
+type RequiredFieldKey = (typeof REQUIRED_DISCOVERY_FIELDS)[number]["key"];
+
+// A project is "ready to generate from" once every required discovery field is filled in —
+// otherwise a generator has gaps to work from and comes back with something like "I don't have
+// enough information about your business," with no indication a form was ever supposed to be
+// completed. Used to gate every entry point into a generator (new project, an existing
+// project's generate page, the "generate for an existing project" list on an agent's landing
+// page) regardless of how someone got there.
+export function projectNeedsDiscovery(project: Pick<Project, RequiredFieldKey>): boolean {
+  return REQUIRED_DISCOVERY_FIELDS.some(({ key }) => !String(project[key] ?? "").trim());
+}
+
+// Same required-field list, applied to raw form field values (before they're saved) — lets
+// updateProjectDiscovery reject an incomplete save with a specific, actionable list instead of
+// silently persisting a half-finished brief that projectNeedsDiscovery would just bounce later.
+export function getMissingDiscoveryFieldLabels(fields: Record<string, string>): string[] {
+  return REQUIRED_DISCOVERY_FIELDS.filter(({ key }) => !fields[key]?.trim()).map((f) => f.label);
 }

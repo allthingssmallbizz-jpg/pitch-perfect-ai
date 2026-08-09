@@ -190,11 +190,23 @@ skipping straight to the generator — carrying the originally-picked tool along
 `?intent=webinar_outline` so the overview page can highlight that card and, once "Save
 discovery" succeeds, redirect straight into it (`DiscoveryForm`'s hidden `redirectTo` field,
 consumed by `updateProjectDiscovery`). The generate page itself also guards against being
-opened directly on a project that still has no real discovery
-(`projectNeedsDiscovery` in `src/lib/projects.ts`, checking the load-bearing fields —
-business name, product, audience), redirecting back to the overview instead of letting someone
-hit "Generate" against an empty brief and get back "I don't have enough information about your
-business" from Claude with no indication why.
+opened directly on a project that still has no complete discovery
+(`projectNeedsDiscovery` in `src/lib/projects.ts`), redirecting back to the overview instead of
+letting someone hit "Generate" against a gappy brief and get back something half-formed (or "I
+don't have enough information about your business") from Claude with no indication why.
+
+**"Complete" means every field DiscoveryForm.tsx marks with a required asterisk is actually
+filled in** — `REQUIRED_DISCOVERY_FIELDS` in `src/lib/projects.ts` (14 of the 22 discovery
+fields; things like "existing marketing assets" or "bonuses" stay genuinely optional) is the
+single source of truth both `projectNeedsDiscovery` and `updateProjectDiscovery` check against,
+so the generate-page gate and the save action can't drift out of sync with each other or with
+what the form visually asks for. Enforced twice: the `<input>`/`<textarea>`/`<select>` elements
+for those fields carry the browser's native `required` attribute (immediate inline feedback,
+scrolls to the first empty one), and `updateProjectDiscovery` independently re-checks the same
+list server-side and rejects the save with a specific "Fill in before saving: X, Y, Z" message
+if anything required is still blank — since client-side `required` alone can be bypassed and a
+partially-filled brief saved anyway, which is exactly the "generating with half the options
+missing" failure mode this closes.
 
 ### AI Assist on stuck fields
 

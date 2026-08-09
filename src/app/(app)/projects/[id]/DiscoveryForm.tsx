@@ -84,9 +84,17 @@ function Field({
         )}
       </div>
       {textarea ? (
-        <Textarea id={name} name={name} defaultValue={defaultValue} placeholder={placeholder} rows={2} className="mt-1" />
+        <Textarea
+          id={name}
+          name={name}
+          defaultValue={defaultValue}
+          placeholder={placeholder}
+          rows={2}
+          required={required}
+          className="mt-1"
+        />
       ) : (
-        <Input id={name} name={name} defaultValue={defaultValue} placeholder={placeholder} className="mt-1" />
+        <Input id={name} name={name} defaultValue={defaultValue} placeholder={placeholder} required={required} className="mt-1" />
       )}
     </div>
   );
@@ -199,6 +207,7 @@ export default function DiscoveryForm({
             id="awareness_level"
             name="awareness_level"
             defaultValue={project.awareness_level}
+            required
             className="mt-1 flex h-9 w-full rounded-md border border-input bg-input/30 px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
           >
             <option value="">Select...</option>
