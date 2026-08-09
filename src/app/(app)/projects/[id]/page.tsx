@@ -93,9 +93,9 @@ export default async function ProjectPage({
               </Badge>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
-              Paste a webinar, VSL, sales presentation, or investor pitch script and get a
-              19-point conversion-readiness critique with scores, missing components, and a
-              prioritized fix list.
+              Paste or upload a webinar, VSL, sales presentation, investor pitch, or short-form
+              video (YouTube, Instagram, TikTok) and get a 19-point conversion-readiness
+              critique with scores, missing components, and a prioritized fix list.
             </p>
           </Link>
 

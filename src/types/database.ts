@@ -20,7 +20,15 @@ export type AssetType =
   | "tts_narration"
   | "discovery_assist";
 
-export type PresentationType = "webinar" | "vsl" | "sales_presentation" | "investor_pitch" | "other";
+export type PresentationType =
+  | "webinar"
+  | "vsl"
+  | "sales_presentation"
+  | "investor_pitch"
+  | "youtube_video"
+  | "instagram_reel"
+  | "tiktok_video"
+  | "other";
 
 export type GenerationMode = "coach" | "expert";
 export type GenerationStatus =

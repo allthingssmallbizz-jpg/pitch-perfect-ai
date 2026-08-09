@@ -10,6 +10,9 @@ export const PRESENTATION_TYPE_LABELS: Record<PresentationType, string> = {
   vsl: "Video Sales Letter (VSL)",
   sales_presentation: "Sales presentation / pitch deck",
   investor_pitch: "Investor pitch",
+  youtube_video: "YouTube video",
+  instagram_reel: "Instagram Reel / video",
+  tiktok_video: "TikTok video",
   other: "Other marketing presentation",
 };
 

@@ -13,11 +13,17 @@ import VersionHistory from "@/components/VersionHistory";
 import TtsPlayer from "@/components/TtsPlayer";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 
+// Kept in sync with PRESENTATION_TYPE_LABELS in src/lib/ai/analyzer.ts — duplicated here rather
+// than imported so this client component doesn't pull that module's much larger
+// ANALYZER_SYSTEM_PROMPT string into the browser bundle for the sake of one small label map.
 const PRESENTATION_TYPE_OPTIONS: { value: PresentationType; label: string }[] = [
   { value: "webinar", label: "Webinar" },
   { value: "vsl", label: "Video Sales Letter (VSL)" },
   { value: "sales_presentation", label: "Sales presentation / pitch deck" },
   { value: "investor_pitch", label: "Investor pitch" },
+  { value: "youtube_video", label: "YouTube video" },
+  { value: "instagram_reel", label: "Instagram Reel / video" },
+  { value: "tiktok_video", label: "TikTok video" },
   { value: "other", label: "Other marketing presentation" },
 ];
 
@@ -320,7 +326,7 @@ export default function AnalyzeClient({
 
         <TabsContent value="video" className="space-y-4">
           <div>
-            <Label htmlFor="video">Upload your recorded webinar, VSL, or presentation</Label>
+            <Label htmlFor="video">Upload your recorded webinar, VSL, presentation, or short-form video</Label>
             <p className="mt-1 text-xs text-muted-foreground">
               Full delivery review — voice, pacing, energy, framing, and lighting — on top of the
               same 19-point rubric. Videos up to {VIDEO_MAX_DURATION_MINUTES} minutes and{" "}
