@@ -596,8 +596,15 @@ now ships the rest of the Lovable feature set that was originally deferred:
   `?generationId=...` (the same mechanism the project overview's History list already used);
   "Delete" calls the new `DELETE /api/generations/[id]` (whole-generation delete —
   `generation_versions` cascade-deletes with it). A successful **Generate** also now updates
-  the URL to `?generationId=...` via `router.replace`, so refreshing or navigating back to the
-  page doesn't lose track of which generation you were just looking at.
+  the URL to `?generationId=...` so refreshing or navigating back to the page doesn't lose
+  track of which generation you were just looking at — via a plain `window.history.
+  replaceState()`, not `router.replace()`. That distinction matters here specifically: this
+  page reads `searchParams` server-side, so `router.replace()` forces Next.js to re-fetch and
+  re-render the whole server tree for the route immediately after the freshly-generated content
+  was just set in local state — a real race (most visible on a slow, multi-minute generation
+  like the PPT outline or a continuation-heavy email sequence) that could show the result for a
+  moment and then wipe it if the re-fetch raced the database write or otherwise disturbed local
+  state. A raw History API call updates the address bar with zero re-render risk.
 - **TTS "Read Aloud"** (`src/components/TtsPlayer.tsx`, `POST /api/tts`) — reuses the
   `OPENAI_API_KEY` already configured for video transcription (`tts-1`, same voice IDs:
   alloy/echo/fable/onyx/nova/shimmer). Long text is chunked client-side (~1800 chars) to stay

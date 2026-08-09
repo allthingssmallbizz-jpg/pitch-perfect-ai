@@ -87,7 +87,14 @@ export default function GenerateClient({
         { id: data.generationId, createdAt: new Date().toISOString(), preview: String(data.content).replace(/\s+/g, " ").trim().slice(0, 120) },
         ...prev,
       ]);
-      router.replace(`${pathname}?generationId=${data.generationId}`);
+      // A plain browser History API call, not router.replace() — this page reads searchParams
+      // server-side, so router.replace() would force Next.js to re-fetch and re-render the
+      // whole server tree for the route right after we just set the freshly-generated content
+      // in local state, racing against it (and, worse, potentially racing the database write
+      // that just happened — a stale re-read could reflect the row before it finished saving).
+      // All this needs to do is update the address bar so a refresh doesn't lose track of which
+      // generation is showing; it doesn't need — and must not trigger — any re-render.
+      window.history.replaceState(null, "", `${pathname}?generationId=${data.generationId}`);
     } catch {
       setError("Network error — try again.");
     } finally {
