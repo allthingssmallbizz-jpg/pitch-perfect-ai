@@ -60,6 +60,7 @@ function Field({
   textarea = true,
   placeholder,
   required = false,
+  blockSubmitIfEmpty = false,
   hint,
   onAssist,
 }: {
@@ -68,7 +69,12 @@ function Field({
   defaultValue: string;
   textarea?: boolean;
   placeholder?: string;
+  // Purely the visual asterisk — "generating needs this eventually," not "you can't save
+  // without it." Saving must always work with whatever's filled in so far; only the project
+  // name (the one field a project can't meaningfully exist without) also sets
+  // blockSubmitIfEmpty to stop the browser submitting the form at all while it's blank.
   required?: boolean;
+  blockSubmitIfEmpty?: boolean;
   // Plain-language "why this matters / how to answer it" line shown under the label — the
   // membership skews 45-55+ and often has never filled out a marketing discovery brief before,
   // so a placeholder example alone (which disappears the moment they start typing) isn't
@@ -97,11 +103,18 @@ function Field({
           defaultValue={defaultValue}
           placeholder={placeholder}
           rows={2}
-          required={required}
+          required={blockSubmitIfEmpty}
           className="mt-1"
         />
       ) : (
-        <Input id={name} name={name} defaultValue={defaultValue} placeholder={placeholder} required={required} className="mt-1" />
+        <Input
+          id={name}
+          name={name}
+          defaultValue={defaultValue}
+          placeholder={placeholder}
+          required={blockSubmitIfEmpty}
+          className="mt-1"
+        />
       )}
     </div>
   );
@@ -148,7 +161,7 @@ export default function DiscoveryForm({
       <input type="hidden" name="projectId" value={project.id} />
       {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
 
-      <Field label="Project name" name="name" defaultValue={project.name} textarea={false} required />
+      <Field label="Project name" name="name" defaultValue={project.name} textarea={false} required blockSubmitIfEmpty />
 
       <Section title="Discovery" subtitle="The foundation — who you are and who you serve.">
         <Field
@@ -223,7 +236,6 @@ export default function DiscoveryForm({
             id="awareness_level"
             name="awareness_level"
             defaultValue={project.awareness_level}
-            required
             className="mt-1 flex h-9 w-full rounded-md border border-input bg-input/30 px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
           >
             <option value="">Select...</option>
@@ -403,7 +415,14 @@ export default function DiscoveryForm({
         <Button type="submit" disabled={pending} size="sm">
           {pending ? "Saving..." : "Save discovery"}
         </Button>
-        {state && "success" in state && state.success && <span className="text-sm text-emerald-400">Saved.</span>}
+        {state && "success" in state && state.success && (
+          <span className="text-sm text-emerald-400">
+            Saved.
+            {"missing" in state && state.missing && state.missing.length > 0 && (
+              <span className="text-muted-foreground"> Still need before you can generate: {state.missing.join(", ")}.</span>
+            )}
+          </span>
+        )}
         {state && "error" in state && state.error && <span className="text-sm text-destructive">{state.error}</span>}
       </div>
 

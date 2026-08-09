@@ -128,16 +128,13 @@ export async function updateProjectDiscovery(_prevState: unknown, formData: Form
     return { error: "Project name can't be empty." };
   }
 
-  // The asterisked fields aren't just a visual hint — a generator working from an incomplete
-  // brief comes back with gaps or "I don't have enough information," with no indication a form
-  // was ever supposed to be filled in. The browser's own `required` attributes on these same
-  // fields (DiscoveryForm.tsx) catch this first in the common case, but that's client-side only
-  // and can be bypassed, so this is the actual enforcement.
-  const missing = getMissingDiscoveryFieldLabels(fields);
-  if (missing.length > 0) {
-    return { error: `Fill in before saving: ${missing.join(", ")}.` };
-  }
-
+  // Saving always persists whatever's been filled in, regardless of how much is left blank —
+  // an all-or-nothing save (reject the whole update if anything required is still empty) used
+  // to sit here, but that meant filling in most of a long brief and saving still lost
+  // everything if even one required field was blank, with no way to save partial progress at
+  // all. Completeness is enforced separately, only at the point it actually matters: whether a
+  // generator can run (projectNeedsDiscovery, checked on the generate page) — not whether
+  // progress can be saved.
   const { error } = await supabase
     .from("projects")
     .update(fields)
@@ -150,12 +147,17 @@ export async function updateProjectDiscovery(_prevState: unknown, formData: Form
 
   // Set by DiscoveryForm when the project was created from a specific agent (?intent=... on
   // the overview page) — finishes the "click agent → land in that tool" trip the user actually
-  // asked for, now that there's discovery data for the generator to work with.
+  // asked for. Only actually jumps to the generator once the brief is complete; otherwise it'd
+  // just bounce straight back here via the generate page's own completeness gate, so instead
+  // stay put and tell them what's still missing.
+  const missing = getMissingDiscoveryFieldLabels(fields);
   const redirectTo = String(formData.get("redirectTo") || "");
-  if (redirectTo) redirect(redirectTo);
+  if (redirectTo && missing.length === 0) {
+    redirect(redirectTo);
+  }
 
   revalidatePath(`/projects/${projectId}`);
-  return { success: true };
+  return missing.length > 0 ? { success: true, missing } : { success: true };
 }
 
 export async function deleteProject(formData: FormData) {

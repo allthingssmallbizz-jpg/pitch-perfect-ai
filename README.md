@@ -204,15 +204,22 @@ don't have enough information about your business") from Claude with no indicati
 **"Complete" means every field DiscoveryForm.tsx marks with a required asterisk is actually
 filled in** — `REQUIRED_DISCOVERY_FIELDS` in `src/lib/projects.ts` (14 of the 22 discovery
 fields; things like "existing marketing assets" or "bonuses" stay genuinely optional) is the
-single source of truth both `projectNeedsDiscovery` and `updateProjectDiscovery` check against,
-so the generate-page gate and the save action can't drift out of sync with each other or with
-what the form visually asks for. Enforced twice: the `<input>`/`<textarea>`/`<select>` elements
-for those fields carry the browser's native `required` attribute (immediate inline feedback,
-scrolls to the first empty one), and `updateProjectDiscovery` independently re-checks the same
-list server-side and rejects the save with a specific "Fill in before saving: X, Y, Z" message
-if anything required is still blank — since client-side `required` alone can be bypassed and a
-partially-filled brief saved anyway, which is exactly the "generating with half the options
-missing" failure mode this closes.
+single source of truth `projectNeedsDiscovery` (the generate-page gate) checks against.
+
+**Saving, though, always works no matter how incomplete the brief still is.** An earlier
+version made `updateProjectDiscovery` reject the entire save if *any* required field was still
+blank — including the browser's own `required` attribute blocking form submission client-side
+for the same fields — which meant filling in most of a long brief and saving lost everything,
+including the fields that *were* filled in, the moment even one required field was still empty.
+There's no such thing as "saving partial progress" was the actual bug users hit. Now: the
+`<input>`/`<textarea>`/`<select>` elements for required fields keep the visual asterisk but
+carry no browser `required` attribute (only the project's `name` field does — a project can't
+meaningfully exist without one), and `updateProjectDiscovery` always persists whatever was
+submitted. It still checks `REQUIRED_DISCOVERY_FIELDS` against what was saved — not to block
+the save, but to report back "Saved. Still need before you can generate: X, Y, Z" when it's
+incomplete, and to only follow the `redirectTo` intent (jumping straight into the generator)
+once nothing required is missing; otherwise it stays put with that message rather than bouncing
+straight to the generate page just to have `projectNeedsDiscovery` immediately bounce it back.
 
 **Every agent click that starts new work lands on the discovery review, full stop — even when
 that project's brief is already complete.** This is deliberate, not just the "brand-new
