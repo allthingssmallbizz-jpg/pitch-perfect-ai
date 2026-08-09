@@ -9,6 +9,7 @@ import DailyCapForm from "./DailyCapForm";
 import MemberCreditsForm from "./MemberCreditsForm";
 import MemberRoleForm from "./MemberRoleForm";
 import MemberTierForm from "./MemberTierForm";
+import MemberInviteForm from "./MemberInviteForm";
 
 export default async function AdminPage({
   searchParams,
@@ -171,6 +172,22 @@ export default async function AdminPage({
           until UTC midnight.
         </p>
         <DailyCapForm currentCap={Number(settings?.daily_spend_cap_usd ?? 25)} />
+      </div>
+
+      <div className="card-elevated mb-8 rounded-2xl p-5">
+        <h2 className="font-display font-semibold">Invite a member</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Creates their account directly (no Stripe checkout) and emails them a link to set a
+          password — useful for comping a founding member, adding a teammate, or a beta tester.
+          You can still change any of this later from the table below.
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Supabase&apos;s free tier rate-limits how many auth emails it can send per hour — if
+          an invite doesn&apos;t arrive, that&apos;s the likely cause.
+        </p>
+        <div className="mt-3">
+          <MemberInviteForm />
+        </div>
       </div>
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">

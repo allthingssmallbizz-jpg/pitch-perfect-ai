@@ -183,7 +183,7 @@ membership price + the daily cap can absorb.
 
 ## Owner / Admin Controls
 
-Two pieces, both gated on `profiles.role = 'admin'`:
+Three pieces, all gated on `profiles.role = 'admin'`:
 
 - **Unlimited test account** — an admin's own credit balance is never checked or decremented
   (`checkGuardrails`/`decrementCredits` in `src/lib/credits.ts` both short-circuit on
@@ -212,6 +212,20 @@ Two pieces, both gated on `profiles.role = 'admin'`:
     admin-**select** policy, not an admin-update one, so an RLS-scoped update silently affects
     zero rows for any member other than yourself. `requireAdmin()` in `admin.ts` still uses the
     session-scoped client to confirm the caller is actually an admin first.
+- **Invite a member directly** (`adminInviteMember` in `src/lib/actions/admin.ts`, form at the
+  top of `/admin`) — for adding someone who didn't come through Stripe checkout: a comped
+  founding member, a teammate, a beta tester. You set their email, name, starting tier, role,
+  credits, and access length (months) up front; submitting calls
+  `supabase.auth.admin.inviteUserByEmail()`, which creates their `auth.users` row (firing
+  `handle_new_user`, so a `profiles` row exists immediately) and emails them a link. That link
+  lands on `/auth/set-password` (`src/app/auth/set-password/page.tsx`), a client page that
+  reads the session tokens out of the URL fragment — invite links can't use the `?code=` PKCE
+  flow the rest of the app's auth uses, since the browser that sends the invite isn't the one
+  that opens it — establishes the session, and lets them choose a password before landing on
+  `/dashboard`. The tier/role/credits/access-window values you chose are written to their
+  `profiles` row right after the invite is sent, so they're already correct the moment the
+  account exists. Supabase's free tier rate-limits outbound auth emails (a few per hour); the
+  form surfaces the raw error if an invite fails to send.
 
 The very first admin still has to be granted via SQL (step 4 of Supabase setup, above) — the
 panel needs at least one existing admin to be reachable at all. After that, promoting/demoting

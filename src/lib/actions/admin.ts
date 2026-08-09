@@ -89,6 +89,55 @@ export async function adminAddCredits(_prevState: unknown, formData: FormData) {
   return { success: true };
 }
 
+export async function adminInviteMember(_prevState: unknown, formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const fullName = String(formData.get("full_name") || "").trim();
+  const tier = String(formData.get("tier") || "Member").trim() || "Member";
+  const role = formData.get("role") === "admin" ? "admin" : "member";
+  const credits = Number(formData.get("credits"));
+  const accessMonths = Number(formData.get("access_months"));
+
+  if (!email || !email.includes("@")) return { error: "Enter a valid email address." };
+  if (!Number.isFinite(credits) || credits < 0) return { error: "Enter a valid, non-negative credit amount." };
+  if (!Number.isFinite(accessMonths) || accessMonths <= 0) return { error: "Enter a valid access length in months." };
+
+  // inviteUserByEmail creates the auth.users row (which fires handle_new_user, giving them a
+  // default profiles row) and emails them a link to /auth/set-password to choose a password —
+  // they never have one set by us. PKCE isn't supported for invites (the browser that sends
+  // the invite isn't the one that opens it), so that page reads tokens from the URL fragment.
+  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/set-password`;
+  const { data, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+    data: fullName ? { full_name: fullName } : undefined,
+    redirectTo,
+  });
+  if (inviteError || !data.user) {
+    return { error: inviteError?.message || "Could not send the invite." };
+  }
+
+  const accessExpiresAt = new Date();
+  accessExpiresAt.setMonth(accessExpiresAt.getMonth() + Math.floor(accessMonths));
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({
+      full_name: fullName || null,
+      role,
+      tier,
+      credits_balance: Math.floor(credits),
+      credits_monthly_allotment: Math.floor(credits),
+      access_started_at: new Date().toISOString(),
+      access_expires_at: accessExpiresAt.toISOString(),
+    })
+    .eq("id", data.user.id);
+  if (profileError) {
+    return { error: "Invite sent, but couldn't set their starting tier/credits — edit them in the table below." };
+  }
+
+  revalidatePath("/admin");
+  return { success: true, message: `Invite sent to ${email}.` };
+}
+
 export async function adminSetTier(_prevState: unknown, formData: FormData) {
   const { supabase } = await requireAdmin();
   const userId = String(formData.get("userId") || "");
