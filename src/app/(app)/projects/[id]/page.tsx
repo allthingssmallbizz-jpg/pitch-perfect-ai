@@ -11,10 +11,13 @@ import DiscoveryForm from "./DiscoveryForm";
 
 export default async function ProjectPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ intent?: string }>;
 }) {
   const { id } = await params;
+  const { intent } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -30,6 +33,18 @@ export default async function ProjectPage({
     .single();
 
   if (!project) notFound();
+
+  // Set when this project was just created from a specific agent (sidebar/dashboard "Create"
+  // links land on ?intent=webinar_outline instead of skipping straight to the generator — see
+  // the comment on projectDestination in src/lib/actions/projects.ts). Used to highlight which
+  // tool the user actually wanted and to send DiscoveryForm's "Save" straight there.
+  const isValidIntent = intent === "presentation_analysis" || (intent && (ASSET_TYPES as string[]).includes(intent));
+  const intentAgent = isValidIntent ? AGENTS[intent as keyof typeof AGENTS] : null;
+  const intentHref = !isValidIntent
+    ? null
+    : intent === "presentation_analysis"
+      ? `/projects/${id}/analyze`
+      : `/projects/${id}/generate/${intent}`;
 
   const { data: generations } = await supabase
     .from("generations")
@@ -50,7 +65,13 @@ export default async function ProjectPage({
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Discovery
           </h2>
-          <DiscoveryForm project={project} />
+          {intentAgent && (
+            <p className="mb-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-muted-foreground">
+              Fill in the brief below, then Save takes you straight to {intentAgent.emoji}{" "}
+              <span className="font-medium text-foreground">{intentAgent.name}</span>.
+            </p>
+          )}
+          <DiscoveryForm project={project} redirectTo={intentHref} />
         </div>
 
         <div className="lg:col-span-3">
@@ -65,7 +86,9 @@ export default async function ProjectPage({
                 <Link
                   key={type}
                   href={`/projects/${project.id}/generate/${type}`}
-                  className="card-elevated rounded-xl p-4 transition-colors hover:border-primary/40"
+                  className={`card-elevated rounded-xl p-4 transition-colors hover:border-primary/40 ${
+                    intent === type ? "border-primary/60 ring-1 ring-primary/40" : ""
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <AgentBadge agent={agent} size="sm" />
@@ -84,7 +107,9 @@ export default async function ProjectPage({
           </h2>
           <Link
             href={`/projects/${project.id}/analyze`}
-            className="card-elevated block rounded-xl p-4 transition-colors hover:border-primary/40"
+            className={`card-elevated block rounded-xl p-4 transition-colors hover:border-primary/40 ${
+              intent === "presentation_analysis" ? "border-primary/60 ring-1 ring-primary/40" : ""
+            }`}
           >
             <div className="flex items-start justify-between gap-2">
               <AgentBadge agent={AGENTS.presentation_analysis} size="sm" />

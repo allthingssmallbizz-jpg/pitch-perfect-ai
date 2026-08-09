@@ -104,7 +104,13 @@ function Section({ title, subtitle, children }: { title: string; subtitle: strin
   );
 }
 
-export default function DiscoveryForm({ project }: { project: Project }) {
+export default function DiscoveryForm({
+  project,
+  redirectTo = null,
+}: {
+  project: Project;
+  redirectTo?: string | null;
+}) {
   const [state, formAction, pending] = useActionState(updateProjectDiscovery, undefined);
   const [assistTarget, setAssistTarget] = useState<AssistTarget | null>(null);
 
@@ -125,6 +131,7 @@ export default function DiscoveryForm({ project }: { project: Project }) {
   return (
     <form action={formAction} className="card-elevated space-y-6 rounded-2xl p-6">
       <input type="hidden" name="projectId" value={project.id} />
+      {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
 
       <Field label="Project name" name="name" defaultValue={project.name} textarea={false} required />
 

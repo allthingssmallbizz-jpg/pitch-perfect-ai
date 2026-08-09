@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
+import { projectNeedsDiscovery } from "@/lib/projects";
 import AgentBadge from "@/components/AgentBadge";
 import GenerateClient from "./GenerateClient";
 
@@ -32,6 +33,12 @@ export default async function GenerateAssetPage({
     .eq("user_id", user.id)
     .single();
   if (!project) notFound();
+
+  // Only guard a fresh visit — if they're opening a specific past generation (?generationId=),
+  // there's already real content to show regardless of the project's current discovery state.
+  if (!generationId && projectNeedsDiscovery(project)) {
+    redirect(`/projects/${id}?intent=${assetType}`);
+  }
 
   let initialContent: string | null = null;
   let initialGenerationId: string | null = null;

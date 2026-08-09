@@ -165,6 +165,22 @@ same way, into every generator's and Agent Annie's system prompt — this is the
 (`who_its_for`, `the_problem`, etc.) — existing project data was backfilled into the closest new
 field, and the old columns are simply unused by the app now.
 
+### Discovery-first routing
+
+Clicking an agent (sidebar "Create" links, the dashboard's deliverable grid, or the Analyzer
+link — all `/projects/new?type=...`) creates a brand-new project, which by definition has no
+discovery data yet. `createProject` (`src/lib/actions/projects.ts`) always lands a fresh
+project on its overview page (`/projects/[id]`, where `DiscoveryForm` lives) rather than
+skipping straight to the generator — carrying the originally-picked tool along as
+`?intent=webinar_outline` so the overview page can highlight that card and, once "Save
+discovery" succeeds, redirect straight into it (`DiscoveryForm`'s hidden `redirectTo` field,
+consumed by `updateProjectDiscovery`). The generate page itself also guards against being
+opened directly on a project that still has no real discovery
+(`projectNeedsDiscovery` in `src/lib/projects.ts`, checking the load-bearing fields —
+business name, product, audience), redirecting back to the overview instead of letting someone
+hit "Generate" against an empty brief and get back "I don't have enough information about your
+business" from Claude with no indication why.
+
 ### AI Assist on stuck fields
 
 Every substantive discovery field has a small **AI Assist** link next to its label (ported from

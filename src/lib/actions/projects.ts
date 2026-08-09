@@ -7,13 +7,16 @@ import type { AwarenessLevel } from "@/types/database";
 import { ASSET_TYPES } from "@/lib/ai/generators";
 import { getTemplate } from "@/lib/templates";
 
-// Where to land after creating a project, mirroring the sidebar's "Create" links
-// (`/projects/new?type=webinar_outline`) and the Analyzer link (`?type=presentation_analysis`)
-// — skip the empty project overview and go straight to the tool the user picked.
+// Where to land after creating a project. A brand-new project has no discovery data yet, so
+// generating anything from it immediately would just come back empty ("I don't have enough
+// information about your business to build this") — always land on the project overview,
+// where the Discovery form lives, first. `type` (from the sidebar's "Create" links,
+// `/projects/new?type=webinar_outline`, or the Analyzer link, `?type=presentation_analysis`)
+// is carried along as `?intent=` so the overview page can highlight which tool the user
+// actually wanted and send them straight there the moment discovery is saved.
 function projectDestination(projectId: string, type: string | null): string {
-  if (type === "presentation_analysis") return `/projects/${projectId}/analyze`;
-  if (type && (ASSET_TYPES as string[]).includes(type)) return `/projects/${projectId}/generate/${type}`;
-  return `/projects/${projectId}`;
+  const isValidIntent = type === "presentation_analysis" || (type && (ASSET_TYPES as string[]).includes(type));
+  return isValidIntent ? `/projects/${projectId}?intent=${type}` : `/projects/${projectId}`;
 }
 
 export async function createProject(_prevState: unknown, formData: FormData) {
@@ -132,6 +135,12 @@ export async function updateProjectDiscovery(_prevState: unknown, formData: Form
   if (error) {
     return { error: "Could not save changes." };
   }
+
+  // Set by DiscoveryForm when the project was created from a specific agent (?intent=... on
+  // the overview page) — finishes the "click agent → land in that tool" trip the user actually
+  // asked for, now that there's discovery data for the generator to work with.
+  const redirectTo = String(formData.get("redirectTo") || "");
+  if (redirectTo) redirect(redirectTo);
 
   revalidatePath(`/projects/${projectId}`);
   return { success: true };
