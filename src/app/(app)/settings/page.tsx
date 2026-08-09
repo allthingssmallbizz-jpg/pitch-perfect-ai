@@ -6,6 +6,7 @@ import { signOut } from "@/lib/actions/auth";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import DisplayNameForm from "./DisplayNameForm";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -23,10 +24,7 @@ export default async function SettingsPage() {
       <p className="mt-1 text-sm text-muted-foreground">Manage your account.</p>
 
       <div className="card-elevated mt-8 space-y-5 rounded-2xl p-8">
-        <div>
-          <Label>Display name</Label>
-          <Input value={displayName} readOnly className="mt-1 bg-card/40" />
-        </div>
+        <DisplayNameForm initialName={displayName} />
         <div>
           <Label>Email</Label>
           <Input value={user.email ?? ""} readOnly className="mt-1 bg-card/40" />

@@ -1,30 +1,35 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { CREDIT_TOPUP_PACKS } from "@/lib/stripe";
 import { Button } from "@/components/ui/button";
 
 export default function BillingActions({ hasMembership }: { hasMembership: boolean }) {
   const [loading, setLoading] = useState<string | null>(null);
 
-  async function startMembershipCheckout() {
-    setLoading("membership");
-    const res = await fetch("/api/stripe/checkout", { method: "POST" });
-    const data = await res.json();
-    if (data.url) window.location.assign(data.url);
-    setLoading(null);
-  }
-
-  async function startTopupCheckout(packId: string) {
-    setLoading(packId);
-    const res = await fetch("/api/stripe/topup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ packId }),
-    });
-    const data = await res.json();
-    if (data.url) window.location.assign(data.url);
-    setLoading(null);
+  // Both checkout routes return { url } on success or { error } on failure — this used to only
+  // check `data.url` and did nothing at all on failure, so a misconfigured/missing Stripe
+  // setup looked like the buttons just didn't work, with no indication why.
+  async function startCheckout(key: string, url: string, body?: unknown) {
+    setLoading(key);
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.url) {
+        toast.error(data?.error || "Could not start checkout. Try again.");
+        setLoading(null);
+        return;
+      }
+      window.location.assign(data.url);
+    } catch {
+      toast.error("Network error — try again.");
+      setLoading(null);
+    }
   }
 
   return (
@@ -34,7 +39,11 @@ export default function BillingActions({ hasMembership }: { hasMembership: boole
         <p className="mt-1 text-sm text-muted-foreground">
           Full access to every generator for 12 months, with your monthly credit allotment.
         </p>
-        <Button onClick={startMembershipCheckout} disabled={loading === "membership"} className="mt-4">
+        <Button
+          onClick={() => startCheckout("membership", "/api/stripe/checkout")}
+          disabled={loading === "membership"}
+          className="mt-4"
+        >
           {loading === "membership" ? "Redirecting..." : hasMembership ? "Renew / manage membership" : "Get 12-month access"}
         </Button>
       </div>
@@ -48,7 +57,7 @@ export default function BillingActions({ hasMembership }: { hasMembership: boole
           {CREDIT_TOPUP_PACKS.map((pack) => (
             <button
               key={pack.id}
-              onClick={() => startTopupCheckout(pack.id)}
+              onClick={() => startCheckout(pack.id, "/api/stripe/topup", { packId: pack.id })}
               disabled={loading === pack.id}
               className="rounded-xl border border-border bg-card/40 p-4 text-left transition-colors hover:border-primary/40 disabled:opacity-60"
             >
