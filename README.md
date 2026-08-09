@@ -24,7 +24,8 @@ expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized
    `0002_presentation_analysis.sql`, then `0003_redesign_features.sql`, then
    `0004_video_analysis.sql`, then `0005_full_discovery.sql`, then
    `0006_generation_versions.sql`, then `0007_tts.sql`, then
-   `0008_headline_winners.sql`, then `0009_discovery_assist.sql`. Together they create:
+   `0008_headline_winners.sql`, then `0009_discovery_assist.sql`, then
+   `0010_member_directory.sql`. Together they create:
    - `profiles` — one row per user, with the 12-month access window and credit meter
    - `projects` — one per offer, with the full Discovery → Customer Awareness → Positioning →
      Value Proposition → Offer intake (see "Project discovery" below)
@@ -43,6 +44,12 @@ expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized
    - `generation_versions` — point-in-time snapshots of a generation's edited content (see
      "Editing, version history, and playback" below); `tts_narration` added as an `asset_type`
      for Read Aloud's cost telemetry
+   - `profiles.tier` — a free-text label an admin assigns per member (e.g. "Member", "Pro",
+     "Founding Member") for the admin panel's member directory; purely descriptive, not tied to
+     a Stripe product/price
+   - `payments` — every Stripe payment (initial membership checkout, membership renewals,
+     credit top-ups), written by the webhook alongside the existing `credit_topups` inserts —
+     the source of truth for per-member lifetime revenue in the admin panel
    - RLS policies, an `on_auth_user_created` trigger that provisions a `profiles` row on
      signup, and `updated_at` triggers.
 3. Copy the Project URL, anon key, and service role key into `.env.local` (see
@@ -187,14 +194,24 @@ Two pieces, both gated on `profiles.role = 'admin'`:
   spend and runaway-loop risk regardless of whose account triggered it. An admin's real
   `cost_usd` is still logged on every generation and still counts toward the daily cap.
 - **Admin panel member management** (`/admin`, `src/lib/actions/admin.ts`) — search any member
-  by email, then per row: **set** their credit balance to an exact number, **add** (or
-  subtract) a delta, and change their **role** between member/admin. Each row also shows
-  this-month usage (generation count, tokens, cost) reusing the same per-user telemetry the
-  cost-by-member table already computed. This is how you refill your own test account, top up
-  a member who needs more credits, or comp a founding member with an admin role. Guardrail:
+  by name or email, then per row: **set** their credit balance to an exact number, **add** (or
+  subtract) a delta, change their **role** between member/admin, and assign a free-text
+  **tier** label (e.g. "Member", "Pro", "Founding Member" — a preset `<datalist>` suggests
+  common ones, but it's just a string on `profiles.tier`, not a real Stripe pricing tier).
+  Each row also shows **membership status** (active/expired + renewal date, derived from
+  `access_expires_at`/`stripe_subscription_id`), **lifetime revenue** (sum of the `payments`
+  table, with an expandable top-up history), and this-month usage (generation count, tokens,
+  cost) reusing the same per-user telemetry the cost-by-member table already computed. This is
+  how you refill your own test account, top up a member who needs more credits, comp a founding
+  member with an admin role, or see what a member has actually paid at a glance. Guardrail:
   you can't demote your own account away from `admin` (redirects with an error instead) — have
   a second admin do it if you genuinely need to, so a solo founder can't accidentally lock
   themselves out of this page.
+  - All of these row-level mutations go through the service-role admin client
+    (`createAdminClient()`), not the session-scoped one — `profiles`' RLS only has an
+    admin-**select** policy, not an admin-update one, so an RLS-scoped update silently affects
+    zero rows for any member other than yourself. `requireAdmin()` in `admin.ts` still uses the
+    session-scoped client to confirm the caller is actually an admin first.
 
 The very first admin still has to be granted via SQL (step 4 of Supabase setup, above) — the
 panel needs at least one existing admin to be reachable at all. After that, promoting/demoting

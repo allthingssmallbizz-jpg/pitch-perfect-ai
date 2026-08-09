@@ -3,7 +3,13 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
+// `profiles` RLS only allows a row's own owner to UPDATE it (see profiles_update_own in
+// 0001_init.sql — there's no admin-update policy, only admin-select). So every mutation an
+// admin makes to *another* member's row has to go through the service-role admin client, same
+// as the rest of the app's RLS pattern; `supabase` (session-scoped) is only for confirming the
+// caller's own identity/role, which the admin-select policy does cover.
 async function requireAdmin() {
   const supabase = await createClient();
   const {
@@ -14,7 +20,7 @@ async function requireAdmin() {
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
   if (profile?.role !== "admin") redirect("/dashboard");
 
-  return { supabase, adminUserId: user.id };
+  return { supabase: createAdminClient(), adminUserId: user.id };
 }
 
 export async function setKillSwitch(formData: FormData) {
@@ -78,6 +84,21 @@ export async function adminAddCredits(_prevState: unknown, formData: FormData) {
     .update({ credits_balance: Math.max(0, Math.floor(profile.credits_balance + delta)) })
     .eq("id", userId);
   if (error) return { error: "Could not update credits." };
+
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function adminSetTier(_prevState: unknown, formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const userId = String(formData.get("userId") || "");
+  const tier = String(formData.get("tier") || "").trim();
+
+  if (!userId || !tier) return { error: "Enter a tier label." };
+  if (tier.length > 40) return { error: "Keep it under 40 characters." };
+
+  const { error } = await supabase.from("profiles").update({ tier }).eq("id", userId);
+  if (error) return { error: "Could not update tier." };
 
   revalidatePath("/admin");
   return { success: true };

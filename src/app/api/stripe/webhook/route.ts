@@ -50,6 +50,24 @@ export async function POST(req: NextRequest) {
             access_expires_at: addYears(base, 1).toISOString(),
           })
           .eq("id", userId);
+
+        // Payments ledger for the admin member directory's revenue figures — see the comment
+        // on the payments table (0010_member_directory.sql). Idempotent on checkout session id
+        // the same way the topup path below already is, since Stripe can redeliver webhooks.
+        const { data: existingPayment } = await admin
+          .from("payments")
+          .select("id")
+          .eq("stripe_checkout_session_id", session.id)
+          .maybeSingle();
+        if (!existingPayment) {
+          await admin.from("payments").insert({
+            user_id: userId,
+            type: "membership",
+            amount_usd: (session.amount_total ?? 0) / 100,
+            stripe_checkout_session_id: session.id,
+            stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
+          });
+        }
       }
 
       if (session.metadata?.type === "topup") {
@@ -74,6 +92,16 @@ export async function POST(req: NextRequest) {
               user_id: userId,
               credits,
               amount_usd: (session.amount_total ?? 0) / 100,
+              stripe_checkout_session_id: session.id,
+              stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
+            });
+            // Mirrored into payments (see 0010_member_directory.sql) so the admin member
+            // directory's revenue figures cover top-ups too, not just membership checkouts.
+            await admin.from("payments").insert({
+              user_id: userId,
+              type: "topup",
+              amount_usd: (session.amount_total ?? 0) / 100,
+              credits,
               stripe_checkout_session_id: session.id,
               stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
             });
@@ -104,6 +132,22 @@ export async function POST(req: NextRequest) {
           .from("profiles")
           .update({ access_expires_at: addYears(base, 1).toISOString() })
           .eq("id", profile.id);
+
+        // Renewals never had a dollar figure recorded anywhere before payments existed —
+        // record this one, idempotent via invoice id since Stripe can redeliver webhooks.
+        const { data: existingPayment } = await admin
+          .from("payments")
+          .select("id")
+          .eq("stripe_invoice_id", invoice.id)
+          .maybeSingle();
+        if (!existingPayment) {
+          await admin.from("payments").insert({
+            user_id: profile.id,
+            type: "membership",
+            amount_usd: (invoice.amount_paid ?? 0) / 100,
+            stripe_invoice_id: invoice.id ?? null,
+          });
+        }
       }
       break;
     }

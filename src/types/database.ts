@@ -46,6 +46,9 @@ export type Profile = {
   email: string;
   full_name: string | null;
   role: UserRole;
+  // Free-text label an admin assigns (e.g. "Member", "Pro", "Founding Member") — purely
+  // descriptive, not tied to a Stripe product/price. Defaults to "Member".
+  tier: string;
   access_started_at: string;
   access_expires_at: string;
   credits_balance: number;
@@ -55,6 +58,20 @@ export type Profile = {
   stripe_subscription_id: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type PaymentType = "membership" | "topup";
+
+export type Payment = {
+  id: string;
+  user_id: string;
+  type: PaymentType;
+  amount_usd: number;
+  credits: number | null;
+  stripe_checkout_session_id: string | null;
+  stripe_invoice_id: string | null;
+  stripe_payment_intent_id: string | null;
+  created_at: string;
 };
 
 export type AwarenessLevel =
@@ -196,6 +213,7 @@ export type Database = {
       generation_versions: Table<GenerationVersion>;
       admin_settings: Table<AdminSettings>;
       credit_topups: Table<CreditTopup>;
+      payments: Table<Payment>;
       brand_voices: Table<BrandVoice>;
     };
     Views: Record<string, never>;

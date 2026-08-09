@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import DailyCapForm from "./DailyCapForm";
 import MemberCreditsForm from "./MemberCreditsForm";
 import MemberRoleForm from "./MemberRoleForm";
+import MemberTierForm from "./MemberTierForm";
 
 export default async function AdminPage({
   searchParams,
@@ -42,12 +43,16 @@ export default async function AdminPage({
     );
   }
 
-  const [{ data: settings }, { data: profiles }] = await Promise.all([
+  const [{ data: settings }, { data: profiles }, { data: payments }] = await Promise.all([
     supabase.from("admin_settings").select("*").eq("id", true).single(),
     supabase
       .from("profiles")
-      .select("id, email, role, credits_balance, credits_monthly_allotment")
+      .select("id, email, full_name, role, tier, credits_balance, credits_monthly_allotment, access_expires_at, stripe_subscription_id")
       .order("email"),
+    supabase
+      .from("payments")
+      .select("user_id, type, amount_usd, credits, created_at")
+      .order("created_at", { ascending: false }),
   ]);
 
   const startOfDay = new Date();
@@ -76,9 +81,21 @@ export default async function AdminPage({
     usageByUser.set(g.user_id, entry);
   }
 
+  type PaymentEntry = { type: string; amount_usd: number; credits: number | null; created_at: string };
+  const paymentsByUser = new Map<string, PaymentEntry[]>();
+  for (const p of payments ?? []) {
+    const entry = paymentsByUser.get(p.user_id) ?? [];
+    entry.push(p);
+    paymentsByUser.set(p.user_id, entry);
+  }
+
   const allMembers = profiles ?? [];
   const query = (q ?? "").trim().toLowerCase();
-  const members = query ? allMembers.filter((p) => p.email.toLowerCase().includes(query)) : allMembers;
+  const members = query
+    ? allMembers.filter(
+        (p) => p.email.toLowerCase().includes(query) || (p.full_name ?? "").toLowerCase().includes(query)
+      )
+    : allMembers;
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -159,7 +176,7 @@ export default async function AdminPage({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Members</h2>
         <form method="GET" className="flex items-center gap-2">
-          <Input name="q" defaultValue={q ?? ""} placeholder="Search by email..." className="h-8 w-56 text-sm" />
+          <Input name="q" defaultValue={q ?? ""} placeholder="Search by name or email..." className="h-8 w-56 text-sm" />
           <Button type="submit" size="sm" variant="outline">
             Search
           </Button>
@@ -180,17 +197,25 @@ export default async function AdminPage({
               <tr>
                 <th className="px-4 py-2">Member</th>
                 <th className="px-4 py-2">Role</th>
+                <th className="px-4 py-2">Tier</th>
+                <th className="px-4 py-2">Membership</th>
                 <th className="px-4 py-2">Credits</th>
+                <th className="px-4 py-2">Revenue</th>
                 <th className="px-4 py-2">This month</th>
               </tr>
             </thead>
             <tbody>
               {members.map((m) => {
                 const usage = usageByUser.get(m.id);
+                const memberPayments = paymentsByUser.get(m.id) ?? [];
+                const totalRevenue = memberPayments.reduce((sum, p) => sum + Number(p.amount_usd ?? 0), 0);
+                const topups = memberPayments.filter((p) => p.type === "topup");
+                const isActiveMember = new Date(m.access_expires_at) > new Date();
                 return (
                   <tr key={m.id} className="border-t border-border align-top">
                     <td className="px-4 py-3">
-                      <div className="max-w-[220px] truncate font-medium">{m.email}</div>
+                      <div className="max-w-[220px] truncate font-medium">{m.full_name || "—"}</div>
+                      <div className="max-w-[220px] truncate text-xs text-muted-foreground">{m.email}</div>
                       {m.role === "admin" && (
                         <Badge variant="secondary" className="mt-1">
                           Unlimited
@@ -201,11 +226,43 @@ export default async function AdminPage({
                       <MemberRoleForm userId={m.id} currentRole={m.role} />
                     </td>
                     <td className="px-4 py-3">
+                      <MemberTierForm userId={m.id} currentTier={m.tier} />
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      <Badge variant={isActiveMember ? "default" : "secondary"}>
+                        {isActiveMember ? "Active" : m.stripe_subscription_id ? "Expired" : "No membership"}
+                      </Badge>
+                      {m.stripe_subscription_id && (
+                        <div className="mt-1 text-muted-foreground">
+                          {isActiveMember ? "renews" : "expired"}{" "}
+                          {new Date(m.access_expires_at).toLocaleDateString()}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
                       <div className="mb-1.5 text-xs text-muted-foreground">
                         {m.credits_balance} / {m.credits_monthly_allotment} bal.
                         {m.role === "admin" && " (not enforced)"}
                       </div>
                       <MemberCreditsForm userId={m.id} currentBalance={m.credits_balance} />
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      <div className="font-medium text-foreground">${totalRevenue.toFixed(2)}</div>
+                      {topups.length > 0 && (
+                        <details className="mt-1">
+                          <summary className="cursor-pointer select-none">
+                            {topups.length} top-up{topups.length === 1 ? "" : "s"}
+                          </summary>
+                          <ul className="mt-1 space-y-0.5">
+                            {topups.map((t, i) => (
+                              <li key={i}>
+                                {new Date(t.created_at).toLocaleDateString()} · ${Number(t.amount_usd).toFixed(2)}
+                                {t.credits ? ` (${t.credits} cr)` : ""}
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
                       {usage ? (
