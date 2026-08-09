@@ -255,6 +255,13 @@ one HTTP call:
 6. Credits are only decremented on success, same as every other guardrailed call; a failure
    at any stage marks the row `failed` with an error and charges nothing.
 
+**Supabase also enforces its own project-wide upload size limit**, separate from this bucket's
+500MB `file_size_limit`. A file under 500MB can still get rejected by Supabase itself with "The
+object exceeded the maximum allowed size" if that global limit (Supabase dashboard → Settings →
+Storage → "Upload file size limit") is set lower — raise it there; it's not something this app
+controls. `AnalyzeClient.tsx` detects that specific error and surfaces an actionable message
+instead of Supabase's raw wording.
+
 Claude's API has no native video input, so "video analysis" here means transcript + sampled
 still frames, not continuous video/audio — the video prompt says so explicitly and asks the
 model not to claim it saw things (like specific gestures) that stills can't show. See

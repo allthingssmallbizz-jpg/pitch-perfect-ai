@@ -153,7 +153,16 @@ export default function AnalyzeClient({
         .from("presentation-videos")
         .upload(storagePath, videoFile, { contentType: videoFile.type || "video/mp4" });
       if (uploadError) {
-        setError(`Upload failed: ${uploadError.message}`);
+        // Supabase enforces a project-wide global upload limit separate from this bucket's own
+        // 500MB file_size_limit (0004_video_analysis.sql) — a file can pass our own check above
+        // and still get rejected here if that global limit is set lower. Give an actionable
+        // message instead of surfacing Supabase's raw wording as-is.
+        const isSizeLimitError = /exceeded the maximum allowed size/i.test(uploadError.message);
+        setError(
+          isSizeLimitError
+            ? "This video is under our 500MB limit, but your Supabase project's own global upload limit is set lower than that. Raise it in your Supabase dashboard under Settings → Storage → \"Upload file size limit,\" then try again."
+            : `Upload failed: ${uploadError.message}`
+        );
         setLoading(false);
         return;
       }
