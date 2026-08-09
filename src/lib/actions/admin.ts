@@ -49,6 +49,20 @@ export async function setDailyCap(_prevState: unknown, formData: FormData) {
   return { success: true };
 }
 
+export async function setDiscoveryVideoUrl(_prevState: unknown, formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const url = String(formData.get("discovery_video_url") || "").trim();
+
+  if (url && !/^https:\/\/(www\.)?(youtube\.com|youtu\.be|player\.vimeo\.com|vimeo\.com)\//.test(url)) {
+    return { error: "Enter a YouTube or Vimeo URL (or leave it blank to hide the video)." };
+  }
+
+  await supabase.from("admin_settings").update({ discovery_video_url: url || null }).eq("id", true);
+  revalidatePath("/admin");
+  revalidatePath("/projects", "layout");
+  return { success: true };
+}
+
 // --- Member management (owner/admin panel: search, credits, roles) ---
 
 export async function adminSetCredits(_prevState: unknown, formData: FormData) {

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import DailyCapForm from "./DailyCapForm";
+import DiscoveryVideoForm from "./DiscoveryVideoForm";
 import MemberCreditsForm from "./MemberCreditsForm";
 import MemberRoleForm from "./MemberRoleForm";
 import MemberTierForm from "./MemberTierForm";
@@ -172,6 +173,28 @@ export default async function AdminPage({
           until UTC midnight.
         </p>
         <DailyCapForm currentCap={Number(settings?.daily_spend_cap_usd ?? 25)} />
+      </div>
+
+      <div className="card-elevated mb-8 rounded-2xl p-5">
+        <h2 className="font-display font-semibold">Discovery walkthrough video</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Paste a YouTube or Vimeo link and it&apos;ll show at the top of every project&apos;s
+          Discovery form — most members are 45+ and have never filled out a marketing discovery
+          brief before, so a short video from you on why each section matters goes further than
+          more on-page text. Leave it blank to hide the section entirely.
+        </p>
+        <DiscoveryVideoForm currentUrl={settings?.discovery_video_url ?? null} />
+      </div>
+
+      <div className="card-elevated mb-8 rounded-2xl border-primary/30 p-5">
+        <h2 className="font-display font-semibold">Roadmap: full training library</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          The single walkthrough video above is the lightweight first pass on member onboarding.
+          Down the line, worth building a proper &quot;classroom&quot; section — a library of multiple
+          short videos organized by topic (Discovery, each generator, reading your results),
+          reachable from the sidebar so members can revisit it any time, not just once on the
+          Discovery form.
+        </p>
       </div>
 
       <div className="card-elevated mb-8 rounded-2xl p-5">

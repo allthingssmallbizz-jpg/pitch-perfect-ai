@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
 import { getAssetLabel, getAssetHref } from "@/lib/ai/assetLabels";
 import { ANALYZER_CREDIT_COST } from "@/lib/ai/analyzer";
@@ -9,6 +10,7 @@ import { AGENTS, getAgent } from "@/lib/agents/config";
 import { Badge } from "@/components/ui/badge";
 import AgentBadge from "@/components/AgentBadge";
 import DiscoveryForm from "./DiscoveryForm";
+import DiscoveryWalkthroughVideo from "@/components/DiscoveryWalkthroughVideo";
 
 export default async function ProjectPage({
   params,
@@ -52,12 +54,13 @@ export default async function ProjectPage({
         ? `/projects/${id}/ad-image`
         : `/projects/${id}/generate/${intent}`;
 
-  const { data: generations } = await supabase
-    .from("generations")
-    .select("*")
-    .eq("project_id", id)
-    .order("created_at", { ascending: false })
-    .limit(20);
+  const [{ data: generations }, { data: settings }] = await Promise.all([
+    supabase.from("generations").select("*").eq("project_id", id).order("created_at", { ascending: false }).limit(20),
+    // admin_settings' RLS is admin-select-only (see 0001_init.sql) — this value isn't
+    // sensitive, so the admin client reads just this one field rather than opening RLS up to
+    // every member for the whole table (kill switch, spend cap, etc.).
+    createAdminClient().from("admin_settings").select("discovery_video_url").eq("id", true).single(),
+  ]);
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
@@ -71,6 +74,7 @@ export default async function ProjectPage({
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Discovery
           </h2>
+          <DiscoveryWalkthroughVideo url={settings?.discovery_video_url ?? null} />
           {intentAgent && (
             <p className="mb-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-muted-foreground">
               Fill in the brief below, then Save takes you straight to {intentAgent.emoji}{" "}

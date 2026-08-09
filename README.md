@@ -25,7 +25,8 @@ expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized
    `0004_video_analysis.sql`, then `0005_full_discovery.sql`, then
    `0006_generation_versions.sql`, then `0007_tts.sql`, then
    `0008_headline_winners.sql`, then `0009_discovery_assist.sql`, then
-   `0010_member_directory.sql`, then `0011_ad_image.sql`. Together they create:
+   `0010_member_directory.sql`, then `0011_ad_image.sql`, then `0012_discovery_video.sql`.
+   Together they create:
    - `profiles` — one row per user, with the 12-month access window and credit meter
    - `projects` — one per offer, with the full Discovery → Customer Awareness → Positioning →
      Value Proposition → Offer intake (see "Project discovery" below)
@@ -53,6 +54,8 @@ expand. See `src/lib/ai/knowledge/README.md` for how the AI "brain" is organized
    - `ad-images` Storage bucket (private, owner-only) + `generations.image_source_path`/
      `image_result_path`, and `ad_image` added as an `asset_type`, for Agent Addie's Image Ads
      (see that section below)
+   - `admin_settings.discovery_video_url` — the optional onboarding walkthrough video shown on
+     every project's Discovery form (see "Onboarding help for a non-technical membership" below)
    - RLS policies, an `on_auth_user_created` trigger that provisions a `profiles` row on
      signup, and `updated_at` triggers.
 3. Copy the Project URL, anon key, and service role key into `.env.local` (see
@@ -230,6 +233,27 @@ Since `DiscoveryForm.tsx` is an uncontrolled form (fields use `defaultValue`, no
 and submit via `FormData`), the assist dialog reads "other answers" and writes an accepted
 draft back by DOM id (`document.getElementById`) rather than through component state — avoids
 converting 22 fields to controlled inputs just for this.
+
+### Onboarding help for a non-technical membership
+
+The target membership skews 45-55+ and often has never filled out a marketing discovery brief
+or built a webinar before — beyond AI Assist, two lightweight (deliberately not a full "video
+classroom" — see the admin panel's roadmap note) additions help with that:
+
+- **Plain-language hints on every required field** (`Field`'s `hint` prop in
+  `DiscoveryForm.tsx`) — a short "why this matters / how to answer it" line shown under the
+  label, persistent (unlike placeholder text, which disappears the moment someone starts
+  typing), plus example placeholder text on every field that was missing one.
+- **An optional walkthrough video** at the top of every project's Discovery form
+  (`DiscoveryWalkthroughVideo.tsx`), sourced from `admin_settings.discovery_video_url`
+  (migration `0012_discovery_video.sql`) — admin-editable from `/admin`
+  (`DiscoveryVideoForm.tsx` → `setDiscoveryVideoUrl`), not an env var, specifically so it can be
+  turned on, off, or swapped any time without a code change or redeploy. `src/lib/embedUrl.ts`
+  converts a normal YouTube/Vimeo URL (whatever gets copied out of the address bar) into the
+  iframe-embeddable form; nothing renders if the URL is empty or unrecognized. Reading it
+  requires the admin client since `admin_settings`' RLS is admin-select-only (0001_init.sql)
+  and this value needs to be visible to every member, not just admins — see the comment in
+  `/projects/[id]/page.tsx`.
 
 ## The guardrails (margin protection)
 

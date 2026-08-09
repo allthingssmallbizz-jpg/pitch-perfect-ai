@@ -60,6 +60,7 @@ function Field({
   textarea = true,
   placeholder,
   required = false,
+  hint,
   onAssist,
 }: {
   label: string;
@@ -68,6 +69,11 @@ function Field({
   textarea?: boolean;
   placeholder?: string;
   required?: boolean;
+  // Plain-language "why this matters / how to answer it" line shown under the label — the
+  // membership skews 45-55+ and often has never filled out a marketing discovery brief before,
+  // so a placeholder example alone (which disappears the moment they start typing) isn't
+  // enough context on its own.
+  hint?: string;
   onAssist?: (target: AssistTarget) => void;
 }) {
   return (
@@ -83,6 +89,7 @@ function Field({
           />
         )}
       </div>
+      {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
       {textarea ? (
         <Textarea
           id={name}
@@ -149,6 +156,8 @@ export default function DiscoveryForm({
           name="business_name"
           defaultValue={project.business_name}
           textarea={false}
+          placeholder="e.g. Coach Bowe's Pitch Perfect Method"
+          hint="Just how you want to be introduced — the name people will hear on the webinar."
           required
           onAssist={setAssistTarget}
         />
@@ -158,6 +167,7 @@ export default function DiscoveryForm({
           defaultValue={project.industry}
           textarea={false}
           placeholder="e.g. Fitness coaching for busy professionals"
+          hint="What field are you in, and who specifically do you help? Being specific here — not just 'health' but 'weight loss coaching for women over 50' — helps every generator write like it knows your exact audience, not a generic one."
           required
           onAssist={setAssistTarget}
         />
@@ -166,6 +176,7 @@ export default function DiscoveryForm({
           name="product"
           defaultValue={project.product}
           placeholder="What are you selling? Describe it in a few sentences."
+          hint="Explain it in plain, everyday words — imagine describing it to a friend, not writing a brochure."
           required
           onAssist={setAssistTarget}
         />
@@ -174,6 +185,7 @@ export default function DiscoveryForm({
           name="audience"
           defaultValue={project.audience}
           placeholder="Who is this for? Demographics, job, life stage, income, values."
+          hint="The more specific — age range, what they're struggling with, what they've already tried — the better every headline lands, because it'll sound like you're speaking to one person, not 'everyone.'"
           required
           onAssist={setAssistTarget}
         />
@@ -203,6 +215,10 @@ export default function DiscoveryForm({
               }
             />
           </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            How much does your audience already know? Not sure — &quot;Problem-Aware&quot; is a
+            safe default: most people know they have the problem, just not your solution yet.
+          </p>
           <select
             id="awareness_level"
             name="awareness_level"
@@ -223,6 +239,7 @@ export default function DiscoveryForm({
           name="pain_points"
           defaultValue={project.pain_points}
           placeholder="What keeps them up at night? Be specific."
+          hint="What's frustrating them right now, in their own words? Think about what a real client has actually said to you — not textbook language."
           required
           onAssist={setAssistTarget}
         />
@@ -238,6 +255,7 @@ export default function DiscoveryForm({
           name="desired_transformation"
           defaultValue={project.desired_transformation}
           placeholder="What does life look like after your solution works?"
+          hint="Paint the 'after' picture — what changes for them once this problem is actually solved?"
           required
           onAssist={setAssistTarget}
         />
@@ -250,6 +268,7 @@ export default function DiscoveryForm({
           defaultValue={project.category}
           textarea={false}
           placeholder="e.g. 'Online sales training' or 'Metabolic coaching'"
+          hint="What would you call this if you had to put it on a shelf next to your competitors?"
           required
           onAssist={setAssistTarget}
         />
@@ -265,6 +284,7 @@ export default function DiscoveryForm({
           name="differentiator"
           defaultValue={project.differentiator}
           placeholder="What makes your approach different from everyone else's?"
+          hint="What makes you different from everyone else teaching or selling something similar? This is the reason someone chooses you over a competitor."
           required
           onAssist={setAssistTarget}
         />
@@ -283,6 +303,7 @@ export default function DiscoveryForm({
           name="unique_mechanism"
           defaultValue={project.unique_mechanism}
           placeholder="The 'how' behind your promise — a named framework, method, or system."
+          hint="Do you have a name for your method or process? If not, describe the specific steps or approach you use that's different from the usual way people do this."
           required
           onAssist={setAssistTarget}
         />
@@ -291,6 +312,7 @@ export default function DiscoveryForm({
           name="core_promise"
           defaultValue={project.core_promise}
           placeholder="What one outcome do you guarantee?"
+          hint="If you had to promise just ONE result, what would it be? Keep it to one sentence."
           required
           onAssist={setAssistTarget}
         />
@@ -299,6 +321,7 @@ export default function DiscoveryForm({
           name="outcomes"
           defaultValue={project.outcomes}
           placeholder="Bullet list of results the buyer gets."
+          hint="A simple list of results someone actually gets is fine — it doesn't need to be polished."
           required
           onAssist={setAssistTarget}
         />
@@ -319,6 +342,7 @@ export default function DiscoveryForm({
             defaultValue={project.price}
             textarea={false}
             placeholder="e.g. $1,997 one-time or $297/month"
+            hint="Even a rough number helps — without it, the AI has to guess."
             required
             onAssist={setAssistTarget}
           />
@@ -362,6 +386,7 @@ export default function DiscoveryForm({
           defaultValue={project.cta}
           textarea={false}
           placeholder="e.g. Book a call, Buy now, Apply today"
+          hint="What do you want someone to actually DO after seeing this?"
           required
           onAssist={setAssistTarget}
         />

@@ -174,6 +174,9 @@ export type AdminSettings = {
   daily_spend_cap_usd: number;
   kill_switch_enabled: boolean;
   kill_switch_reason: string | null;
+  // Optional YouTube/Vimeo URL for the "how to fill this out" walkthrough video shown at the
+  // top of every project's Discovery form. Null hides that section entirely.
+  discovery_video_url: string | null;
   updated_at: string;
 };
 
