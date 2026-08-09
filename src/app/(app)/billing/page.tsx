@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { ensureProfile } from "@/lib/profile";
 import BillingActions from "./BillingActions";
 
 function formatDate(iso: string) {
@@ -13,7 +14,11 @@ export default async function BillingPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+  // ensureProfile (not a raw select + redirect("/login")) — a missing profiles row is a data
+  // problem, not a "you're not logged in" problem. Redirecting to /login while authenticated
+  // used to bounce straight back to /dashboard via the auth middleware's already-logged-in
+  // redirect, which looked like "Billing just takes me back to the dashboard."
+  const profile = await ensureProfile(user.id, user.email ?? "");
   const { data: topups } = await supabase
     .from("credit_topups")
     .select("*")
@@ -21,7 +26,16 @@ export default async function BillingPage() {
     .order("created_at", { ascending: false })
     .limit(10);
 
-  if (!profile) redirect("/login");
+  if (!profile) {
+    return (
+      <div className="mx-auto max-w-3xl px-6 py-10">
+        <h1 className="mb-4 font-display text-2xl font-semibold text-gradient-silver">Billing</h1>
+        <p className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Couldn&apos;t load your account. Try refreshing — if this keeps happening, let support know.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">

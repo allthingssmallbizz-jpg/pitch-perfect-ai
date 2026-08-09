@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function updateDisplayName(_prevState: unknown, formData: FormData) {
   const supabase = await createClient();
@@ -19,9 +20,15 @@ export async function updateDisplayName(_prevState: unknown, formData: FormData)
     return { error: "Keep it under 100 characters." };
   }
 
-  // profiles has an owner UPDATE RLS policy (0001_init.sql), so the cookie-scoped client is
-  // enough here — unlike the admin-panel credit/role edits, which need the service role.
-  const { error } = await supabase.from("profiles").update({ full_name: fullName }).eq("id", user.id);
+  // Upsert via the admin client rather than a plain owner-scoped UPDATE: if this account's
+  // profiles row is missing for any reason (see src/lib/profile.ts), an UPDATE against a
+  // nonexistent row matches zero rows and reports success with nothing actually saved — this
+  // creates the row if needed instead of silently no-op'ing. onConflict on id means an
+  // existing row only has full_name/email touched; every other column is left alone.
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("profiles")
+    .upsert({ id: user.id, email: user.email ?? "", full_name: fullName }, { onConflict: "id" });
   if (error) {
     return { error: "Could not save. Try again." };
   }

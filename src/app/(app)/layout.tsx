@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { ensureProfile } from "@/lib/profile";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSidebar";
 
@@ -11,11 +12,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, credits_balance")
-    .eq("id", user.id)
-    .single();
+  // Self-heals a missing profiles row (see src/lib/profile.ts) before any child page renders,
+  // so every page downstream can trust a straightforward `.select().eq("id", user.id).single()`
+  // will find one.
+  const profile = await ensureProfile(user.id, user.email ?? "");
 
   return (
     <SidebarProvider>
