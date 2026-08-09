@@ -151,10 +151,10 @@ export default function AppSidebar({ email, isAdmin, credits }: Props) {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  isActive={activeCreateType === "presentation_analysis"}
+                  isActive={pathname === "/analyze" || activeCreateType === "presentation_analysis"}
                   tooltip="Agent Annie — Analyzer"
                 >
-                  <Link href="/projects/new?type=presentation_analysis" data-tour="sidebar-analyzer">
+                  <Link href="/analyze" data-tour="sidebar-analyzer">
                     <span aria-hidden>{AGENTS.presentation_analysis.emoji}</span>
                     <span className="truncate">
                       {AGENTS.presentation_analysis.name} <span className="text-muted-foreground">· Analyzer</span>

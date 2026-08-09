@@ -202,13 +202,25 @@ further admins can happen entirely from `/admin`.
 
 ## Presentation Analyzer
 
-`/projects/[id]/analyze` (API: `/api/analyze`) runs a pasted webinar/VSL/sales-presentation/
-investor-pitch script through a 19-point conversion-readiness rubric (structure, hook,
-credibility, offer quality, objection handling, ethics/factual-accuracy flags, scored
-readiness, missing components, prioritized fixes) and returns a structured critique. It's not
-a generator — the input is pasted text, not a project's discovery fields — but it runs through
-the same guardrail pipeline (credits, rate limits, kill switch, cost telemetry) as everything
-else, via `checkGuardrails`/`generateAsset` in `src/app/api/analyze/route.ts`.
+`/projects/[id]/analyze` (API: `/api/analyze`) runs a pasted or uploaded presentation through a
+19-point conversion-readiness rubric (structure, hook, credibility, offer quality, objection
+handling, ethics/factual-accuracy flags, scored readiness, missing components, prioritized
+fixes) and returns a structured critique. It's not a generator — the input is pasted text or a
+video, not a project's discovery fields — but it runs through the same guardrail pipeline
+(credits, rate limits, kill switch, cost telemetry) as everything else, via
+`checkGuardrails`/`generateAsset` in `src/app/api/analyze/route.ts`.
+
+The "What is this?" dropdown (`PresentationType` in `src/types/database.ts`,
+`PRESENTATION_TYPE_LABELS` in `src/lib/ai/analyzer.ts`) covers webinar, VSL, sales
+presentation/pitch deck, investor pitch, YouTube video, Instagram Reel, TikTok video, and
+other — it's never stored with its own DB constraint, only used to build the prompt, so this
+list can be extended without a migration.
+
+`/analyze` (`src/app/(app)/analyze/page.tsx`) is the sidebar's "Analyzer" landing page — a
+"start a new project" card plus every existing project with a one-click "Open" straight into
+its analyzer and a confirm-gated delete (`DeleteProjectButton.tsx`), so re-opening a project
+you've already analyzed doesn't mean creating a new one every time the way it used to when the
+sidebar linked directly into project creation.
 
 The system prompt (`ANALYZER_SYSTEM_PROMPT` in `src/lib/ai/analyzer.ts`) assumes it may be
 given video/audio. For the text-paste path, the user-message wrapper tells the model

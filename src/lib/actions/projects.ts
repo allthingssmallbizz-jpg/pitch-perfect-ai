@@ -147,5 +147,9 @@ export async function deleteProject(formData: FormData) {
   const projectId = String(formData.get("projectId") || "");
   await supabase.from("projects").delete().eq("id", projectId).eq("user_id", user.id);
 
-  redirect("/dashboard");
+  // Defaults to /dashboard (the original behavior); pages that list+delete projects
+  // in place (e.g. /analyze's "previous projects" list) pass their own path to stay put
+  // instead of bouncing away after a delete.
+  const redirectTo = String(formData.get("redirectTo") || "/dashboard");
+  redirect(redirectTo);
 }
