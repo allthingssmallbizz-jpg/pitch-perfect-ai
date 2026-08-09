@@ -161,6 +161,7 @@ export default async function AdminPage({
                     <td className="px-4 py-3">
                       <div className="mb-1.5 text-xs text-muted-foreground">
                         {m.credits_balance} / {m.credits_monthly_allotment} bal.
+                        {m.role === "admin" && " (not enforced)"}
                       </div>
                       <MemberCreditsForm userId={m.id} currentBalance={m.credits_balance} />
                     </td>

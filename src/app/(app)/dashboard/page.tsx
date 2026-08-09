@@ -20,6 +20,7 @@ import DashboardOnboarding from "@/components/DashboardOnboarding";
 import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
 import { createProjectFromTemplate } from "@/lib/actions/projects";
+import { formatCreditsLabel } from "@/lib/credits";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -91,8 +92,7 @@ export default async function DashboardPage() {
         </div>
         {profile && (
           <p className="text-sm text-muted-foreground">
-            {profile.credits_balance} / {profile.credits_monthly_allotment} credits this cycle · access
-            until {formatDate(profile.access_expires_at)}
+            {formatCreditsLabel(profile)} credits this cycle · access until {formatDate(profile.access_expires_at)}
           </p>
         )}
       </div>

@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Profile } from "@/types/database";
+import type { Profile, UserRole } from "@/types/database";
 
 const RATE_LIMIT_PER_MINUTE = Number(process.env.RATE_LIMIT_PER_MINUTE ?? 5);
 const RATE_LIMIT_PER_HOUR = Number(process.env.RATE_LIMIT_PER_HOUR ?? 30);
@@ -116,4 +116,16 @@ export async function decrementCredits(userId: string, creditCost: number): Prom
     .from("profiles")
     .update({ credits_balance: Math.max(0, profile.credits_balance - creditCost) })
     .eq("id", userId);
+}
+
+// Single source of truth for how a credit balance reads in the UI. Admin accounts never have
+// credits_balance decremented (see decrementCredits above), so showing that raw stored number
+// — frozen forever — would be actively misleading; "Unlimited" is what's actually true.
+export function formatCreditsLabel(profile: {
+  role: UserRole;
+  credits_balance: number;
+  credits_monthly_allotment: number;
+}): string {
+  if (profile.role === "admin") return "Unlimited";
+  return `${profile.credits_balance} / ${profile.credits_monthly_allotment}`;
 }

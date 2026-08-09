@@ -190,7 +190,9 @@ export default function AppSidebar({ email, isAdmin, credits }: Props) {
                 <SidebarMenuButton asChild isActive={pathname === "/billing"} tooltip="Billing">
                   <Link href="/billing" data-tour="sidebar-billing">
                     <CreditCard className="h-4 w-4" />
-                    <span>Billing{credits !== null ? ` · ${credits} credits` : ""}</span>
+                    <span>
+                      Billing{isAdmin ? " · Unlimited" : credits !== null ? ` · ${credits} credits` : ""}
+                    </span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

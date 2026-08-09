@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/lib/actions/auth";
+import { formatCreditsLabel } from "@/lib/credits";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -35,8 +36,8 @@ export default async function SettingsPage() {
         <div className="card-elevated mt-6 rounded-2xl p-8">
           <h2 className="mb-1 font-semibold">Plan &amp; credits</h2>
           <p className="mb-4 text-sm text-muted-foreground">
-            {profile.credits_balance} / {profile.credits_monthly_allotment} credits this cycle · access
-            renews {new Date(profile.credits_reset_at).toLocaleDateString()}
+            {formatCreditsLabel(profile)} credits this cycle · access renews{" "}
+            {new Date(profile.credits_reset_at).toLocaleDateString()}
           </p>
           <Button variant="outline" asChild>
             <Link href="/billing">Manage billing</Link>

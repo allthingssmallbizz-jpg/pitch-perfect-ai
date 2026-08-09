@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ensureProfile } from "@/lib/profile";
+import { formatCreditsLabel } from "@/lib/credits";
 import BillingActions from "./BillingActions";
 
 function formatDate(iso: string) {
@@ -44,9 +45,7 @@ export default async function BillingPage() {
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="card-elevated rounded-xl p-4">
           <div className="text-xs uppercase text-muted-foreground">Credits</div>
-          <div className="text-xl font-semibold">
-            {profile.credits_balance} / {profile.credits_monthly_allotment}
-          </div>
+          <div className="text-xl font-semibold">{formatCreditsLabel(profile)}</div>
         </div>
         <div className="card-elevated rounded-xl p-4">
           <div className="text-xs uppercase text-muted-foreground">Resets</div>
