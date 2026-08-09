@@ -265,10 +265,19 @@ All server-side, per the build spec — see `src/lib/credits.ts`:
   every call; the browser is never trusted for limits. Admin accounts are the exception — see
   "Owner / Admin Controls" below.
 - **Rate limiting** — max N generations per minute/hour per user (`RATE_LIMIT_PER_MINUTE` /
-  `RATE_LIMIT_PER_HOUR`).
+  `RATE_LIMIT_PER_HOUR`). Excludes `tts_narration`: Read Aloud calls `/api/tts` once per
+  ~1800-char chunk as playback advances through a long document (TtsPlayer.tsx), which is one
+  continuous listening session, not repeated generation abuse — without this exclusion, a 6+
+  part document could trip the per-minute limit mid-playback and silently stall.
 - **Output token caps** — every asset type has a `maxOutputTokens` ceiling
   (`src/lib/ai/generators/index.ts`, `ANALYZER_MAX_OUTPUT_TOKENS` for the analyzer), so no
-  single call can run away. Analyzer input is also capped (`ANALYZER_MAX_INPUT_CHARS`).
+  single call can run away. Analyzer input is also capped (`ANALYZER_MAX_INPUT_CHARS`). For
+  generators whose required output can legitimately exceed one response (the PPT outline's
+  60-90 slides, at ~16000 tokens), `/api/generate` calls `generateCompleteAsset`
+  (`src/lib/ai/anthropic.ts`) instead of `generateAsset` directly — if Claude's response hits
+  the cap before finishing naturally (`stop_reason: "max_tokens"`), it automatically continues
+  in the same conversation ("continue exactly where you left off") up to 4 more times and
+  stitches the results together, rather than silently truncating mid-slide.
 - **Cost telemetry** — every generation logs input/output tokens and estimated cost
   (`generations` table), visible per-member on `/admin`.
 - **12-month access window** — enforced before any generation runs, independent of credits.

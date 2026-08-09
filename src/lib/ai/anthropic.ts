@@ -30,6 +30,7 @@ export interface GenerateResult {
   inputTokens: number;
   outputTokens: number;
   costUsd: number;
+  stopReason: Anthropic.Message["stop_reason"];
 }
 
 export type ImageInput = { base64: string; mediaType: "image/jpeg" | "image/png" };
@@ -81,5 +82,79 @@ export async function generateAsset(
     inputTokens,
     outputTokens,
     costUsd: estimateCostUsd(inputTokens, outputTokens),
+    stopReason: message.stop_reason,
+  };
+}
+
+// Wraps generateAsset with automatic continuation: if Claude's response hits maxOutputTokens
+// before naturally finishing (stop_reason "max_tokens" — e.g. a 60-90 slide PPT outline that
+// doesn't fit in one response), this asks it to continue exactly where it left off, up to
+// maxContinuations more calls, and stitches the results together. Without this, a long-form
+// generator can silently cut off mid-sentence with no indication anything was truncated —
+// no fixed token cap can guarantee covering every business's content density in one shot.
+// Costs/tokens across all calls are summed into a single result.
+export async function generateCompleteAsset(
+  systemPrompt: string,
+  userPrompt: string,
+  maxOutputTokens: number,
+  images?: ImageInput[],
+  maxContinuations = 4
+): Promise<GenerateResult> {
+  const first = await generateAsset(systemPrompt, userPrompt, maxOutputTokens, images);
+
+  let combinedContent = first.content;
+  let totalInputTokens = first.inputTokens;
+  let totalOutputTokens = first.outputTokens;
+  let stopReason = first.stopReason;
+  let model = first.model;
+
+  const anthropic = getClient();
+  const messageContent: Anthropic.MessageParam["content"] = images?.length
+    ? [
+        ...images.map((img) => ({
+          type: "image" as const,
+          source: { type: "base64" as const, media_type: img.mediaType, data: img.base64 },
+        })),
+        { type: "text" as const, text: userPrompt },
+      ]
+    : userPrompt;
+
+  let continuations = 0;
+  while (stopReason === "max_tokens" && continuations < maxContinuations) {
+    continuations++;
+    const message = await anthropic.messages.create({
+      model: DEFAULT_MODEL,
+      max_tokens: maxOutputTokens,
+      system: systemPrompt,
+      messages: [
+        { role: "user", content: messageContent },
+        { role: "assistant", content: combinedContent },
+        {
+          role: "user",
+          content:
+            "Continue exactly where you left off — don't repeat anything already written, don't restart or summarize, just keep going from the exact next word/slide/section.",
+        },
+      ],
+    });
+
+    const continuationText = message.content
+      .filter((block): block is Anthropic.TextBlock => block.type === "text")
+      .map((block) => block.text)
+      .join("\n");
+
+    combinedContent += continuationText;
+    totalInputTokens += message.usage.input_tokens;
+    totalOutputTokens += message.usage.output_tokens;
+    stopReason = message.stop_reason;
+    model = message.model;
+  }
+
+  return {
+    content: combinedContent,
+    model,
+    inputTokens: totalInputTokens,
+    outputTokens: totalOutputTokens,
+    costUsd: estimateCostUsd(totalInputTokens, totalOutputTokens),
+    stopReason,
   };
 }

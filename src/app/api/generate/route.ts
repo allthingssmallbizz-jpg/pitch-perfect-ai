@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkGuardrails, decrementCredits } from "@/lib/credits";
-import { generateAsset } from "@/lib/ai/anthropic";
+import { generateCompleteAsset } from "@/lib/ai/anthropic";
 import { buildSystemPrompt } from "@/lib/ai/systemPrompt";
 import { getBrandVoiceBlock } from "@/lib/ai/brandVoice";
 import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     const systemPrompt = buildSystemPrompt(mode, brandVoiceBlock, agentPersona);
     const userPrompt = generator.buildPrompt(project);
 
-    const result = await generateAsset(systemPrompt, userPrompt, generator.maxOutputTokens);
+    const result = await generateCompleteAsset(systemPrompt, userPrompt, generator.maxOutputTokens);
 
     await admin
       .from("generations")

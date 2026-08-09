@@ -80,7 +80,12 @@ export async function checkGuardrails(userId: string, creditCost: number): Promi
     return { ok: false, reason: "insufficient_credits", message: "Not enough credits for this generation. Buy a top-up or wait for your monthly reset.", profile: effectiveProfile };
   }
 
-  // 4. Rate limiting — stops runaway loops/abuse regardless of remaining balance.
+  // 4. Rate limiting — stops runaway loops/abuse regardless of remaining balance. Excludes
+  // "tts_narration": Read Aloud splits long content into ~1800-char chunks client-side
+  // (TtsPlayer.tsx) and calls /api/tts once per chunk as playback advances through them — that's
+  // one continuous listening session, not repeated generation abuse, but a 6+ part document
+  // could rack up 6+ generations rows within a minute and trip this limit mid-playback,
+  // silently stalling it. Credits + the daily spend cap still bound its real cost regardless.
   const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
@@ -88,6 +93,7 @@ export async function checkGuardrails(userId: string, creditCost: number): Promi
     .from("generations")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
+    .neq("asset_type", "tts_narration")
     .gte("created_at", oneMinuteAgo);
   if ((countLastMinute ?? 0) >= RATE_LIMIT_PER_MINUTE) {
     return { ok: false, reason: "rate_limited_minute", message: `Too many generations — max ${RATE_LIMIT_PER_MINUTE} per minute.`, profile: effectiveProfile };
@@ -97,6 +103,7 @@ export async function checkGuardrails(userId: string, creditCost: number): Promi
     .from("generations")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
+    .neq("asset_type", "tts_narration")
     .gte("created_at", oneHourAgo);
   if ((countLastHour ?? 0) >= RATE_LIMIT_PER_HOUR) {
     return { ok: false, reason: "rate_limited_hour", message: `Too many generations — max ${RATE_LIMIT_PER_HOUR} per hour.`, profile: effectiveProfile };

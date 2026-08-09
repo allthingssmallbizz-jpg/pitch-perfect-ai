@@ -5,11 +5,12 @@ import { formatDiscoveryBlock } from "./shared";
 // per generation (see PPT_OUTLINE_MAX_OUTPUT_TOKENS), so the credit price members pay was
 // bumped to match and keep this in line with the margin math.
 export const PPT_OUTLINE_CREDIT_COST = 10;
-// Raised from 3500 — a full 60-90 slide deck needs roughly that many slides' worth of titles,
-// bullets, and speaker notes, which doesn't fit in the old cap at all (it was silently
-// truncating output to something like 15-25 slides, far short of a real webinar deck). 8000 is
-// the safe ceiling for a standard (non-extended-output) Claude API call.
-export const PPT_OUTLINE_MAX_OUTPUT_TOKENS = 8000;
+// Raised from 3500, then from 8000 — a real test run at 8000 tokens still cut off mid-slide
+// around slide 40 of the required 60-90 (roughly 200 tokens/slide in practice, so 90 slides
+// needs ~18,000). 16000 gives headroom for the great majority of decks in one shot; if a
+// generation is still cut off beyond that, generateCompleteAsset (src/lib/ai/anthropic.ts)
+// automatically continues rather than silently truncating.
+export const PPT_OUTLINE_MAX_OUTPUT_TOKENS = 16000;
 
 export function buildPptOutlinePrompt(project: Project): string {
   return `Build a slide-by-slide PowerPoint outline (titles + speaker notes, not full design) for presenting this offer. Use PPWOS™ phases if this reads as a consumer webinar/pitch, or PPSOS™ (Capture Executive Attention → Build Business Relevance → Create New Business Beliefs → Build Executive Certainty → Present the Solution → Maximize Business Value → Drive Organizational Commitment) if the discovery notes indicate a B2B/enterprise/multi-stakeholder audience.
