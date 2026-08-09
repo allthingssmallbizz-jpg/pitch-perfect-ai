@@ -1,13 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { toast } from "sonner";
 import type { AssetType, GenerationMode } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Copy, FileDown, Save, Loader2 } from "lucide-react";
+import { Sparkles, Copy, FileDown, Save, Loader2, Trash2, History } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import VersionHistory from "@/components/VersionHistory";
 import TtsPlayer from "@/components/TtsPlayer";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
+
+export type PastGeneration = { id: string; createdAt: string; preview: string };
+
+function formatWhen(iso: string) {
+  const d = new Date(iso);
+  const diffMs = Date.now() - d.getTime();
+  const min = Math.round(diffMs / 60000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const days = Math.round(hr / 24);
+  if (days < 30) return `${days}d ago`;
+  return d.toLocaleDateString();
+}
 
 export default function GenerateClient({
   projectId,
@@ -15,13 +32,17 @@ export default function GenerateClient({
   mode,
   initialContent,
   initialGenerationId,
+  initialPastGenerations,
 }: {
   projectId: string;
   assetType: AssetType;
   mode: GenerationMode;
   initialContent: string | null;
   initialGenerationId: string | null;
+  initialPastGenerations: PastGeneration[];
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [content, setContent] = useState<string | null>(initialContent);
   const [generationId, setGenerationId] = useState<string | null>(initialGenerationId);
   const [loading, setLoading] = useState(false);
@@ -29,6 +50,8 @@ export default function GenerateClient({
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [pastGenerations, setPastGenerations] = useState<PastGeneration[]>(initialPastGenerations);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const autosave = useDebouncedCallback((newContent: string, id: string) => {
     fetch(`/api/generations/${id}/autosave`, {
@@ -60,10 +83,42 @@ export default function GenerateClient({
       }
       setContent(data.content);
       setGenerationId(data.generationId);
+      setPastGenerations((prev) => [
+        { id: data.generationId, createdAt: new Date().toISOString(), preview: String(data.content).replace(/\s+/g, " ").trim().slice(0, 120) },
+        ...prev,
+      ]);
+      router.replace(`${pathname}?generationId=${data.generationId}`);
     } catch {
       setError("Network error — try again.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  function openPast(pastId: string) {
+    router.push(`${pathname}?generationId=${pastId}`);
+  }
+
+  async function deletePast(pastId: string) {
+    if (!window.confirm("Delete this generation? This can't be undone.")) return;
+    setDeletingId(pastId);
+    try {
+      const res = await fetch(`/api/generations/${pastId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Could not delete.");
+      }
+      setPastGenerations((prev) => prev.filter((g) => g.id !== pastId));
+      if (generationId === pastId) {
+        setContent(null);
+        setGenerationId(null);
+        router.replace(pathname);
+      }
+      toast.success("Deleted");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not delete.");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -134,6 +189,45 @@ export default function GenerateClient({
           </>
         )}
       </div>
+
+      {pastGenerations.length > 0 && (
+        <details className="mb-4 rounded-xl border border-border bg-card/30" open={pastGenerations.length <= 3}>
+          <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground">
+            <History className="mr-1.5 inline h-4 w-4" />
+            Past generations from this agent ({pastGenerations.length})
+          </summary>
+          <ul className="divide-y divide-border/60 border-t border-border">
+            {pastGenerations.map((g) => (
+              <li
+                key={g.id}
+                className={`flex items-center gap-3 px-4 py-2.5 text-sm ${g.id === generationId ? "bg-primary/5" : ""}`}
+              >
+                <button onClick={() => openPast(g.id)} className="min-w-0 flex-1 text-left">
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0 text-xs text-muted-foreground">{formatWhen(g.createdAt)}</span>
+                    {g.id === generationId && (
+                      <span className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                        Viewing
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-0.5 truncate text-muted-foreground">{g.preview || "(empty)"}</div>
+                </button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 text-muted-foreground hover:text-destructive"
+                  disabled={deletingId === g.id}
+                  onClick={() => deletePast(g.id)}
+                  title="Delete this generation"
+                >
+                  {deletingId === g.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
 

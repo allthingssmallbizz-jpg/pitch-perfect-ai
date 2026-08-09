@@ -56,6 +56,24 @@ export default async function GenerateAssetPage({
     }
   }
 
+  // Every past run of *this* agent on *this* project — surfaced right here instead of only in
+  // the project overview's mixed-asset-type History list, so re-opening or deleting a past
+  // draft doesn't mean backing out to the project page and hunting for it.
+  const { data: pastGenerationRows } = await supabase
+    .from("generations")
+    .select("id, content, status, created_at")
+    .eq("project_id", id)
+    .eq("asset_type", generator.assetType)
+    .eq("status", "complete")
+    .order("created_at", { ascending: false })
+    .limit(30);
+
+  const pastGenerations = (pastGenerationRows ?? []).map((g) => ({
+    id: g.id,
+    createdAt: g.created_at,
+    preview: (g.content ?? "").replace(/\s+/g, " ").trim().slice(0, 120),
+  }));
+
   const agent = AGENTS[generator.assetType];
 
   return (
@@ -76,6 +94,7 @@ export default async function GenerateAssetPage({
         mode={project.mode}
         initialContent={initialContent}
         initialGenerationId={initialGenerationId}
+        initialPastGenerations={pastGenerations}
       />
     </div>
   );

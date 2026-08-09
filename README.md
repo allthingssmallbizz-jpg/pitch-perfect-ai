@@ -452,6 +452,16 @@ now ships the rest of the Lovable feature set that was originally deferred:
   design — see `0001_init.sql`), every mutating route in `src/app/api/generations/[id]/`
   verifies ownership via the cookie-scoped client (`src/lib/generations.ts`) before writing
   through the admin client.
+- **Past generations, right on the agent's own page** — each generate page
+  (`/projects/[id]/generate/[assetType]`) fetches every prior completed generation for that
+  project+asset-type pair and lists it (timestamp + preview) directly above the editor, so
+  reopening or deleting an old draft from a specific agent doesn't mean backing out to the
+  project overview and hunting through its combined History list. "Open" navigates to
+  `?generationId=...` (the same mechanism the project overview's History list already used);
+  "Delete" calls the new `DELETE /api/generations/[id]` (whole-generation delete —
+  `generation_versions` cascade-deletes with it). A successful **Generate** also now updates
+  the URL to `?generationId=...` via `router.replace`, so refreshing or navigating back to the
+  page doesn't lose track of which generation you were just looking at.
 - **TTS "Read Aloud"** (`src/components/TtsPlayer.tsx`, `POST /api/tts`) — reuses the
   `OPENAI_API_KEY` already configured for video transcription (`tts-1`, same voice IDs:
   alloy/echo/fable/onyx/nova/shimmer). Long text is chunked client-side (~1800 chars) to stay
