@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import DashboardOnboarding from "@/components/DashboardOnboarding";
 import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
+import { AGENTS } from "@/lib/agents/config";
 import { createProjectFromTemplate } from "@/lib/actions/projects";
 
 function formatDate(iso: string) {
@@ -99,6 +100,7 @@ export default async function DashboardPage() {
       <div className="mb-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {DELIVERABLE_TYPES.map((type) => {
           const generator = ASSET_GENERATORS[type];
+          const agent = AGENTS[type];
           const Icon = DELIVERABLE_ICONS[type];
           return (
             <Link
@@ -106,8 +108,16 @@ export default async function DashboardPage() {
               href={`/projects/new?type=${type}`}
               className="card-elevated group rounded-2xl p-6 transition-colors hover:border-primary/50"
             >
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 transition-colors group-hover:bg-primary/20">
-                <Icon className="h-5 w-5 text-primary" />
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 transition-colors group-hover:bg-primary/20">
+                  <Icon className="h-5 w-5 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <div className="truncate text-xs font-semibold uppercase tracking-wide text-primary">
+                    {agent.emoji} {agent.name}
+                  </div>
+                  <div className="truncate text-[11px] text-muted-foreground">{agent.title}</div>
+                </div>
               </div>
               <h3 className="font-display text-lg font-semibold">{generator.label}</h3>
               <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{generator.description}</p>
