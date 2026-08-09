@@ -1,7 +1,10 @@
 import type { Project } from "@/types/database";
 import { formatDiscoveryBlock } from "./shared";
 
-export const PPT_OUTLINE_CREDIT_COST = 3;
+// Raised from 3 — the 60-90 slide requirement below roughly doubled real output-token spend
+// per generation (see PPT_OUTLINE_MAX_OUTPUT_TOKENS), so the credit price members pay was
+// bumped to match and keep this in line with the margin math.
+export const PPT_OUTLINE_CREDIT_COST = 10;
 // Raised from 3500 — a full 60-90 slide deck needs roughly that many slides' worth of titles,
 // bullets, and speaker notes, which doesn't fit in the old cap at all (it was silently
 // truncating output to something like 15-25 slides, far short of a real webinar deck). 8000 is
