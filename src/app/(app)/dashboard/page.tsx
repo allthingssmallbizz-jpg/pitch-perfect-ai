@@ -22,6 +22,8 @@ import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
 import { createProjectFromTemplate } from "@/lib/actions/projects";
 import { formatCreditsLabel } from "@/lib/credits";
+import { getAssetHref } from "@/lib/ai/assetLabels";
+import type { AssetType } from "@/types/database";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -72,12 +74,31 @@ export default async function DashboardPage() {
 
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: projects }] = await Promise.all([
+  const [{ data: profile }, { data: projects }, { data: latestGenerationRows }] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase.from("projects").select("*").eq("user_id", user.id).order("updated_at", { ascending: false }),
+    // Most recent completed generation per project, so a project card on the dashboard can jump
+    // straight into whatever was actually built there instead of always landing on the overview
+    // — the overview (discovery review) is only useful while there's nothing to open yet.
+    supabase
+      .from("generations")
+      .select("id, project_id, asset_type, created_at")
+      .eq("user_id", user.id)
+      .eq("status", "complete")
+      .not("project_id", "is", null)
+      .order("created_at", { ascending: false }),
   ]);
 
   const hasProjects = !!projects && projects.length > 0;
+
+  // Ordered by created_at desc above, so the first row seen for a given project_id is that
+  // project's most recent generation.
+  const latestGenerationByProject = new Map<string, { id: string; assetType: AssetType }>();
+  for (const g of latestGenerationRows ?? []) {
+    if (g.project_id && !latestGenerationByProject.has(g.project_id)) {
+      latestGenerationByProject.set(g.project_id, { id: g.id, assetType: g.asset_type });
+    }
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -170,25 +191,33 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <div className="grid gap-3">
-          {projects.map((project) => (
-            <div
-              key={project.id}
-              className="card-elevated flex items-center gap-4 rounded-xl p-5 transition-colors hover:border-primary/40"
-            >
-              <div className="min-w-0 flex-1">
-                <Link href={`/projects/${project.id}`} className="font-display text-lg font-semibold transition-colors hover:text-primary">
-                  {project.name}
-                </Link>
-                <p className="mt-1 text-xs text-muted-foreground">Last edited {formatRelativeTime(project.updated_at)}</p>
+          {projects.map((project) => {
+            const latestGeneration = latestGenerationByProject.get(project.id);
+            // A project with something already built takes you straight into that — the
+            // overview (discovery review) is only where there's nothing yet to open.
+            const href = latestGeneration
+              ? getAssetHref(project.id, latestGeneration.assetType, latestGeneration.id)
+              : `/projects/${project.id}`;
+            return (
+              <div
+                key={project.id}
+                className="card-elevated flex items-center gap-4 rounded-xl p-5 transition-colors hover:border-primary/40"
+              >
+                <div className="min-w-0 flex-1">
+                  <Link href={href} className="font-display text-lg font-semibold transition-colors hover:text-primary">
+                    {project.name}
+                  </Link>
+                  <p className="mt-1 text-xs text-muted-foreground">Last edited {formatRelativeTime(project.updated_at)}</p>
+                </div>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href={href}>
+                    Open <ArrowRight className="ml-1 h-4 w-4" />
+                  </Link>
+                </Button>
+                <DeleteProjectButton projectId={project.id} />
               </div>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href={`/projects/${project.id}`}>
-                  Open <ArrowRight className="ml-1 h-4 w-4" />
-                </Link>
-              </Button>
-              <DeleteProjectButton projectId={project.id} />
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
