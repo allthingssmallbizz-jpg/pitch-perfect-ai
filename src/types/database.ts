@@ -118,6 +118,10 @@ export type Project = {
   mode: GenerationMode;
   created_at: string;
   updated_at: string;
+  // Soft-delete marker — null while active. "Delete project" sets this instead of removing the
+  // row, so a project (and every generation in it) can be restored from the Dashboard's
+  // "Recently deleted" list instead of a single click/misclick being unrecoverable.
+  deleted_at: string | null;
 };
 
 export type Generation = {

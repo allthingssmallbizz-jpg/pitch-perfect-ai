@@ -16,11 +16,12 @@ import {
   Layers,
   type LucideIcon,
 } from "lucide-react";
+import { Undo2 } from "lucide-react";
 import DashboardOnboarding from "@/components/DashboardOnboarding";
 import DeleteProjectButton from "@/components/DeleteProjectButton";
 import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
-import { createProjectFromTemplate } from "@/lib/actions/projects";
+import { createProjectFromTemplate, restoreProject } from "@/lib/actions/projects";
 import { formatCreditsLabel } from "@/lib/credits";
 import { getAssetHref } from "@/lib/ai/assetLabels";
 import { projectNeedsDiscovery } from "@/lib/projects";
@@ -75,20 +76,36 @@ export default async function DashboardPage() {
 
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: projects }, { data: latestGenerationRows }] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user.id).single(),
-    supabase.from("projects").select("*").eq("user_id", user.id).order("updated_at", { ascending: false }),
-    // Most recent completed generation per project, so a project card on the dashboard can jump
-    // straight into whatever was actually built there instead of always landing on the overview
-    // — the overview (discovery review) is only useful while there's nothing to open yet.
-    supabase
-      .from("generations")
-      .select("id, project_id, asset_type, created_at")
-      .eq("user_id", user.id)
-      .eq("status", "complete")
-      .not("project_id", "is", null)
-      .order("created_at", { ascending: false }),
-  ]);
+  const [{ data: profile }, { data: projects }, { data: latestGenerationRows }, { data: deletedProjects }] =
+    await Promise.all([
+      supabase.from("profiles").select("*").eq("id", user.id).single(),
+      supabase
+        .from("projects")
+        .select("*")
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .order("updated_at", { ascending: false }),
+      // Most recent completed generation per project, so a project card on the dashboard can jump
+      // straight into whatever was actually built there instead of always landing on the overview
+      // — the overview (discovery review) is only useful while there's nothing to open yet.
+      supabase
+        .from("generations")
+        .select("id, project_id, asset_type, created_at")
+        .eq("user_id", user.id)
+        .eq("status", "complete")
+        .not("project_id", "is", null)
+        .order("created_at", { ascending: false }),
+      // Soft-deleted projects (see updateProjectDiscovery/deleteProject comments and
+      // supabase/migrations/0013_project_soft_delete.sql) — surfaced here so a delete, accidental
+      // or not, is a one-click undo instead of permanent.
+      supabase
+        .from("projects")
+        .select("id, name, deleted_at")
+        .eq("user_id", user.id)
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false })
+        .limit(20),
+    ]);
 
   const hasProjects = !!projects && projects.length > 0;
 
@@ -225,6 +242,31 @@ export default async function DashboardPage() {
             );
           })}
         </div>
+      )}
+
+      {deletedProjects && deletedProjects.length > 0 && (
+        <details className="mt-10">
+          <summary className="cursor-pointer select-none text-sm font-medium text-muted-foreground hover:text-foreground">
+            Recently deleted ({deletedProjects.length})
+          </summary>
+          <div className="mt-3 grid gap-2">
+            {deletedProjects.map((project) => (
+              <div
+                key={project.id}
+                className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card/30 px-4 py-2.5"
+              >
+                <span className="min-w-0 truncate text-sm text-muted-foreground">{project.name}</span>
+                <form action={restoreProject}>
+                  <input type="hidden" name="projectId" value={project.id} />
+                  <Button type="submit" variant="outline" size="sm">
+                    <Undo2 className="mr-1.5 h-3.5 w-3.5" />
+                    Restore
+                  </Button>
+                </form>
+              </div>
+            ))}
+          </div>
+        </details>
       )}
     </div>
   );

@@ -160,6 +160,10 @@ export async function updateProjectDiscovery(_prevState: unknown, formData: Form
   return missing.length > 0 ? { success: true, missing } : { success: true };
 }
 
+// Soft-delete: marks the project rather than removing the row, so it (and every generation in
+// it) is recoverable from the Dashboard's "Recently deleted" list via restoreProject below,
+// instead of one click (or misclick) being permanent and unrecoverable — see
+// supabase/migrations/0013_project_soft_delete.sql.
 export async function deleteProject(formData: FormData) {
   const supabase = await createClient();
   const {
@@ -168,11 +172,28 @@ export async function deleteProject(formData: FormData) {
   if (!user) redirect("/login");
 
   const projectId = String(formData.get("projectId") || "");
-  await supabase.from("projects").delete().eq("id", projectId).eq("user_id", user.id);
+  await supabase
+    .from("projects")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", projectId)
+    .eq("user_id", user.id);
 
   // Defaults to /dashboard (the original behavior); pages that list+delete projects
   // in place (e.g. /analyze's "previous projects" list) pass their own path to stay put
   // instead of bouncing away after a delete.
   const redirectTo = String(formData.get("redirectTo") || "/dashboard");
   redirect(redirectTo);
+}
+
+export async function restoreProject(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const projectId = String(formData.get("projectId") || "");
+  await supabase.from("projects").update({ deleted_at: null }).eq("id", projectId).eq("user_id", user.id);
+
+  revalidatePath("/dashboard");
 }

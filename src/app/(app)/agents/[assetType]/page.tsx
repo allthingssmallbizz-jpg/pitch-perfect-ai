@@ -45,7 +45,12 @@ export default async function AgentLandingPage({
   const isAddie = generator.assetType === "ad_copy";
 
   const [{ data: projects }, { data: generations }, { data: imageAdRows }] = await Promise.all([
-    supabase.from("projects").select("id, name").eq("user_id", user.id).order("updated_at", { ascending: false }),
+    supabase
+      .from("projects")
+      .select("id, name")
+      .eq("user_id", user.id)
+      .is("deleted_at", null)
+      .order("updated_at", { ascending: false }),
     supabase
       .from("generations")
       .select("id, project_id, content, created_at")

@@ -38,6 +38,7 @@ export default async function AnalyzeLandingPage() {
     .from("projects")
     .select("id, name, updated_at")
     .eq("user_id", user.id)
+    .is("deleted_at", null)
     .order("updated_at", { ascending: false });
 
   const hasProjects = !!projects && projects.length > 0;
