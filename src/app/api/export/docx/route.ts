@@ -1,29 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Document, Packer, Paragraph, HeadingLevel } from "docx";
-import { createClient } from "@/lib/supabase/server";
 import { getAssetLabel } from "@/lib/ai/assetLabels";
+import { getOwnedGeneration } from "@/lib/generations";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-
   const generationId = req.nextUrl.searchParams.get("generationId");
   if (!generationId) return NextResponse.json({ error: "Missing generationId" }, { status: 400 });
 
-  const { data: generation } = await supabase
-    .from("generations")
-    .select("*")
-    .eq("id", generationId)
-    .eq("user_id", user.id)
-    .single();
+  const owned = await getOwnedGeneration(generationId);
+  if ("error" in owned) return NextResponse.json({ error: owned.error }, { status: owned.status });
+  const { generation } = owned;
 
-  if (!generation || !generation.content) {
-    return NextResponse.json({ error: "Generation not found" }, { status: 404 });
+  if (!generation.content) {
+    return NextResponse.json({ error: "Nothing to export yet." }, { status: 400 });
   }
 
   const label = getAssetLabel(generation.asset_type);
