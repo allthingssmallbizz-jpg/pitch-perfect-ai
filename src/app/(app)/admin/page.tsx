@@ -134,6 +134,12 @@ export default async function AdminPage({
           each one is present and its length, enough to confirm it&apos;s really there without
           exposing it.
         </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Saving a variable in Vercel&apos;s Settings does not, by itself, update the live app —
+          it only takes effect on the next actual deployment. If this still says &quot;missing&quot;
+          right after saving it, that&apos;s the reason: go to Deployments → latest → the ⋯ menu →
+          Redeploy.
+        </p>
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {[
             { label: "OPENAI_API_KEY (Read Aloud, video transcription)", value: process.env.OPENAI_API_KEY },
