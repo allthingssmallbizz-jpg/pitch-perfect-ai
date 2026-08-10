@@ -125,6 +125,44 @@ export default async function AdminPage({
         </div>
       </div>
 
+      <div className="card-elevated mb-8 rounded-2xl p-5">
+        <h2 className="font-display font-semibold">Environment check</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          What this specific running deployment actually sees, right now — not what&apos;s saved
+          in Vercel&apos;s settings (those can differ if a variable was added but never
+          redeployed, or added to the wrong environment). Values are never shown, only whether
+          each one is present and its length, enough to confirm it&apos;s really there without
+          exposing it.
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {[
+            { label: "OPENAI_API_KEY (Read Aloud, video transcription)", value: process.env.OPENAI_API_KEY },
+            { label: "ANTHROPIC_API_KEY (every generator)", value: process.env.ANTHROPIC_API_KEY },
+            { label: "SUPABASE_SERVICE_ROLE_KEY", value: process.env.SUPABASE_SERVICE_ROLE_KEY },
+            { label: "STRIPE_SECRET_KEY", value: process.env.STRIPE_SECRET_KEY },
+          ].map(({ label, value }) => {
+            const present = Boolean(value && value.trim());
+            return (
+              <div
+                key={label}
+                className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs ${
+                  present ? "border-emerald-500/30 bg-emerald-500/5" : "border-destructive/40 bg-destructive/10"
+                }`}
+              >
+                <span className="text-muted-foreground">{label}</span>
+                <span className={present ? "text-emerald-400" : "text-destructive"}>
+                  {present ? `set (${value!.trim().length} chars)` : "missing"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Deployed at: {process.env.VERCEL_ENV ?? "unknown"}
+          {process.env.VERCEL_GIT_COMMIT_SHA ? ` · commit ${process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7)}` : ""}
+        </p>
+      </div>
+
       <div className="card-elevated mb-8 rounded-2xl border-destructive/40 p-5">
         <h2 className="font-display font-semibold">Before video analysis or long generations work reliably</h2>
         <p className="mt-1 text-sm text-muted-foreground">
