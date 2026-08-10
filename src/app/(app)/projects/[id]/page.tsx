@@ -7,11 +7,12 @@ import { getAssetLabel, getAssetHref } from "@/lib/ai/assetLabels";
 import { ANALYZER_CREDIT_COST } from "@/lib/ai/analyzer";
 import { AD_IMAGE_CREDIT_COST } from "@/lib/ai/generators/adImage";
 import { AGENTS, getAgent } from "@/lib/agents/config";
-import { projectNeedsDiscovery } from "@/lib/projects";
+import { projectNeedsDiscovery, REQUIRED_DISCOVERY_FIELDS } from "@/lib/projects";
 import { Badge } from "@/components/ui/badge";
 import AgentBadge from "@/components/AgentBadge";
 import DiscoveryForm from "./DiscoveryForm";
 import DiscoveryWalkthroughVideo from "@/components/DiscoveryWalkthroughVideo";
+import ToolLink from "./ToolLink";
 
 export default async function ProjectPage({
   params,
@@ -59,6 +60,14 @@ export default async function ProjectPage({
   // generator, not loop back to a review of the exact brief you're already looking at — the
   // discovery-first detour only makes sense while there's still something to fill in.
   const discoveryComplete = !projectNeedsDiscovery(project);
+  // Shown regardless of whether a save just happened — DiscoveryForm's own "Still need before
+  // you can generate" message only appears right after submitting, so someone who filled the
+  // brief in across several visits (or missed a dropdown like Awareness level, which has no
+  // visible default) has no way to see what's actually still missing otherwise, and every agent
+  // click just keeps bouncing them back here with no explanation why.
+  const missingFieldLabels = REQUIRED_DISCOVERY_FIELDS.filter(({ key }) => !String(project[key] ?? "").trim()).map(
+    (f) => f.label
+  );
 
   const [{ data: generations }, { data: settings }] = await Promise.all([
     supabase.from("generations").select("*").eq("project_id", id).order("created_at", { ascending: false }).limit(20),
@@ -81,6 +90,16 @@ export default async function ProjectPage({
             Discovery
           </h2>
           <DiscoveryWalkthroughVideo url={settings?.discovery_video_url ?? null} />
+          {discoveryComplete ? (
+            <p className="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400">
+              Discovery is complete — every agent below generates right away, no detour.
+            </p>
+          ) : (
+            <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+              {missingFieldLabels.length} field{missingFieldLabels.length === 1 ? "" : "s"} still needed before an
+              agent can generate: <span className="text-foreground">{missingFieldLabels.join(", ")}</span>.
+            </p>
+          )}
           {intentAgent && (
             <p className="mb-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-muted-foreground">
               Fill in the brief below, then Save takes you straight to {intentAgent.emoji}{" "}
@@ -104,9 +123,11 @@ export default async function ProjectPage({
               const gen = ASSET_GENERATORS[type];
               const agent = AGENTS[type];
               return (
-                <Link
+                <ToolLink
                   key={type}
                   href={discoveryComplete ? `/projects/${project.id}/generate/${type}` : `/projects/${project.id}?intent=${type}`}
+                  needsDiscovery={!discoveryComplete}
+                  agentName={agent.name}
                   className={`card-elevated rounded-xl p-4 transition-colors hover:border-primary/40 ${
                     intent === type ? "border-primary/60 ring-1 ring-primary/40" : ""
                   }`}
@@ -118,7 +139,7 @@ export default async function ProjectPage({
                     </Badge>
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">{gen.description}</p>
-                </Link>
+                </ToolLink>
               );
             })}
           </div>
@@ -126,8 +147,10 @@ export default async function ProjectPage({
           <h2 className="mt-8 mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Image ads
           </h2>
-          <Link
+          <ToolLink
             href={discoveryComplete ? `/projects/${project.id}/ad-image` : `/projects/${project.id}?intent=ad_image`}
+            needsDiscovery={!discoveryComplete}
+            agentName={AGENTS.ad_copy.name}
             className={`card-elevated block rounded-xl p-4 transition-colors hover:border-primary/40 ${
               intent === "ad_image" ? "border-primary/60 ring-1 ring-primary/40" : ""
             }`}
@@ -142,7 +165,7 @@ export default async function ProjectPage({
               Upload a photo and Addie writes the headline, subheadline, and CTA, then overlays
               them onto it — a finished, downloadable ad image.
             </p>
-          </Link>
+          </ToolLink>
 
           <h2 className="mt-8 mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Analyze a presentation

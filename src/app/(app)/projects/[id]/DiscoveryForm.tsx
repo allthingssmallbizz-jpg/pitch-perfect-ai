@@ -157,7 +157,7 @@ export default function DiscoveryForm({
   }
 
   return (
-    <form action={formAction} className="card-elevated space-y-6 rounded-2xl p-6">
+    <form id="discovery-form" action={formAction} className="card-elevated space-y-6 rounded-2xl p-6">
       <input type="hidden" name="projectId" value={project.id} />
       {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
 
