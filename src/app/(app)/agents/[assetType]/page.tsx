@@ -86,6 +86,10 @@ export default async function AgentLandingPage({
   if (generationsError)
     console.error(`AgentLandingPage(${generator.assetType}): generations query failed`, generationsError);
   const loadFailed = Boolean(projectsError || generationsError);
+  // Shown directly on the page (not just logged) since there's no way to hand the person hitting
+  // this a Vercel server-log link — Postgrest's error text (a missing column/table, an RLS
+  // denial reason) isn't sensitive and is the fastest path to actually diagnosing this remotely.
+  const loadErrorDetail = [projectsError?.message, generationsError?.message].filter(Boolean).join(" / ");
 
   // No FK-relationship typing on the hand-written Database type (Relationships: [] on every
   // table — see types/database.ts), so this joins project names onto generations in JS rather
@@ -206,7 +210,12 @@ export default async function AgentLandingPage({
       {loadFailed ? (
         <p className="text-sm text-destructive">
           Couldn&apos;t load past generations right now — this is a loading error, not an empty
-          list. Refresh the page; if it keeps happening, this needs a look at the server logs.
+          list.
+          {loadErrorDetail && (
+            <span className="mt-1 block rounded bg-destructive/10 px-2 py-1 font-mono text-xs">
+              {loadErrorDetail}
+            </span>
+          )}
         </p>
       ) : pastGenerations.length === 0 ? (
         <p className="text-sm text-muted-foreground">

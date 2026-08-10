@@ -195,7 +195,10 @@ export default async function DashboardPage() {
       {projectsError && (
         <p className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           Couldn&apos;t load your projects right now — this is a loading error, not an empty
-          account. Refresh the page; if it keeps happening, this needs a look at the server logs.
+          account.
+          <span className="mt-1 block rounded bg-destructive/10 px-2 py-1 font-mono text-xs">
+            {projectsError.message}
+          </span>
         </p>
       )}
 
