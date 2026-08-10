@@ -169,6 +169,82 @@ export default async function AdminPage({
         </p>
       </div>
 
+      <div className="card-elevated mb-8 rounded-2xl p-5">
+        <h2 className="font-display font-semibold">Service accounts &amp; billing</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Every outside account Pitch Perfect AI actually depends on to run. If any of these lapse
+          on payment or run out of credits, the matching feature breaks for every member — usually
+          with no warning inside this app itself. Worth a monthly check.
+        </p>
+        <div className="mt-3 space-y-2">
+          {[
+            {
+              name: "Vercel",
+              billingUrl: "https://vercel.com/account/billing",
+              dashboardUrl: "https://vercel.com/dashboard",
+              breaksIfLapsed: "The whole app goes down — this is what hosts and serves it.",
+            },
+            {
+              name: "Supabase",
+              billingUrl: "https://supabase.com/dashboard/org/_/billing",
+              dashboardUrl: "https://supabase.com/dashboard",
+              breaksIfLapsed:
+                "Database, logins, and all file storage (video uploads, ad images) — the whole app goes down without it.",
+            },
+            {
+              name: "Anthropic (Claude)",
+              billingUrl: "https://console.anthropic.com/settings/billing",
+              dashboardUrl: "https://console.anthropic.com",
+              breaksIfLapsed:
+                "Every generator agent (webinar, VSL, sales page, PPT, emails, ad copy, offer ladder, headline lab, discovery assist, presentation analysis) stops producing anything.",
+            },
+            {
+              name: "OpenAI",
+              billingUrl: "https://platform.openai.com/settings/organization/billing",
+              dashboardUrl: "https://platform.openai.com",
+              breaksIfLapsed: "Read Aloud (TTS) and video transcription/analysis stop working.",
+            },
+            {
+              name: "Stripe",
+              billingUrl: "https://dashboard.stripe.com/settings/billing",
+              dashboardUrl: "https://dashboard.stripe.com",
+              breaksIfLapsed:
+                "This is where members' own payments to you land — a lapse here means signups, renewals, and credit top-ups stop processing.",
+            },
+          ].map((service) => (
+            <div key={service.name} className="rounded-lg border border-border bg-card/30 px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-medium text-foreground">{service.name}</span>
+                <div className="flex gap-2 text-xs">
+                  <a
+                    href={service.dashboardUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    Dashboard
+                  </a>
+                  <span className="text-muted-foreground">·</span>
+                  <a
+                    href={service.billingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    Billing
+                  </a>
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{service.breaksIfLapsed}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Not listed here because they&apos;re not billed accounts: your domain registrar (wherever
+          perfectpitchai.app was purchased) — check that separately, it renews yearly, not monthly.
+        </p>
+      </div>
+
       <div className="card-elevated mb-8 rounded-2xl border-destructive/40 p-5">
         <h2 className="font-display font-semibold">Before video analysis or long generations work reliably</h2>
         <p className="mt-1 text-sm text-muted-foreground">
