@@ -23,6 +23,7 @@ import { AGENTS } from "@/lib/agents/config";
 import { createProjectFromTemplate } from "@/lib/actions/projects";
 import { formatCreditsLabel } from "@/lib/credits";
 import { getAssetHref } from "@/lib/ai/assetLabels";
+import { projectNeedsDiscovery } from "@/lib/projects";
 import type { AssetType } from "@/types/database";
 
 function formatDate(iso: string) {
@@ -193,11 +194,16 @@ export default async function DashboardPage() {
         <div className="grid gap-3">
           {projects.map((project) => {
             const latestGeneration = latestGenerationByProject.get(project.id);
-            // A project with something already built takes you straight into that — the
-            // overview (discovery review) is only where there's nothing yet to open.
-            const href = latestGeneration
-              ? getAssetHref(project.id, latestGeneration.assetType, latestGeneration.id)
-              : `/projects/${project.id}`;
+            // Discovery incomplete always wins — even if something was generated earlier, the
+            // brief may have been edited since (fields aren't locked after generating) and no
+            // longer reflects what a regenerate would need. Only once discovery is complete does
+            // a finished generation take priority over the overview; with nothing generated yet,
+            // land on the overview either way since there's nothing to open.
+            const href = projectNeedsDiscovery(project)
+              ? `/projects/${project.id}`
+              : latestGeneration
+                ? getAssetHref(project.id, latestGeneration.assetType, latestGeneration.id)
+                : `/projects/${project.id}`;
             return (
               <div
                 key={project.id}
