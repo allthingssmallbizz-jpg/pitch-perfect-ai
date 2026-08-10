@@ -44,7 +44,11 @@ export default async function AgentLandingPage({
 
   const isAddie = generator.assetType === "ad_copy";
 
-  const [{ data: projects }, { data: generations }, { data: imageAdRows }] = await Promise.all([
+  const [
+    { data: projects, error: projectsError },
+    { data: generations, error: generationsError },
+    { data: imageAdRows },
+  ] = await Promise.all([
     supabase
       .from("projects")
       .select("id, name")
@@ -72,6 +76,16 @@ export default async function AgentLandingPage({
           .limit(24)
       : Promise.resolve({ data: null }),
   ]);
+
+  // Neither of these queries should ever actually fail for a normal request — but they used to
+  // be destructured without looking at `error` at all, so a real failure (a missing column after
+  // a migration hasn't been run yet, a transient RLS/auth hiccup) silently produced the exact
+  // same empty result as "genuinely nothing generated yet," with no trace anywhere. Logging here
+  // means a real failure shows up in server logs instead of just looking like empty history.
+  if (projectsError) console.error(`AgentLandingPage(${generator.assetType}): projects query failed`, projectsError);
+  if (generationsError)
+    console.error(`AgentLandingPage(${generator.assetType}): generations query failed`, generationsError);
+  const loadFailed = Boolean(projectsError || generationsError);
 
   // No FK-relationship typing on the hand-written Database type (Relationships: [] on every
   // table — see types/database.ts), so this joins project names onto generations in JS rather
@@ -189,7 +203,12 @@ export default async function AgentLandingPage({
       {/* These always carry ?generationId=, which the generate page treats as "open this saved
           result" — it skips the discovery gate entirely and shows the content directly, no
           regenerate prompt. Only "Start a new project" above goes through discovery first. */}
-      {pastGenerations.length === 0 ? (
+      {loadFailed ? (
+        <p className="text-sm text-destructive">
+          Couldn&apos;t load past generations right now — this is a loading error, not an empty
+          list. Refresh the page; if it keeps happening, this needs a look at the server logs.
+        </p>
+      ) : pastGenerations.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Nothing generated with {agent.name} yet — start above and it&apos;ll show up here.
         </p>

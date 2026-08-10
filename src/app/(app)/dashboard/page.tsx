@@ -76,8 +76,12 @@ export default async function DashboardPage() {
 
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: projects }, { data: latestGenerationRows }, { data: deletedProjects }] =
-    await Promise.all([
+  const [
+    { data: profile },
+    { data: projects, error: projectsError },
+    { data: latestGenerationRows },
+    { data: deletedProjects },
+  ] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", user.id).single(),
       supabase
         .from("projects")
@@ -106,6 +110,12 @@ export default async function DashboardPage() {
         .order("deleted_at", { ascending: false })
         .limit(20),
     ]);
+
+  // A real query failure (e.g. a migration that added a filtered-on column, like deleted_at,
+  // not yet run against this database) used to look identical to "you have no projects" —
+  // nobody destructured `error`. Logging it at least leaves a trace in server logs instead of
+  // silently rendering the empty state.
+  if (projectsError) console.error("DashboardPage: projects query failed", projectsError);
 
   const hasProjects = !!projects && projects.length > 0;
 
@@ -181,6 +191,13 @@ export default async function DashboardPage() {
           </Link>
         </Button>
       </div>
+
+      {projectsError && (
+        <p className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Couldn&apos;t load your projects right now — this is a loading error, not an empty
+          account. Refresh the page; if it keeps happening, this needs a look at the server logs.
+        </p>
+      )}
 
       {!hasProjects ? (
         <div className="card-elevated rounded-2xl p-16 text-center">
