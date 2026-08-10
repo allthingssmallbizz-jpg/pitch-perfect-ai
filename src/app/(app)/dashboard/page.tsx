@@ -220,7 +220,7 @@ export default async function DashboardPage() {
                     Open <ArrowRight className="ml-1 h-4 w-4" />
                   </Link>
                 </Button>
-                <DeleteProjectButton projectId={project.id} />
+                <DeleteProjectButton projectId={project.id} projectName={project.name} />
               </div>
             );
           })}

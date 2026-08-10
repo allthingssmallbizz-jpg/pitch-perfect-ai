@@ -3,12 +3,13 @@
 import { useActionState, useState } from "react";
 import { Sparkles } from "lucide-react";
 import type { Project } from "@/types/database";
-import { updateProjectDiscovery, deleteProject } from "@/lib/actions/projects";
+import { updateProjectDiscovery } from "@/lib/actions/projects";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import DiscoveryAssistDialog, { type AssistTarget } from "@/components/DiscoveryAssistDialog";
+import DeleteProjectButton from "@/components/DeleteProjectButton";
 
 const AWARENESS_LEVELS = ["Unaware", "Problem-Aware", "Solution-Aware", "Product-Aware", "Most Aware"];
 
@@ -428,12 +429,9 @@ export default function DiscoveryForm({
 
       <details className="pt-2">
         <summary className="cursor-pointer text-xs text-muted-foreground">Delete project</summary>
-        <form action={deleteProject} className="mt-2">
-          <input type="hidden" name="projectId" value={project.id} />
-          <button type="submit" className="text-xs text-destructive hover:underline">
-            Permanently delete this project and its generations
-          </button>
-        </form>
+        <div className="mt-2">
+          <DeleteProjectButton projectId={project.id} projectName={project.name} trigger="text" />
+        </div>
       </details>
 
       <DiscoveryAssistDialog

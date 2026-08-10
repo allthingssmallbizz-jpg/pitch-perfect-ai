@@ -97,7 +97,7 @@ export default async function AnalyzeLandingPage() {
                   Open <ArrowRight className="ml-1 h-4 w-4" />
                 </Link>
               </Button>
-              <DeleteProjectButton projectId={project.id} redirectTo="/analyze" />
+              <DeleteProjectButton projectId={project.id} projectName={project.name} redirectTo="/analyze" />
             </div>
           ))}
         </div>
