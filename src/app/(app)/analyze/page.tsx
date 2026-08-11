@@ -69,6 +69,24 @@ export default async function AnalyzeLandingPage() {
         <ArrowRight className="h-4 w-4 text-primary" />
       </Link>
 
+      <Link
+        href="/projects/new?type=social_compare"
+        className="card-elevated mb-8 flex items-center justify-between rounded-2xl border-dashed p-6 transition-colors hover:border-primary/50"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
+            <Plus className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <div className="font-display font-semibold">Compare your social media</div>
+            <div className="text-sm text-muted-foreground">
+              Put your TikTok/Instagram/Facebook page up against a high-performing one you admire.
+            </div>
+          </div>
+        </div>
+        <ArrowRight className="h-4 w-4 text-primary" />
+      </Link>
+
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
         Or pick up a previous project
       </h2>

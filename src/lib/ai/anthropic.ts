@@ -33,7 +33,7 @@ export interface GenerateResult {
   stopReason: Anthropic.Message["stop_reason"];
 }
 
-export type ImageInput = { base64: string; mediaType: "image/jpeg" | "image/png" };
+export type ImageInput = { base64: string; mediaType: "image/jpeg" | "image/png" | "image/webp" | "image/gif" };
 
 // Single call site for every generator. Output length is always capped server-side
 // (maxOutputTokens) — this is one of the margin-protection guardrails from the build spec:

@@ -15,10 +15,11 @@ import type { AssetType } from "@/types/database";
 // Excludes "ad_image" — Agent Addie's Image Ads is a sub-capability reached from her own
 // ad_copy landing page, not a separate agent identity with its own AGENTS entry. Also excludes
 // "website_import" — the discovery form's "Import from your website" is a form-filling utility,
-// not a generator/analyzer with its own agent persona.
+// not a generator/analyzer with its own agent persona. "social_compare" is Agent Annie's social
+// media comparison sub-capability, same reasoning as ad_image — see getAgent() below.
 export type AgentAssetType = Exclude<
   AssetType,
-  "headline_lab" | "tts_narration" | "discovery_assist" | "ad_image" | "website_import"
+  "headline_lab" | "tts_narration" | "discovery_assist" | "ad_image" | "website_import" | "social_compare"
 >;
 
 export type Agent = {
@@ -241,5 +242,8 @@ export function getAgent(assetType: string): Agent | undefined {
   // sub-capability, so it should still visually attribute to her everywhere an asset_type
   // gets looked up (History lists, admin telemetry, etc.).
   if (assetType === "ad_image") return AGENTS.ad_copy;
+  // "social_compare" isn't a key in AGENTS either — the social media comparison tool is Agent
+  // Annie's own sub-capability, reached from her presentation-analysis landing page.
+  if (assetType === "social_compare") return AGENTS.presentation_analysis;
   return AGENTS[assetType as AgentAssetType];
 }

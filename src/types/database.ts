@@ -20,7 +20,8 @@ export type AssetType =
   | "tts_narration"
   | "discovery_assist"
   | "ad_image"
-  | "website_import";
+  | "website_import"
+  | "social_compare";
 
 export type PresentationType =
   | "webinar"
