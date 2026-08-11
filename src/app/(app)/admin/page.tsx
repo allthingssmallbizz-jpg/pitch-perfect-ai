@@ -11,6 +11,8 @@ import MemberCreditsForm from "./MemberCreditsForm";
 import MemberRoleForm from "./MemberRoleForm";
 import MemberTierForm from "./MemberTierForm";
 import MemberInviteForm from "./MemberInviteForm";
+import RevokeAccessButton from "./RevokeAccessButton";
+import DeleteMemberButton from "./DeleteMemberButton";
 
 export default async function AdminPage({
   searchParams,
@@ -106,6 +108,21 @@ export default async function AdminPage({
       {error === "cant-demote-self" && (
         <p className="mb-6 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           You can&apos;t remove your own admin role — have another admin do it if you really need to.
+        </p>
+      )}
+      {error === "cant-revoke-self" && (
+        <p className="mb-6 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          You can&apos;t revoke your own access — have another admin do it if you really need to.
+        </p>
+      )}
+      {error === "cant-delete-self" && (
+        <p className="mb-6 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          You can&apos;t delete your own account — have another admin do it if you really need to.
+        </p>
+      )}
+      {error === "delete-failed" && (
+        <p className="mb-6 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Could not delete that member — try again, or check the server logs if it keeps happening.
         </p>
       )}
 
@@ -391,6 +408,7 @@ export default async function AdminPage({
                 <th className="px-4 py-2">Credits</th>
                 <th className="px-4 py-2">Revenue</th>
                 <th className="px-4 py-2">This month</th>
+                <th className="px-4 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -463,6 +481,12 @@ export default async function AdminPage({
                       ) : (
                         "—"
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col items-start gap-1">
+                        <RevokeAccessButton userId={m.id} isActive={isActiveMember} />
+                        <DeleteMemberButton userId={m.id} email={m.email} />
+                      </div>
                     </td>
                   </tr>
                 );

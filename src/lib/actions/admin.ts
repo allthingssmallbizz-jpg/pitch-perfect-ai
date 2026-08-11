@@ -181,3 +181,60 @@ export async function adminSetRole(formData: FormData) {
   await supabase.from("profiles").update({ role }).eq("id", userId);
   revalidatePath("/admin");
 }
+
+// Cuts off a member's access without touching their data — reversible via adminRestoreAccess
+// below. Two things happen: access_expires_at moves to right now, which the existing
+// access-window check in checkGuardrails (src/lib/credits.ts) already enforces for every paid
+// call; and the auth account itself gets banned via Supabase's admin API, so they're also
+// blocked from logging in at all, not just from generating. "No access to the system" means
+// both, not just one.
+export async function adminRevokeAccess(formData: FormData) {
+  const { supabase, adminUserId } = await requireAdmin();
+  const userId = String(formData.get("userId") || "");
+  if (!userId) return;
+  if (userId === adminUserId) {
+    redirect("/admin?error=cant-revoke-self");
+  }
+
+  await supabase.from("profiles").update({ access_expires_at: new Date().toISOString() }).eq("id", userId);
+  // ban_duration has no explicit "forever" value in Supabase's API — a long fixed duration
+  // (100 years) is the standard way to express "indefinite" until adminRestoreAccess unbans them.
+  await supabase.auth.admin.updateUserById(userId, { ban_duration: "876000h" });
+
+  revalidatePath("/admin");
+}
+
+export async function adminRestoreAccess(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const userId = String(formData.get("userId") || "");
+  if (!userId) return;
+
+  const accessExpiresAt = new Date();
+  accessExpiresAt.setMonth(accessExpiresAt.getMonth() + 12);
+
+  await supabase.from("profiles").update({ access_expires_at: accessExpiresAt.toISOString() }).eq("id", userId);
+  await supabase.auth.admin.updateUserById(userId, { ban_duration: "none" });
+
+  revalidatePath("/admin");
+}
+
+// Permanently deletes the auth account. profiles.id references auth.users(id) on delete
+// cascade, and every owning table (projects, generations, payments, credit_topups,
+// generation_versions) cascades from profiles the same way — so this genuinely removes
+// everything tied to this member, not just their login. Irreversible; gated by the typed-email
+// confirmation in DeleteMemberButton.tsx, not just a click.
+export async function adminDeleteMember(formData: FormData) {
+  const { supabase, adminUserId } = await requireAdmin();
+  const userId = String(formData.get("userId") || "");
+  if (!userId) return;
+  if (userId === adminUserId) {
+    redirect("/admin?error=cant-delete-self");
+  }
+
+  const { error } = await supabase.auth.admin.deleteUser(userId);
+  if (error) {
+    redirect("/admin?error=delete-failed");
+  }
+
+  revalidatePath("/admin");
+}
