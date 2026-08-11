@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import DisplayNameForm from "./DisplayNameForm";
+import ChangePasswordForm from "./ChangePasswordForm";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -30,6 +31,14 @@ export default async function SettingsPage() {
           <Label>Email</Label>
           <Input value={user.email ?? ""} readOnly className="mt-1 bg-card/40" />
         </div>
+      </div>
+
+      <div className="card-elevated mt-6 rounded-2xl p-8">
+        <h2 className="mb-1 font-semibold">Password</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Change your password — useful if you&apos;re still using a temporary one an admin set for you.
+        </p>
+        <ChangePasswordForm />
       </div>
 
       {profile && (
