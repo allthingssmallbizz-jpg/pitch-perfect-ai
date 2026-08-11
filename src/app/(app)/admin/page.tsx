@@ -163,6 +163,27 @@ export default async function AdminPage({
             );
           })}
         </div>
+        {/* Not a secret — shown in full, since "is it set" isn't the useful question here, "is
+            it actually your real domain and not the localhost fallback" is. A missing/wrong
+            value here is exactly why member-invite and Stripe checkout links can look "broken." */}
+        {(() => {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+          const isLocalhost = !appUrl || appUrl.includes("localhost");
+          return (
+            <div
+              className={`mt-2 flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs ${
+                isLocalhost ? "border-destructive/40 bg-destructive/10" : "border-emerald-500/30 bg-emerald-500/5"
+              }`}
+            >
+              <span className="text-muted-foreground">
+                NEXT_PUBLIC_APP_URL (member invite links, Stripe checkout redirects)
+              </span>
+              <span className={isLocalhost ? "text-destructive" : "text-emerald-400"}>
+                {appUrl || "missing (falls back to http://localhost:3000)"}
+              </span>
+            </div>
+          );
+        })()}
         <p className="mt-2 text-xs text-muted-foreground">
           Deployed at: {process.env.VERCEL_ENV ?? "unknown"}
           {process.env.VERCEL_GIT_COMMIT_SHA ? ` · commit ${process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7)}` : ""}
