@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkGuardrails, decrementCredits } from "@/lib/credits";
 import { generateAsset } from "@/lib/ai/anthropic";
-import { fetchSocialProfile, SocialFetchError } from "@/lib/social";
+import { fetchSocialProfile, SocialFetchError, type SocialProfileExtraction } from "@/lib/social";
 import {
   SOCIAL_COMPARE_CREDIT_COST,
   SOCIAL_COMPARE_MAX_OUTPUT_TOKENS,
@@ -18,17 +18,50 @@ export const runtime = "nodejs";
 // every other multi-step generation route this session.
 export const maxDuration = 60;
 
-const requestSchema = z.object({
-  yourUrl: z.string().min(1).max(500),
-  referenceUrl: z.string().min(1).max(500),
+// Capped at 3 per side, alongside compressing every image client-side (see
+// src/lib/imageCompress.ts) — Vercel's serverless request body limit is ~4.5MB, and base64
+// inflates raw bytes by ~33%, so this keeps a full 6-image payload comfortably under that even
+// before compression is accounted for.
+const MAX_IMAGES_PER_SIDE = 3;
+
+const imageSchema = z.object({
+  base64: z.string().min(1),
+  mediaType: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
 });
 
-// Agent Annie's social media comparison — reads whatever a member's own page and a
-// high-performing reference page actually expose (see src/lib/social.ts for why that's Open
-// Graph meta tags + preview image, not a full scraped post history) and produces a real,
-// saveable/exportable markdown comparison, same as any other generator's output. Not
-// project-scoped — same reasoning as Headline Lab: this doesn't read a project's discovery
-// fields, only the two page addresses, so it doesn't need a project at all.
+const sideSchema = z.union([
+  z.object({ mode: z.literal("url"), url: z.string().min(1).max(500) }),
+  z.object({
+    mode: z.literal("screenshots"),
+    platform: z.enum(["tiktok", "instagram", "facebook", "other"]).default("other"),
+    images: z.array(imageSchema).min(1).max(MAX_IMAGES_PER_SIDE),
+  }),
+]);
+
+const requestSchema = z.object({
+  yours: sideSchema,
+  reference: sideSchema,
+});
+
+async function resolveSide(side: z.infer<typeof sideSchema>): Promise<SocialProfileExtraction> {
+  if (side.mode === "url") return fetchSocialProfile(side.url);
+  return {
+    finalUrl: "(screenshots uploaded directly)",
+    platform: side.platform,
+    title: "",
+    description: "",
+    bodyTextSnippet: "",
+    images: side.images,
+  };
+}
+
+// Agent Annie's social media comparison — for each side, either reads whatever a page's URL
+// actually exposes (see src/lib/social.ts for why that's Open Graph meta tags + preview image,
+// not a full scraped post history — and why Instagram/Facebook often expose nothing at all), or
+// uses screenshots the member uploaded directly, which work regardless of what the platform lets
+// automated tools see. Produces a real, saveable/exportable markdown comparison, same as any
+// other generator's output. Not project-scoped — same reasoning as Headline Lab: this doesn't
+// read a project's discovery fields, so it doesn't need a project at all.
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const {
@@ -40,20 +73,20 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
   }
-  const { yourUrl, referenceUrl } = parsed.data;
+  const { yours: yoursInput, reference: referenceInput } = parsed.data;
 
   const guardrail = await checkGuardrails(user.id, SOCIAL_COMPARE_CREDIT_COST);
   if (!guardrail.ok) {
     return NextResponse.json({ error: guardrail.message, reason: guardrail.reason }, { status: 429 });
   }
 
-  // Fetch both pages before charging anything or writing a row — a bad/unreachable link is the
+  // Resolve both sides before charging anything or writing a row — a bad/unreachable link is the
   // member's to fix, not something they should pay credits for. Promise.allSettled (not
   // Promise.all) so a failure on one side can be reported as "your page" or "the reference page"
   // specifically, instead of an ambiguous "something went wrong."
   const [yoursResult, referenceResult] = await Promise.allSettled([
-    fetchSocialProfile(yourUrl),
-    fetchSocialProfile(referenceUrl),
+    resolveSide(yoursInput),
+    resolveSide(referenceInput),
   ]);
   if (yoursResult.status === "rejected") {
     const message = yoursResult.reason instanceof SocialFetchError ? yoursResult.reason.message : "Couldn't read that page.";

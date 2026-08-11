@@ -28,7 +28,10 @@ export type SocialProfileExtraction = {
   title: string;
   description: string;
   bodyTextSnippet: string;
-  image?: SocialImage;
+  // Zero, one, or several — a URL fetch yields at most one (the page's link-preview image);
+  // a member-uploaded screenshot batch (src/app/(app)/social-compare/SocialCompareClient.tsx)
+  // can supply several, e.g. a profile screenshot plus a couple of video thumbnails.
+  images: SocialImage[];
 };
 
 function decodeHtmlEntities(s: string): string {
@@ -136,9 +139,9 @@ export async function fetchSocialProfile(rawUrl: string): Promise<SocialProfileE
 
   if (!title && !description && bodyTextSnippet.length < 100 && !image) {
     throw new SocialFetchError(
-      `${PLATFORM_LABELS[platform]} page didn't return anything readable — these platforms often block automated reading entirely for a given page or require login to view it. Try a different link (a public profile or a specific public post usually works better than a locked-down page).`
+      `${PLATFORM_LABELS[platform]} page didn't return anything readable — these platforms often block automated reading entirely for a given page or require login to view it (Instagram and Facebook do this especially often, even for fully public accounts). Try a different link, or switch to uploading screenshots instead — that works regardless of what the platform allows automated tools to see.`
     );
   }
 
-  return { finalUrl, platform, title, description, bodyTextSnippet, image };
+  return { finalUrl, platform, title, description, bodyTextSnippet, images: image ? [image] : [] };
 }

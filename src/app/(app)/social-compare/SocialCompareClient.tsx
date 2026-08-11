@@ -5,12 +5,11 @@ import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { Sparkles, Copy, FileDown, Save, Loader2, Trash2, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import RichTextEditor from "@/components/RichTextEditor";
 import VersionHistory from "@/components/VersionHistory";
 import TtsPlayer from "@/components/TtsPlayer";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
+import SocialSideInput, { type SideValue } from "./SocialSideInput";
 
 export type PastGeneration = { id: string; createdAt: string; preview: string };
 
@@ -38,8 +37,8 @@ export default function SocialCompareClient({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [yourUrl, setYourUrl] = useState("");
-  const [referenceUrl, setReferenceUrl] = useState("");
+  const [yours, setYours] = useState<SideValue>({ mode: "url", url: "" });
+  const [reference, setReference] = useState<SideValue>({ mode: "url", url: "" });
   const [content, setContent] = useState<string | null>(initialContent);
   const [generationId, setGenerationId] = useState<string | null>(initialGenerationId);
   const [loading, setLoading] = useState(false);
@@ -64,9 +63,13 @@ export default function SocialCompareClient({
     if (generationId) autosave(markdown, generationId);
   }
 
+  function sideIsReady(side: SideValue): boolean {
+    return side.mode === "url" ? side.url.trim().length > 0 : side.images.length > 0;
+  }
+
   async function run() {
-    if (!yourUrl.trim() || !referenceUrl.trim()) {
-      setError("Enter both your page and the reference page to compare.");
+    if (!sideIsReady(yours) || !sideIsReady(reference)) {
+      setError("Fill in both your page and the reference page — a link or at least one screenshot for each.");
       return;
     }
     setLoading(true);
@@ -75,7 +78,7 @@ export default function SocialCompareClient({
       const res = await fetch("/api/analyze/social-compare", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ yourUrl, referenceUrl }),
+        body: JSON.stringify({ yours, reference }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -159,31 +162,26 @@ export default function SocialCompareClient({
   return (
     <div>
       <div className="card-elevated mb-4 space-y-3 rounded-2xl p-4">
-        <div>
-          <Label htmlFor="your-url">Your page</Label>
-          <Input
-            id="your-url"
-            placeholder="e.g. tiktok.com/@yourhandle or instagram.com/yourhandle"
-            value={yourUrl}
-            onChange={(e) => setYourUrl(e.target.value)}
-            className="mt-1"
-          />
-        </div>
-        <div>
-          <Label htmlFor="reference-url">High-performing page to compare against</Label>
-          <Input
-            id="reference-url"
-            placeholder="e.g. tiktok.com/@someoneperformingwell"
-            value={referenceUrl}
-            onChange={(e) => setReferenceUrl(e.target.value)}
-            className="mt-1"
-          />
-        </div>
+        <SocialSideInput
+          id="your-page"
+          label="Your page"
+          urlPlaceholder="e.g. tiktok.com/@yourhandle or instagram.com/yourhandle"
+          value={yours}
+          onChange={setYours}
+        />
+        <SocialSideInput
+          id="reference-page"
+          label="High-performing page to compare against"
+          urlPlaceholder="e.g. tiktok.com/@someoneperformingwell"
+          value={reference}
+          onChange={setReference}
+        />
         <p className="text-xs text-muted-foreground">
-          TikTok, Instagram, and Facebook block most automated reading, so results depend on
-          what each platform publicly exposes for that page — usually the bio/description and a
-          preview image. If a page returns too little to work with, you&apos;ll get a clear
-          message saying so rather than a made-up analysis.
+          A pasted link is best-effort — TikTok, Instagram, and Facebook often block automated
+          reading, especially Instagram/Facebook. Screenshots always work, since they don&apos;t
+          depend on the platform cooperating: capture the profile and a few posts/videos and
+          upload them instead. If a link returns too little to work with, you&apos;ll get a
+          clear message saying so rather than a made-up analysis.
         </p>
         <Button onClick={run} disabled={loading}>
           <Sparkles className="mr-2 h-4 w-4" />
