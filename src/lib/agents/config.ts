@@ -13,8 +13,13 @@
 import type { AssetType } from "@/types/database";
 
 // Excludes "ad_image" — Agent Addie's Image Ads is a sub-capability reached from her own
-// ad_copy landing page, not a separate agent identity with its own AGENTS entry.
-export type AgentAssetType = Exclude<AssetType, "headline_lab" | "tts_narration" | "discovery_assist" | "ad_image">;
+// ad_copy landing page, not a separate agent identity with its own AGENTS entry. Also excludes
+// "website_import" — the discovery form's "Import from your website" is a form-filling utility,
+// not a generator/analyzer with its own agent persona.
+export type AgentAssetType = Exclude<
+  AssetType,
+  "headline_lab" | "tts_narration" | "discovery_assist" | "ad_image" | "website_import"
+>;
 
 export type Agent = {
   assetType: AgentAssetType;

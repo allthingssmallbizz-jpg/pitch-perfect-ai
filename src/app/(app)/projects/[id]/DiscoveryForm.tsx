@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Globe } from "lucide-react";
 import type { Project } from "@/types/database";
 import { updateProjectDiscovery } from "@/lib/actions/projects";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import DiscoveryAssistDialog, { type AssistTarget } from "@/components/DiscoveryAssistDialog";
+import WebsiteImportDialog from "@/components/WebsiteImportDialog";
 import DeleteProjectButton from "@/components/DeleteProjectButton";
 
 const AWARENESS_LEVELS = ["Unaware", "Problem-Aware", "Solution-Aware", "Product-Aware", "Most Aware"];
@@ -39,6 +40,7 @@ const DISCOVERY_FIELD_NAMES = [
   "bonuses",
   "scarcity_urgency",
   "cta",
+  "discovery_notes",
 ];
 
 function AssistButton({ onClick }: { onClick: () => void }) {
@@ -142,6 +144,7 @@ export default function DiscoveryForm({
 }) {
   const [state, formAction, pending] = useActionState(updateProjectDiscovery, undefined);
   const [assistTarget, setAssistTarget] = useState<AssistTarget | null>(null);
+  const [websiteImportOpen, setWebsiteImportOpen] = useState(false);
 
   function collectOtherAnswers(): Record<string, string> {
     const out: Record<string, string> = {};
@@ -157,10 +160,29 @@ export default function DiscoveryForm({
     if (el) el.value = text;
   }
 
+  function handleWebsiteImportAccept(values: Record<string, string>) {
+    for (const [key, text] of Object.entries(values)) handleAssistAccept(key, text);
+  }
+
   return (
     <form id="discovery-form" action={formAction} className="card-elevated space-y-6 rounded-2xl p-6">
       <input type="hidden" name="projectId" value={project.id} />
       {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
+
+      <button
+        type="button"
+        onClick={() => setWebsiteImportOpen(true)}
+        className="flex w-full items-center gap-3 rounded-xl border border-dashed border-primary/30 bg-primary/5 p-3 text-left transition-colors hover:border-primary/50"
+      >
+        <Globe className="h-5 w-5 shrink-0 text-primary" />
+        <span className="min-w-0">
+          <span className="block text-sm font-medium text-foreground">Import from your website</span>
+          <span className="block text-xs text-muted-foreground">
+            Already have a website? Paste the address and the AI drafts what it can from it —
+            review before anything&apos;s inserted.
+          </span>
+        </span>
+      </button>
 
       <Field label="Project name" name="name" defaultValue={project.name} textarea={false} required blockSubmitIfEmpty />
 
@@ -440,6 +462,14 @@ export default function DiscoveryForm({
         projectId={project.id}
         otherAnswers={collectOtherAnswers}
         onAccept={handleAssistAccept}
+      />
+
+      <WebsiteImportDialog
+        open={websiteImportOpen}
+        onOpenChange={setWebsiteImportOpen}
+        projectId={project.id}
+        currentValues={collectOtherAnswers}
+        onAccept={handleWebsiteImportAccept}
       />
     </form>
   );

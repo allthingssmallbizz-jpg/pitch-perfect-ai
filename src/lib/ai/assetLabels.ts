@@ -13,6 +13,7 @@ export function getAssetLabel(assetType: AssetType): string {
   if (assetType === "tts_narration") return "Read Aloud (TTS)";
   if (assetType === "discovery_assist") return "AI Assist (discovery field)";
   if (assetType === "ad_image") return "Image Ad";
+  if (assetType === "website_import") return "Import from website";
   return ASSET_GENERATORS[assetType as GeneratorAssetType].label;
 }
 
@@ -27,8 +28,9 @@ export function getAssetHref(projectId: string, assetType: AssetType, generation
   if (assetType === "ad_image") {
     return `/projects/${projectId}/ad-image${suffix}`;
   }
-  if (assetType === "tts_narration" || assetType === "discovery_assist") {
-    // No dedicated page — not a browsable asset (audio / a single field draft).
+  if (assetType === "tts_narration" || assetType === "discovery_assist" || assetType === "website_import") {
+    // No dedicated page — not a browsable asset (audio / a single field draft / fields already
+    // inserted straight into the discovery form).
     return `/projects/${projectId}`;
   }
   return `/projects/${projectId}/generate/${assetType}${suffix}`;

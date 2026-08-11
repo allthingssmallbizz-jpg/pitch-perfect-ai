@@ -14,9 +14,11 @@ import { buildOfferLadderPrompt, OFFER_LADDER_CREDIT_COST, OFFER_LADDER_MAX_OUTP
 // src/lib/ai/assetLabels.ts. Also excludes "ad_image" — Agent Addie's Image Ads is a
 // sub-capability reached from her /agents/ad_copy landing page, not a standalone
 // long-form-markdown generator with its own registry entry; see src/lib/ai/generators/adImage.ts.
+// "website_import", "tts_narration", and "discovery_assist" are all lightweight utility calls
+// with no dedicated generator/agent of their own — see src/lib/ai/websiteImport.ts.
 export type GeneratorAssetType = Exclude<
   AssetType,
-  "presentation_analysis" | "headline_lab" | "tts_narration" | "discovery_assist" | "ad_image"
+  "presentation_analysis" | "headline_lab" | "tts_narration" | "discovery_assist" | "ad_image" | "website_import"
 >;
 
 export interface AssetGenerator {

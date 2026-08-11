@@ -19,7 +19,8 @@ export type AssetType =
   | "headline_lab"
   | "tts_narration"
   | "discovery_assist"
-  | "ad_image";
+  | "ad_image"
+  | "website_import";
 
 export type PresentationType =
   | "webinar"
