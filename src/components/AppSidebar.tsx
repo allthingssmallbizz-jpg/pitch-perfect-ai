@@ -179,10 +179,10 @@ export default function AppSidebar({ email, displayName, isAdmin, credits }: Pro
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === "/social-compare"} tooltip="Compare social media">
+                <SidebarMenuButton asChild isActive={pathname === "/social-compare"} tooltip="Social Detective">
                   <Link href="/social-compare">
                     <GitCompareArrows className="h-4 w-4" />
-                    <span>Compare social media</span>
+                    <span>Social Detective</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
