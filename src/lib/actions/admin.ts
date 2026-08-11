@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { randomBytes } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -103,6 +104,25 @@ export async function adminAddCredits(_prevState: unknown, formData: FormData) {
   return { success: true };
 }
 
+// Alphanumeric-only (no symbols) so it's easy to read aloud or retype from a text message —
+// still well over 60 bits of entropy at this length, plenty for a member account.
+function generateTempPassword(): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"; // no 0/O/1/l/I
+  const bytes = randomBytes(14);
+  let out = "";
+  for (const b of bytes) out += alphabet[b % alphabet.length];
+  return out;
+}
+
+// Creates the account with a password set and the email pre-confirmed — the member can log in
+// at /login immediately with the email + password shown in the result, with zero dependency on
+// email deliverability. This replaced an inviteUserByEmail flow: that only worked once Custom
+// SMTP was fully configured in Supabase (a real outside-service dependency with its own DNS/
+// verification steps — see the admin panel's Service accounts card), and until then left a
+// member with an email that either never arrived or linked to a broken page, with no way in at
+// all. Giving the admin the password directly removes email from the critical path entirely —
+// worth still emailing them separately once SMTP is confirmed working, but that's no longer
+// required for them to actually get access.
 export async function adminInviteMember(_prevState: unknown, formData: FormData) {
   const { supabase } = await requireAdmin();
   const email = String(formData.get("email") || "").trim().toLowerCase();
@@ -111,22 +131,25 @@ export async function adminInviteMember(_prevState: unknown, formData: FormData)
   const role = formData.get("role") === "admin" ? "admin" : "member";
   const credits = Number(formData.get("credits"));
   const accessMonths = Number(formData.get("access_months"));
+  const requestedPassword = String(formData.get("password") || "").trim();
 
   if (!email || !email.includes("@")) return { error: "Enter a valid email address." };
   if (!Number.isFinite(credits) || credits < 0) return { error: "Enter a valid, non-negative credit amount." };
   if (!Number.isFinite(accessMonths) || accessMonths <= 0) return { error: "Enter a valid access length in months." };
+  if (requestedPassword && requestedPassword.length < 8) {
+    return { error: "Password must be at least 8 characters — or leave it blank to generate one." };
+  }
 
-  // inviteUserByEmail creates the auth.users row (which fires handle_new_user, giving them a
-  // default profiles row) and emails them a link to /auth/set-password to choose a password —
-  // they never have one set by us. PKCE isn't supported for invites (the browser that sends
-  // the invite isn't the one that opens it), so that page reads tokens from the URL fragment.
-  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/set-password`;
-  const { data, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
-    data: fullName ? { full_name: fullName } : undefined,
-    redirectTo,
+  const password = requestedPassword || generateTempPassword();
+
+  const { data, error: createError } = await supabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: fullName ? { full_name: fullName } : undefined,
   });
-  if (inviteError || !data.user) {
-    return { error: inviteError?.message || "Could not send the invite." };
+  if (createError || !data.user) {
+    return { error: createError?.message || "Could not create the account." };
   }
 
   const accessExpiresAt = new Date();
@@ -145,11 +168,17 @@ export async function adminInviteMember(_prevState: unknown, formData: FormData)
     })
     .eq("id", data.user.id);
   if (profileError) {
-    return { error: "Invite sent, but couldn't set their starting tier/credits — edit them in the table below." };
+    return {
+      error: `Account created (password: ${password}), but couldn't set their starting tier/credits — edit them in the table below. Save that password now, it won't be shown again.`,
+    };
   }
 
   revalidatePath("/admin");
-  return { success: true, message: `Invite sent to ${email}.` };
+  return {
+    success: true,
+    message: `Account ready for ${email}. Log in at ${process.env.NEXT_PUBLIC_APP_URL || "your app URL"}/login`,
+    password,
+  };
 }
 
 export async function adminSetTier(_prevState: unknown, formData: FormData) {
