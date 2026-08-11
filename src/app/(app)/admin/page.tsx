@@ -13,6 +13,7 @@ import MemberTierForm from "./MemberTierForm";
 import MemberInviteForm from "./MemberInviteForm";
 import RevokeAccessButton from "./RevokeAccessButton";
 import DeleteMemberButton from "./DeleteMemberButton";
+import ResendCredentialsButton from "./ResendCredentialsButton";
 
 export default async function AdminPage({
   searchParams,
@@ -163,6 +164,8 @@ export default async function AdminPage({
             { label: "ANTHROPIC_API_KEY (every generator)", value: process.env.ANTHROPIC_API_KEY },
             { label: "SUPABASE_SERVICE_ROLE_KEY", value: process.env.SUPABASE_SERVICE_ROLE_KEY },
             { label: "STRIPE_SECRET_KEY", value: process.env.STRIPE_SECRET_KEY },
+            { label: "RESEND_API_KEY (member login credential emails)", value: process.env.RESEND_API_KEY },
+            { label: "RESEND_FROM_EMAIL", value: process.env.RESEND_FROM_EMAIL },
           ].map(({ label, value }) => {
             const present = Boolean(value && value.trim());
             return (
@@ -366,13 +369,15 @@ export default async function AdminPage({
       <div className="card-elevated mb-8 rounded-2xl p-5">
         <h2 className="font-display font-semibold">Invite a member</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Creates their account directly (no Stripe checkout) and emails them a link to set a
-          password — useful for comping a founding member, adding a teammate, or a beta tester.
+          Creates their account directly with full access — no Stripe checkout, no invite link to
+          click. They&apos;re emailed their login email and password right away and can sign in
+          immediately. Useful for comping a founding member, adding a teammate, or a beta tester.
           You can still change any of this later from the table below.
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Supabase&apos;s free tier rate-limits how many auth emails it can send per hour — if
-          an invite doesn&apos;t arrive, that&apos;s the likely cause.
+          The password is always shown here too, in case the welcome email doesn&apos;t send
+          (e.g. RESEND_API_KEY isn&apos;t set yet — see Environment check above) — copy it and
+          send it yourself as a fallback.
         </p>
         <div className="mt-3">
           <MemberInviteForm />
@@ -484,6 +489,7 @@ export default async function AdminPage({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col items-start gap-1">
+                        <ResendCredentialsButton userId={m.id} email={m.email} fullName={m.full_name} />
                         <RevokeAccessButton userId={m.id} isActive={isActiveMember} />
                         <DeleteMemberButton userId={m.id} email={m.email} />
                       </div>

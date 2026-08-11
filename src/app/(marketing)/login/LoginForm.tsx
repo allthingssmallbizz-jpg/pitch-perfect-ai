@@ -5,6 +5,7 @@ import Link from "next/link";
 import { signIn } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 
 export default function LoginForm({ next }: { next: string }) {
@@ -18,8 +19,13 @@ export default function LoginForm({ next }: { next: string }) {
         <Input id="email" name="email" type="email" required className="mt-1" />
       </div>
       <div>
-        <Label htmlFor="password">Password</Label>
-        <Input id="password" name="password" type="password" required className="mt-1" />
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password">Password</Label>
+          <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+            Forgot password?
+          </Link>
+        </div>
+        <PasswordInput id="password" name="password" required className="mt-1" />
       </div>
 
       {state && "error" in state && state.error && <p className="text-sm text-destructive">{state.error}</p>}

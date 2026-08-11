@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { randomBytes } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendEmail, buildLoginCredentialsEmail, EmailSendError } from "@/lib/email";
 
 // `profiles` RLS only allows a row's own owner to UPDATE it (see profiles_update_own in
 // 0001_init.sql — there's no admin-update policy, only admin-select). So every mutation an
@@ -173,11 +174,61 @@ export async function adminInviteMember(_prevState: unknown, formData: FormData)
     };
   }
 
+  // Best-effort — the password is already shown below regardless, so a failed send (most likely
+  // because Custom SMTP/Resend isn't fully configured yet — see the admin panel's Service
+  // accounts card) doesn't block account creation, it just means the admin needs to copy the
+  // password and send it manually this time.
+  let emailSent = false;
+  let emailError: string | null = null;
+  try {
+    const { subject, html } = buildLoginCredentialsEmail({ fullName: fullName || null, email, password });
+    await sendEmail({ to: email, subject, html });
+    emailSent = true;
+  } catch (err) {
+    emailError = err instanceof EmailSendError ? err.message : "Could not send the welcome email.";
+  }
+
   revalidatePath("/admin");
   return {
     success: true,
-    message: `Account ready for ${email}. Log in at ${process.env.NEXT_PUBLIC_APP_URL || "your app URL"}/login`,
+    message: emailSent
+      ? `Account ready for ${email} — login details emailed to them.`
+      : `Account ready for ${email}. Login email failed to send: ${emailError}`,
     password,
+    emailSent,
+  };
+}
+
+// Regenerates a member's password (the old one can't be retrieved — Supabase never stores or
+// exposes plaintext passwords after creation) and emails the new one to them, for when they
+// never got the original welcome email or lost it. Same fallback as adminInviteMember: the new
+// password is always shown on screen too, so a failed send doesn't leave the admin stuck.
+export async function adminResendCredentials(_prevState: unknown, formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const userId = String(formData.get("userId") || "");
+  const email = String(formData.get("email") || "");
+  const fullName = String(formData.get("fullName") || "").trim();
+  if (!userId || !email) return { error: "Member not found." };
+
+  const password = generateTempPassword();
+  const { error: updateError } = await supabase.auth.admin.updateUserById(userId, { password });
+  if (updateError) return { error: updateError.message || "Could not reset their password." };
+
+  let emailSent = false;
+  let emailError: string | null = null;
+  try {
+    const { subject, html } = buildLoginCredentialsEmail({ fullName: fullName || null, email, password });
+    await sendEmail({ to: email, subject, html });
+    emailSent = true;
+  } catch (err) {
+    emailError = err instanceof EmailSendError ? err.message : "Could not send the login email.";
+  }
+
+  return {
+    success: true,
+    message: emailSent ? `New password emailed to ${email}.` : `Login email failed to send: ${emailError}`,
+    password,
+    emailSent,
   };
 }
 

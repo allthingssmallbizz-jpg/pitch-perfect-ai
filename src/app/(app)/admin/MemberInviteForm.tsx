@@ -121,15 +121,22 @@ export default function MemberInviteForm() {
         {state && "error" in state && state.error && <p className="text-xs text-destructive">{state.error}</p>}
       </div>
       {state && "success" in state && state.success && (
-        <div className="col-span-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs sm:col-span-3 lg:col-span-7">
-          <p className="text-emerald-300">{state.message}</p>
-          <p className="mt-1 flex flex-wrap items-center gap-2 text-emerald-400">
+        <div
+          className={`col-span-2 rounded-lg border px-3 py-2 text-xs sm:col-span-3 lg:col-span-7 ${
+            state.emailSent
+              ? "border-emerald-500/30 bg-emerald-500/10"
+              : "border-amber-500/30 bg-amber-500/10"
+          }`}
+        >
+          <p className={state.emailSent ? "text-emerald-300" : "text-amber-300"}>{state.message}</p>
+          <p className={`mt-1 flex flex-wrap items-center gap-2 ${state.emailSent ? "text-emerald-400" : "text-amber-400"}`}>
             Password: <code className="rounded bg-black/30 px-1.5 py-0.5">{state.password}</code>
             <CopyButton text={state.password} />
           </p>
           <p className="mt-1 text-muted-foreground">
-            Shown once — copy it now and send it to the member yourself (text, email, in person).
-            They can log in immediately with their email and this password.
+            {state.emailSent
+              ? "They've been emailed their login details and can sign in right away."
+              : "Shown once — copy it now and send it to the member yourself (text, email, in person). They can log in immediately with their email and this password."}
           </p>
         </div>
       )}

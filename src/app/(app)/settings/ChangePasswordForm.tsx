@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 import { changePassword } from "@/lib/actions/auth";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 
 export default function ChangePasswordForm() {
@@ -21,10 +21,9 @@ export default function ChangePasswordForm() {
     <form ref={formRef} action={formAction} className="space-y-3">
       <div>
         <Label htmlFor="current_password">Current password</Label>
-        <Input
+        <PasswordInput
           id="current_password"
           name="current_password"
-          type="password"
           required
           autoComplete="current-password"
           className="mt-1 max-w-sm"
@@ -32,10 +31,9 @@ export default function ChangePasswordForm() {
       </div>
       <div>
         <Label htmlFor="new_password">New password</Label>
-        <Input
+        <PasswordInput
           id="new_password"
           name="new_password"
-          type="password"
           required
           minLength={8}
           autoComplete="new-password"
@@ -44,10 +42,9 @@ export default function ChangePasswordForm() {
       </div>
       <div>
         <Label htmlFor="confirm_password">Confirm new password</Label>
-        <Input
+        <PasswordInput
           id="confirm_password"
           name="confirm_password"
-          type="password"
           required
           minLength={8}
           autoComplete="new-password"

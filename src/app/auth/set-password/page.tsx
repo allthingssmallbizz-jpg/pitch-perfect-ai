@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 
 type Status = "checking" | "ready" | "invalid";
@@ -80,25 +80,26 @@ export default function SetPasswordPage() {
 
       {status === "invalid" && (
         <div className="card-elevated rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive">
-          This invite link is invalid or has expired. Ask whoever invited you to send a new one,
-          or{" "}
+          This link is invalid or has expired. If you were resetting your password, request a new
+          link from{" "}
+          <a href="/forgot-password" className="underline">
+            forgot password
+          </a>
+          , or{" "}
           <a href="/login" className="underline">
             log in
           </a>{" "}
-          if you already have a password.
+          if you already know it.
         </div>
       )}
 
       {status === "ready" && (
         <form onSubmit={handleSubmit} className="card-elevated space-y-4 rounded-2xl p-8">
-          <p className="text-sm text-muted-foreground">
-            Welcome! Choose a password to finish setting up your account.
-          </p>
+          <p className="text-sm text-muted-foreground">Choose a password to finish.</p>
           <div>
             <Label htmlFor="password">Password</Label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               minLength={8}
               required
               value={password}
@@ -109,9 +110,8 @@ export default function SetPasswordPage() {
           </div>
           <div>
             <Label htmlFor="confirm">Confirm password</Label>
-            <Input
+            <PasswordInput
               id="confirm"
-              type="password"
               minLength={8}
               required
               value={confirm}
