@@ -12,6 +12,7 @@ import {
   LogOut,
   BookOpen,
   Settings,
+  GitCompareArrows,
 } from "lucide-react";
 import { signOut } from "@/lib/actions/auth";
 import { AGENTS, type AgentAssetType } from "@/lib/agents/config";
@@ -174,6 +175,14 @@ export default function AppSidebar({ email, displayName, isAdmin, credits }: Pro
                     <span className="truncate">
                       {AGENTS.presentation_analysis.name} <span className="text-muted-foreground">· Analyzer</span>
                     </span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === "/social-compare"} tooltip="Compare social media">
+                  <Link href="/social-compare">
+                    <GitCompareArrows className="h-4 w-4" />
+                    <span>Compare social media</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

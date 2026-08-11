@@ -70,7 +70,7 @@ export default async function AnalyzeLandingPage() {
       </Link>
 
       <Link
-        href="/projects/new?type=social_compare"
+        href="/social-compare"
         className="card-elevated mb-8 flex items-center justify-between rounded-2xl border-dashed p-6 transition-colors hover:border-primary/50"
       >
         <div className="flex items-center gap-3">

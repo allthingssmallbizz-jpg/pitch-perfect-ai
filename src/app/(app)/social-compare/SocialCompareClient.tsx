@@ -28,12 +28,10 @@ function formatWhen(iso: string) {
 }
 
 export default function SocialCompareClient({
-  projectId,
   initialContent,
   initialGenerationId,
   initialPastGenerations,
 }: {
-  projectId: string;
   initialContent: string | null;
   initialGenerationId: string | null;
   initialPastGenerations: PastGeneration[];
@@ -77,7 +75,7 @@ export default function SocialCompareClient({
       const res = await fetch("/api/analyze/social-compare", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, yourUrl, referenceUrl }),
+        body: JSON.stringify({ yourUrl, referenceUrl }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -231,7 +229,7 @@ export default function SocialCompareClient({
         <details className="mb-4 rounded-xl border border-border bg-card/30" open={pastGenerations.length <= 3}>
           <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground">
             <History className="mr-1.5 inline h-4 w-4" />
-            Past comparisons in this project ({pastGenerations.length})
+            Past comparisons ({pastGenerations.length})
           </summary>
           <ul className="divide-y divide-border/60 border-t border-border">
             {pastGenerations.map((g) => (

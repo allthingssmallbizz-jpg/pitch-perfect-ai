@@ -6,7 +6,6 @@ import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
 import { getAssetLabel, getAssetHref } from "@/lib/ai/assetLabels";
 import { ANALYZER_CREDIT_COST } from "@/lib/ai/analyzer";
 import { AD_IMAGE_CREDIT_COST } from "@/lib/ai/generators/adImage";
-import { SOCIAL_COMPARE_CREDIT_COST } from "@/lib/ai/socialCompare";
 import { AGENTS, getAgent } from "@/lib/agents/config";
 import { projectNeedsDiscovery, REQUIRED_DISCOVERY_FIELDS } from "@/lib/projects";
 import { Badge } from "@/components/ui/badge";
@@ -46,29 +45,17 @@ export default async function ProjectPage({
   // the comment on projectDestination in src/lib/actions/projects.ts). Used to highlight which
   // tool the user actually wanted and to send DiscoveryForm's "Save" straight there.
   const isValidIntent =
-    intent === "presentation_analysis" ||
-    intent === "ad_image" ||
-    intent === "social_compare" ||
-    (intent && (ASSET_TYPES as string[]).includes(intent));
-  // "ad_image" and "social_compare" aren't keys in AGENTS (they're Addie's and Annie's own
-  // sub-capabilities, not separate agent identities — see the comment on AgentAssetType) so they
-  // need their own lookup here.
-  const intentAgent = !isValidIntent
-    ? null
-    : intent === "ad_image"
-      ? AGENTS.ad_copy
-      : intent === "social_compare"
-        ? AGENTS.presentation_analysis
-        : AGENTS[intent as keyof typeof AGENTS];
+    intent === "presentation_analysis" || intent === "ad_image" || (intent && (ASSET_TYPES as string[]).includes(intent));
+  // "ad_image" isn't a key in AGENTS (it's Addie's sub-capability, not a separate agent
+  // identity — see the comment on AgentAssetType) so it needs its own lookup here.
+  const intentAgent = !isValidIntent ? null : intent === "ad_image" ? AGENTS.ad_copy : AGENTS[intent as keyof typeof AGENTS];
   const intentHref = !isValidIntent
     ? null
     : intent === "presentation_analysis"
       ? `/projects/${id}/analyze`
       : intent === "ad_image"
         ? `/projects/${id}/ad-image`
-        : intent === "social_compare"
-          ? `/projects/${id}/social-compare`
-          : `/projects/${id}/generate/${intent}`;
+        : `/projects/${id}/generate/${intent}`;
 
   // Once discovery is genuinely complete, a tool-card click should go straight into that
   // generator, not loop back to a review of the exact brief you're already looking at — the
@@ -202,30 +189,6 @@ export default async function ProjectPage({
               critique with scores, missing components, and a prioritized fix list.
             </p>
           </Link>
-
-          <h2 className="mt-8 mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Compare your social media
-          </h2>
-          <ToolLink
-            href={discoveryComplete ? `/projects/${project.id}/social-compare` : `/projects/${project.id}?intent=social_compare`}
-            needsDiscovery={!discoveryComplete}
-            agentName={AGENTS.presentation_analysis.name}
-            className={`card-elevated block rounded-xl p-4 transition-colors hover:border-primary/40 ${
-              intent === "social_compare" ? "border-primary/60 ring-1 ring-primary/40" : ""
-            }`}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <AgentBadge agent={AGENTS.presentation_analysis} size="sm" />
-              <Badge variant="secondary" className="shrink-0">
-                {SOCIAL_COMPARE_CREDIT_COST} credits
-              </Badge>
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Put in your TikTok, Instagram, or Facebook page and a high-performing one you want
-              to learn from — Annie compares bio, visual style, and captions, and tells you
-              specifically what to change.
-            </p>
-          </ToolLink>
 
           <h2 className="mt-8 mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             History

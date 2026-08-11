@@ -19,7 +19,6 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const requestSchema = z.object({
-  projectId: z.string().uuid(),
   yourUrl: z.string().min(1).max(500),
   referenceUrl: z.string().min(1).max(500),
 });
@@ -27,7 +26,9 @@ const requestSchema = z.object({
 // Agent Annie's social media comparison — reads whatever a member's own page and a
 // high-performing reference page actually expose (see src/lib/social.ts for why that's Open
 // Graph meta tags + preview image, not a full scraped post history) and produces a real,
-// saveable/exportable markdown comparison, same as any other generator's output.
+// saveable/exportable markdown comparison, same as any other generator's output. Not
+// project-scoped — same reasoning as Headline Lab: this doesn't read a project's discovery
+// fields, only the two page addresses, so it doesn't need a project at all.
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const {
@@ -39,17 +40,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
   }
-  const { projectId, yourUrl, referenceUrl } = parsed.data;
-
-  const { data: project, error: projectError } = await supabase
-    .from("projects")
-    .select("id")
-    .eq("id", projectId)
-    .eq("user_id", user.id)
-    .single();
-  if (projectError || !project) {
-    return NextResponse.json({ error: "Project not found" }, { status: 404 });
-  }
+  const { yourUrl, referenceUrl } = parsed.data;
 
   const guardrail = await checkGuardrails(user.id, SOCIAL_COMPARE_CREDIT_COST);
   if (!guardrail.ok) {
@@ -82,7 +73,7 @@ export async function POST(req: NextRequest) {
     .from("generations")
     .insert({
       user_id: user.id,
-      project_id: projectId,
+      project_id: null,
       asset_type: "social_compare",
       mode: "expert",
       status: "pending",

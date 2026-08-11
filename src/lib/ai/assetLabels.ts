@@ -30,7 +30,9 @@ export function getAssetHref(projectId: string, assetType: AssetType, generation
     return `/projects/${projectId}/ad-image${suffix}`;
   }
   if (assetType === "social_compare") {
-    return `/projects/${projectId}/social-compare${suffix}`;
+    // Not project-scoped (see the comment on its API route) — same as headline_lab, projectId
+    // is ignored here.
+    return `/social-compare${suffix}`;
   }
   if (assetType === "tts_narration" || assetType === "discovery_assist" || assetType === "website_import") {
     // No dedicated page — not a browsable asset (audio / a single field draft / fields already
