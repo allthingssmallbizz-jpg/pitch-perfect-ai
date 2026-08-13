@@ -17,9 +17,13 @@ import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 // than imported so this client component doesn't pull that module's much larger
 // ANALYZER_SYSTEM_PROMPT string into the browser bundle for the sake of one small label map.
 const PRESENTATION_TYPE_OPTIONS: { value: PresentationType; label: string }[] = [
-  { value: "webinar", label: "Webinar" },
+  { value: "webinar", label: "Webinar script" },
+  { value: "sales_presentation", label: "Sales presentation script" },
+  { value: "email", label: "Email script" },
+  { value: "five_day_challenge", label: "5-day challenge script" },
+  { value: "breakout_room", label: "Breakout room script" },
+  { value: "transcription", label: "Transcription (call, webinar, or video recording)" },
   { value: "vsl", label: "Video Sales Letter (VSL)" },
-  { value: "sales_presentation", label: "Sales presentation / pitch deck" },
   { value: "investor_pitch", label: "Investor pitch" },
   { value: "youtube_video", label: "YouTube video" },
   { value: "instagram_reel", label: "Instagram Reel / video" },

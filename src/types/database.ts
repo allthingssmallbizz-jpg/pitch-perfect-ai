@@ -25,8 +25,12 @@ export type AssetType =
 
 export type PresentationType =
   | "webinar"
-  | "vsl"
   | "sales_presentation"
+  | "email"
+  | "five_day_challenge"
+  | "breakout_room"
+  | "transcription"
+  | "vsl"
   | "investor_pitch"
   | "youtube_video"
   | "instagram_reel"

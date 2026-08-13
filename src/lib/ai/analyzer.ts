@@ -6,9 +6,13 @@ export const ANALYZER_MAX_OUTPUT_TOKENS = 8000;
 export const ANALYZER_MAX_INPUT_CHARS = 40000;
 
 export const PRESENTATION_TYPE_LABELS: Record<PresentationType, string> = {
-  webinar: "Webinar",
+  webinar: "Webinar script",
+  sales_presentation: "Sales presentation script",
+  email: "Email script",
+  five_day_challenge: "5-day challenge script",
+  breakout_room: "Breakout room script",
+  transcription: "Transcription (call, webinar, or video recording)",
   vsl: "Video Sales Letter (VSL)",
-  sales_presentation: "Sales presentation / pitch deck",
   investor_pitch: "Investor pitch",
   youtube_video: "YouTube video",
   instagram_reel: "Instagram Reel / video",
