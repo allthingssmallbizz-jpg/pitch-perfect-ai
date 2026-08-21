@@ -2,7 +2,11 @@
 // user prompt from a transcribed/framed video instead of pasted text, and pairs it with the
 // same verbatim ANALYZER_SYSTEM_PROMPT + Annie persona — no duplication of the rubric itself.
 import type { PresentationType } from "@/types/database";
-import { PRESENTATION_TYPE_LABELS, BREAKOUT_ROOM_OFFER_CHECK } from "@/lib/ai/analyzer";
+import {
+  PRESENTATION_TYPE_LABELS,
+  PRESENTATION_TYPE_FRAMEWORK_CHECKS,
+  DEFAULT_FRAMEWORK_CHECK,
+} from "@/lib/ai/analyzer";
 
 // Higher than ANALYZER_CREDIT_COST (8) — a video run also pays for Whisper transcription,
 // frame extraction, and a much larger input (full transcript + several images).
@@ -56,7 +60,7 @@ export function buildVideoAnalyzerUserPrompt(
   speakingPaceWpm: number | null,
   frameCount: number
 ): string {
-  const typeSpecificNotes = presentationType === "breakout_room" ? BREAKOUT_ROOM_OFFER_CHECK : "";
+  const typeSpecificNotes = PRESENTATION_TYPE_FRAMEWORK_CHECKS[presentationType] ?? DEFAULT_FRAMEWORK_CHECK;
   return `Presentation type: ${PRESENTATION_TYPE_LABELS[presentationType]}
 Submission format: uploaded video (${formatDuration(durationSeconds)}). You are given the full spoken transcript (with timestamp markers) and ${frameCount} still frames sampled evenly across the runtime.
 ${typeSpecificNotes}

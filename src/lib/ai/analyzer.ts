@@ -197,13 +197,94 @@ Suggest stronger, factual alternatives where appropriate.
 
 Your feedback should be objective, actionable, evidence-based, and optimized for improving conversions without encouraging false claims, manipulation, or deceptive marketing. Focus on helping the creator build presentations that are persuasive, trustworthy, and genuinely valuable to their intended audience.`;
 
-// Breakout room sessions are typically offer-only (no from-scratch teaching), so the generic
-// rubric's usual weighting doesn't catch the one thing that matters most there: whether the
-// value stack actually gets restated enough times to land before the close. Pulled from the
-// Perfect Webinar Operating System's Closing Sequence (03-webinar.md) and the Offer Creation
-// framework (08-offer-creation.md) rather than invented here. Exported so the video analysis
-// path (videoAnalyzer.ts) can append the same check when a breakout room recording is uploaded.
-export const BREAKOUT_ROOM_OFFER_CHECK = `
+const SHORT_FORM_VIDEO_CHECK = `
+Additional check specific to short-form video: at this length, only the opening VSL stages fit, so
+weight the critique there — Pre-Hook (pattern interrupt in the first 1-3 seconds) → Hook (earns
+the right to keep watching) → Big Promise (the outcome, stated fast) → either a Credibility
+Bridge or Opening Story, whichever fits the runtime. Flag it if the hook is generic or slow, if it
+tries to cram a full offer/CTA stack into a few seconds instead of ONE clear next step, or if
+there's no reason given to keep watching past the first 3 seconds.
+`;
+
+// Every option in the analyzer's presentation-type dropdown maps to a specific named framework
+// from the knowledge base (src/lib/ai/knowledge/) rather than only the generic 19-point rubric
+// above — the account owner's whole method is built on these named phases/stages, so Annie's
+// critique should check for them by name, not just generic persuasion commentary. Exported so the
+// video analysis path (videoAnalyzer.ts) appends the exact same checks when the same presentation
+// type is uploaded as a recording instead of text/slides.
+export const PRESENTATION_TYPE_FRAMEWORK_CHECKS: Partial<Record<PresentationType, string>> = {
+  webinar: `
+Additional check specific to a webinar: score it against the Perfect Webinar Operating System™
+(PPWOS™), not generic structure alone. Confirm all seven phases are present, in order, and name
+any missing or out of sequence: Capture Attention™ (welcome, Big Promise, light agenda, engagement
+trigger) → Build Relevance™ (audience identification, shared-experience story) → Create New
+Beliefs™ (ONE central limiting belief replaced, named framework taught) → Build Certainty™
+(demonstrations/case studies/testimonials, each answering a different objection) → Present the
+Solution™ (offer as the logical conclusion, future pacing 30/90/365 days) → Maximize Value™ (offer
+stack, bonuses each removing one objection, investment framing before price, guarantee) → Drive
+Commitment™ (authentic scarcity/urgency, one repeated CTA). Then confirm the Closing Sequence
+specifically: Transformation Recap → Offer → Value Stack → Bonuses → Guarantee → Investment →
+Scarcity → Urgency → CTA → Q&A → Final Reinforcement — name which are missing. Flag it if the
+offer is revealed before confidence exists, or if price is discussed before value.
+`,
+  vsl: `
+Additional check specific to a VSL: score it against the real 25-stage VSL structure, not a
+generic script, and name which of the 25 are present, missing, or out of order: Pre-Hook → Hook →
+Pattern Interrupt → Big Promise → Credibility Bridge → Opening Story → Problem Amplification →
+Hidden Cost of Inaction → False Solutions → Unique Mechanism → The Big Idea → Future Pacing →
+Education Framework → Belief Shifting → Proof Architecture → Demonstration → Product Reveal →
+Offer Construction → Value Stack → Bonuses → Guarantee → Scarcity → Urgency → Call To Action →
+Reinforcement Close. Confirm the five beliefs a prospect must accept, in order (the problem is
+real → the problem can be solved → this solution is different → this will work for me → acting
+now is safer than waiting), and flag any common failure modes present: selling too early, teaching
+so much the offer feels unnecessary, jumping straight to selling with no belief progression,
+generic proof, a feature-heavy product reveal instead of transformation, artificial scarcity, or
+competing CTAs. Score it against the 100-Point VSL Review categories (Attention /15, Belief /15,
+Story /15, Proof /15, Offer /15, CTA /10, Production /15) — below 70 total means not ready, back
+to Discovery.
+`,
+  sales_presentation: `
+Additional check specific to a sales presentation / pitch deck: if the content reads as B2B/
+enterprise (multiple stakeholders, ROI language, procurement), score it against the Sales
+Presentation Playbook's PPSOS™ seven phases instead of the consumer webinar framing, and name any
+missing: Capture Executive Attention™ (business trends/strategic opportunity, not company history)
+→ Build Business Relevance™ (Business Diagnosis, quantified Cost of Inaction, multi-stakeholder
+framing) → Create New Business Beliefs™ (named strategic framework, one false assumption
+respectfully challenged) → Build Executive Certainty™ (Business Case/ROI, comparable case studies,
+outcome-focused demo, risk management) → Present the Solution™ (consultant framing, Business
+Transformation arc, future vision 6mo/1yr/3yr) → Maximize Business Value™ (Executive Value
+Equation, realistic ROI, TCO transparency, implementation roadmap) → Drive Organizational
+Commitment™ (Decision Roadmap, stakeholder-specific next steps, CTA matched to buying stage, not a
+hard "buy now" close). Also check whether it actually speaks to the stakeholders in the room (CEO:
+growth/competitive advantage · CFO: ROI/cost control · COO: efficiency · CIO/CTO:
+integration/security · Procurement: pricing/risk · End Users: usability/support) rather than one
+generic pitch aimed at everyone.
+`,
+  email: `
+Additional check specific to an email script/sequence: confirm it follows the 7-email belief-shift
+arc rather than repeating the same pitch in every email — name which of these jobs are present,
+missing, or blurred together: (1) Indoctrination (welcome, set expectations, Big Promise) →
+(2) Relevance (mirror their situation, one shared-experience story) → (3) Belief shift (surface
+the false belief, introduce the new belief/mechanism) → (4) Proof (case study/testimonial) →
+(5) Objection handling (the biggest implied objection, addressed directly) → (6) Offer / value
+stack (the offer, bonuses, guarantee) → (7) Urgency / last call (authentic urgency, or risk
+reversal if no real deadline exists). Flag any single email trying to do more than one of these
+jobs at once, and flag manufactured urgency/scarcity with no real mechanism behind it.
+`,
+  five_day_challenge: `
+Additional check specific to a 5-day challenge script: this is PPOS™ stretched across five
+touchpoints, not five unrelated lessons — confirm the arc actually progresses and doesn't
+front-load the whole pitch on Day 1 (per the Campaign Architecture rule: each touchpoint earns the
+right to the next). Expect roughly: Day 1 → Capture Attention™ + Build Relevance™ (a hook, the Big
+Promise, and a quick win so people show up for Day 2) · Days 2-4 → Create New Beliefs™ progressing
+toward Build Certainty™ (ONE belief shift per day, building proof/confidence, never revealing the
+full offer early) · Day 5 → Present the Solution™ through Drive Commitment™ (the offer introduced
+only once confidence exists, Value Stack, authentic urgency tied to the challenge itself ending,
+one clear CTA). Flag it if the offer/pitch appears before Day 4-5, if each day doesn't build on a
+different belief, or if the engagement/accountability elements that keep people through all 5 days
+are missing.
+`,
+  breakout_room: `
 Additional check specific to a breakout room / offer-only session: this format exists to present
 and close the offer (per the Perfect Webinar Operating System's Closing Sequence — Transformation
 Recap → Offer → Value Stack → Bonuses → Guarantee → Investment → Scarcity → Urgency → CTA → Q&A →
@@ -224,6 +305,33 @@ out findings rather than folded into general notes:
   just listing features — flag any of the common offer failures: selling the product instead of
   the transformation, price discussed before value, bonus overload with no objection mapped,
   vague/unbelievable guarantees, or artificial scarcity.
+`,
+  investor_pitch: `
+Additional check specific to an investor pitch: closest fit is the Sales Presentation Playbook's
+executive framing — confirm it builds a Business Case (market opportunity, traction/ROI framing,
+comparable outcomes) rather than just a product tour, addresses the concerns investors actually
+have as stakeholders (market size, moat/differentiation, team credibility, path to return — the
+investor equivalent of the Stakeholder Alignment Matrix™), and drives toward one concrete ask
+(funding amount/terms) rather than a vague "let's talk" close — the same "CTA matched to the
+buying stage" rule PPSOS's Drive Organizational Commitment™ phase applies to any executive
+audience.
+`,
+  youtube_video: SHORT_FORM_VIDEO_CHECK,
+  instagram_reel: SHORT_FORM_VIDEO_CHECK,
+  tiktok_video: SHORT_FORM_VIDEO_CHECK,
+};
+
+// Fallback for types with no single named framework (transcription — could be any format — and
+// "other"): rather than skip straight to generic commentary, have Annie name whichever of the
+// known frameworks actually fits once she's seen the content, then apply that framework's named
+// stages specifically, in addition to the general 19-point rubric.
+export const DEFAULT_FRAMEWORK_CHECK = `
+No single named Pitch Perfect framework is preselected for this content type — before scoring,
+identify which framework in your knowledge most closely matches what was actually submitted (a
+webinar's PPWOS™ seven phases, a VSL's 25-stage structure, PPSOS for a B2B pitch, the email
+belief-shift arc, or the standalone offer-stack check) and say so explicitly, then apply that
+framework's specific named stages/phases in addition to the general 19-point rubric below — don't
+fall back to only generic persuasion commentary when a more specific framework actually fits.
 `;
 
 // The system prompt above assumes it may receive video/audio. This app only accepts a
@@ -231,7 +339,7 @@ out findings rather than folded into general notes:
 // system prompt's own ethics rules (don't flag/fabricate what can't be assessed) then
 // apply naturally to section 13 and any other video-only criteria.
 export function buildAnalyzerUserPrompt(presentationType: PresentationType, content: string): string {
-  const typeSpecificNotes = presentationType === "breakout_room" ? BREAKOUT_ROOM_OFFER_CHECK : "";
+  const typeSpecificNotes = PRESENTATION_TYPE_FRAMEWORK_CHECKS[presentationType] ?? DEFAULT_FRAMEWORK_CHECK;
   return `Presentation type: ${PRESENTATION_TYPE_LABELS[presentationType]}
 Submission format: pasted text (script, transcript, or slide/speaker-note text) — no video or audio file was provided.
 ${typeSpecificNotes}
