@@ -197,14 +197,44 @@ Suggest stronger, factual alternatives where appropriate.
 
 Your feedback should be objective, actionable, evidence-based, and optimized for improving conversions without encouraging false claims, manipulation, or deceptive marketing. Focus on helping the creator build presentations that are persuasive, trustworthy, and genuinely valuable to their intended audience.`;
 
+// Breakout room sessions are typically offer-only (no from-scratch teaching), so the generic
+// rubric's usual weighting doesn't catch the one thing that matters most there: whether the
+// value stack actually gets restated enough times to land before the close. Pulled from the
+// Perfect Webinar Operating System's Closing Sequence (03-webinar.md) and the Offer Creation
+// framework (08-offer-creation.md) rather than invented here. Exported so the video analysis
+// path (videoAnalyzer.ts) can append the same check when a breakout room recording is uploaded.
+export const BREAKOUT_ROOM_OFFER_CHECK = `
+Additional check specific to a breakout room / offer-only session: this format exists to present
+and close the offer (per the Perfect Webinar Operating System's Closing Sequence — Transformation
+Recap → Offer → Value Stack → Bonuses → Guarantee → Investment → Scarcity → Urgency → CTA → Q&A →
+Final Reinforcement), not to teach content from scratch. Specifically verify, as their own called-
+out findings rather than folded into general notes:
+
+- The offer / value stack is shown or restated at least THREE separate times across the slides
+  (stack it, stack it again, stack it a third time before the close). Count the actual
+  occurrences and name which slides they're on — fewer than three is a specific gap to flag, not
+  just something to mention in passing.
+- A hook and a clear promise / big-outcome statement still exist near the start, even in a short
+  offer-focused session — skipping straight to the offer with no hook loses attendees who aren't
+  already warmed up.
+- At least one story or proof element (case study, testimonial, or transformation story) appears
+  before the close, per Build Certainty™.
+- The offer stack itself follows the Offer Creation framework's components (core solution,
+  implementation/roadmap, bonuses that each remove one specific objection, guarantee) rather than
+  just listing features — flag any of the common offer failures: selling the product instead of
+  the transformation, price discussed before value, bonus overload with no objection mapped,
+  vague/unbelievable guarantees, or artificial scarcity.
+`;
+
 // The system prompt above assumes it may receive video/audio. This app only accepts a
 // pasted script/transcript/slide-text, so the user message says so explicitly — the
 // system prompt's own ethics rules (don't flag/fabricate what can't be assessed) then
 // apply naturally to section 13 and any other video-only criteria.
 export function buildAnalyzerUserPrompt(presentationType: PresentationType, content: string): string {
+  const typeSpecificNotes = presentationType === "breakout_room" ? BREAKOUT_ROOM_OFFER_CHECK : "";
   return `Presentation type: ${PRESENTATION_TYPE_LABELS[presentationType]}
 Submission format: pasted text (script, transcript, or slide/speaker-note text) — no video or audio file was provided.
-
+${typeSpecificNotes}
 For criteria that depend on seeing or hearing the actual delivery (Section 13: Delivery Analysis; any visual/audio elements of Section 9 and 14), do not guess or invent an assessment. Instead, state plainly that those specific items can't be evaluated from text alone, and note what the creator should self-review or send a recording for if they want that analysis. Evaluate everything else in the full rubric normally, in full, based on the submitted text.
 
 PRESENTATION CONTENT TO ANALYZE:

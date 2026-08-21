@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createClient } from "@/lib/supabase/client";
-import { Gauge, Copy, FileDown, Upload, Video, X, Save, Loader2 } from "lucide-react";
+import { Gauge, Copy, FileDown, Upload, Video, X, Save, Loader2, Presentation } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import VersionHistory from "@/components/VersionHistory";
 import TtsPlayer from "@/components/TtsPlayer";
@@ -75,6 +75,10 @@ export default function AnalyzeClient({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const [pptxExtracting, setPptxExtracting] = useState(false);
+  const [pptxSlideCount, setPptxSlideCount] = useState<number | null>(null);
+  const pptxInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
@@ -101,6 +105,32 @@ export default function AnalyzeClient({
       setError("Network error — try again.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Pulls the text layer straight out of an uploaded .pptx file into the paste-text box below —
+  // for members whose PowerPoint copy/paste isn't giving them clean text. Purely mechanical
+  // extraction (no AI call), so it's free; the member can still review/edit before running the
+  // actual analysis, same as pasting text by hand.
+  async function handlePptxUpload(file: File) {
+    setError(null);
+    setPptxSlideCount(null);
+    setPptxExtracting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/analyze/pptx", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Could not read that PowerPoint file.");
+        return;
+      }
+      setInput(data.text);
+      setPptxSlideCount(data.slideCount);
+    } catch {
+      setError("Network error — try again.");
+    } finally {
+      setPptxExtracting(false);
     }
   }
 
@@ -244,6 +274,7 @@ export default function AnalyzeClient({
               setVideoFile(null);
               setVideoStatus(null);
               setUploadProgress(null);
+              setPptxSlideCount(null);
             }}
           >
             Analyze another
@@ -314,6 +345,37 @@ export default function AnalyzeClient({
               delivery-specific criteria (voice, energy, eye contact, lighting) will be flagged as
               not assessable unless you describe them in the notes.
             </p>
+
+            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-border p-3">
+              <input
+                ref={pptxInputRef}
+                id="pptx"
+                type="file"
+                accept=".pptx"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  if (file) handlePptxUpload(file);
+                  if (pptxInputRef.current) pptxInputRef.current.value = "";
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => pptxInputRef.current?.click()}
+                disabled={pptxExtracting}
+              >
+                <Presentation className="mr-2 h-4 w-4" />
+                {pptxExtracting ? "Reading slides..." : "Upload PowerPoint (.pptx)"}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                {pptxSlideCount
+                  ? `Pulled text from ${pptxSlideCount} slide${pptxSlideCount === 1 ? "" : "s"} into the box below — review or edit it, then run the analysis.`
+                  : "Can't copy/paste cleanly out of PowerPoint? Upload the .pptx directly and we'll pull the text off every slide for you."}
+              </p>
+            </div>
+
             <Textarea
               id="content"
               value={input}

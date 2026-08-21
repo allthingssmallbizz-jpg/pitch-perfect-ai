@@ -2,7 +2,7 @@
 // user prompt from a transcribed/framed video instead of pasted text, and pairs it with the
 // same verbatim ANALYZER_SYSTEM_PROMPT + Annie persona — no duplication of the rubric itself.
 import type { PresentationType } from "@/types/database";
-import { PRESENTATION_TYPE_LABELS } from "@/lib/ai/analyzer";
+import { PRESENTATION_TYPE_LABELS, BREAKOUT_ROOM_OFFER_CHECK } from "@/lib/ai/analyzer";
 
 // Higher than ANALYZER_CREDIT_COST (8) — a video run also pays for Whisper transcription,
 // frame extraction, and a much larger input (full transcript + several images).
@@ -56,9 +56,10 @@ export function buildVideoAnalyzerUserPrompt(
   speakingPaceWpm: number | null,
   frameCount: number
 ): string {
+  const typeSpecificNotes = presentationType === "breakout_room" ? BREAKOUT_ROOM_OFFER_CHECK : "";
   return `Presentation type: ${PRESENTATION_TYPE_LABELS[presentationType]}
 Submission format: uploaded video (${formatDuration(durationSeconds)}). You are given the full spoken transcript (with timestamp markers) and ${frameCount} still frames sampled evenly across the runtime.
-
+${typeSpecificNotes}
 ${speakingPaceWpm ? `Estimated average speaking pace: ~${speakingPaceWpm} words per minute (computed from transcript timing — treat as an approximation, not a precise measurement).` : ""}
 
 Use the transcript for content, structure, and pacing analysis, and the sampled frames for visual/delivery signal (slide legibility, presenter framing, lighting, on-screen text, branding). The frames are still images, not continuous video — do not claim to assess things only visible in motion (e.g. specific gestures, continuous eye contact) from them; note plainly where a criterion needs full video/audio review beyond what stills and a transcript can show.
