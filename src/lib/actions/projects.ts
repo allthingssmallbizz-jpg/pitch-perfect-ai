@@ -97,6 +97,7 @@ export async function updateProjectDiscovery(_prevState: unknown, formData: Form
     business_name: text("business_name"),
     industry: text("industry"),
     product: text("product"),
+    offer_name: text("offer_name"),
     audience: text("audience"),
     existing_assets: text("existing_assets"),
     // Customer Awareness

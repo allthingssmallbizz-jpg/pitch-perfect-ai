@@ -21,7 +21,8 @@ export type AssetType =
   | "discovery_assist"
   | "ad_image"
   | "website_import"
-  | "social_compare";
+  | "social_compare"
+  | "offer_builder";
 
 export type PresentationType =
   | "webinar"
@@ -97,6 +98,10 @@ export type Project = {
   business_name: string;
   industry: string;
   product: string;
+  // The public-facing name of the webinar/challenge/program itself, distinct from `product`
+  // (which describes what it is) and `name` (the project's own internal label). Optional —
+  // drafted by the Offer Builder for anyone who doesn't have one yet.
+  offer_name: string;
   audience: string;
   existing_assets: string;
   // Customer Awareness

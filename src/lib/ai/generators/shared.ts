@@ -16,6 +16,7 @@ export function formatDiscoveryBlock(project: Project): string {
     field("Business / brand name", project.business_name),
     field("Industry / niche", project.industry),
     field("Product or service", project.product),
+    field("Webinar / offer name", project.offer_name),
     field("Target audience", project.audience),
     field("Existing marketing assets", project.existing_assets),
     "",

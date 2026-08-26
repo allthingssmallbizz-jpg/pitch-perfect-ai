@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Sparkles, Globe } from "lucide-react";
+import { Sparkles, Globe, Wand2 } from "lucide-react";
 import type { Project } from "@/types/database";
 import { updateProjectDiscovery } from "@/lib/actions/projects";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import DiscoveryAssistDialog, { type AssistTarget } from "@/components/DiscoveryAssistDialog";
 import WebsiteImportDialog from "@/components/WebsiteImportDialog";
+import OfferBuilderDialog from "@/components/OfferBuilderDialog";
 import DeleteProjectButton from "@/components/DeleteProjectButton";
 
 const AWARENESS_LEVELS = ["Unaware", "Problem-Aware", "Solution-Aware", "Product-Aware", "Most Aware"];
@@ -21,6 +22,7 @@ const DISCOVERY_FIELD_NAMES = [
   "business_name",
   "industry",
   "product",
+  "offer_name",
   "audience",
   "existing_assets",
   "presenter_mission",
@@ -156,6 +158,7 @@ export default function DiscoveryForm({
   const [state, formAction, pending] = useActionState(updateProjectDiscovery, undefined);
   const [assistTarget, setAssistTarget] = useState<AssistTarget | null>(null);
   const [websiteImportOpen, setWebsiteImportOpen] = useState(false);
+  const [offerBuilderOpen, setOfferBuilderOpen] = useState(false);
 
   function collectOtherAnswers(): Record<string, string> {
     const out: Record<string, string> = {};
@@ -195,6 +198,22 @@ export default function DiscoveryForm({
         </span>
       </button>
 
+      <button
+        type="button"
+        onClick={() => setOfferBuilderOpen(true)}
+        className="flex w-full items-center gap-3 rounded-xl border border-dashed border-primary/30 bg-primary/5 p-3 text-left transition-colors hover:border-primary/50"
+      >
+        <Wand2 className="h-5 w-5 shrink-0 text-primary" />
+        <span className="min-w-0">
+          <span className="block text-sm font-medium text-foreground">Offer Builder</span>
+          <span className="block text-xs text-muted-foreground">
+            Don&apos;t know what to name your webinar, what to charge, or how to close yet? Get a
+            full starter offer drafted — name, price, demo stack, and the best closing mechanism
+            for your niche — to review and tweak.
+          </span>
+        </span>
+      </button>
+
       <Field label="Project name" name="name" defaultValue={project.name} textarea={false} required blockSubmitIfEmpty />
 
       <Section title="Discovery" subtitle="The foundation — who you are and who you serve.">
@@ -225,6 +244,15 @@ export default function DiscoveryForm({
           placeholder="What are you selling? Describe it in a few sentences."
           hint="Explain it in plain, everyday words — imagine describing it to a friend, not writing a brochure."
           required
+          onAssist={setAssistTarget}
+        />
+        <Field
+          label="Webinar / offer name"
+          name="offer_name"
+          defaultValue={project.offer_name}
+          textarea={false}
+          placeholder="What your audience will actually see — a title, not a description."
+          hint="Don't have one yet? Use the Offer Builder button above — it'll suggest a few."
           onAssist={setAssistTarget}
         />
         <Field
@@ -579,6 +607,14 @@ export default function DiscoveryForm({
       <WebsiteImportDialog
         open={websiteImportOpen}
         onOpenChange={setWebsiteImportOpen}
+        projectId={project.id}
+        currentValues={collectOtherAnswers}
+        onAccept={handleWebsiteImportAccept}
+      />
+
+      <OfferBuilderDialog
+        open={offerBuilderOpen}
+        onOpenChange={setOfferBuilderOpen}
         projectId={project.id}
         currentValues={collectOtherAnswers}
         onAccept={handleWebsiteImportAccept}

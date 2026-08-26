@@ -15,6 +15,7 @@ export function getAssetLabel(assetType: AssetType): string {
   if (assetType === "ad_image") return "Image Ad";
   if (assetType === "website_import") return "Import from website";
   if (assetType === "social_compare") return "Social Media Comparison";
+  if (assetType === "offer_builder") return "Offer Builder";
   return ASSET_GENERATORS[assetType as GeneratorAssetType].label;
 }
 
@@ -34,7 +35,12 @@ export function getAssetHref(projectId: string, assetType: AssetType, generation
     // is ignored here.
     return `/social-compare${suffix}`;
   }
-  if (assetType === "tts_narration" || assetType === "discovery_assist" || assetType === "website_import") {
+  if (
+    assetType === "tts_narration" ||
+    assetType === "discovery_assist" ||
+    assetType === "website_import" ||
+    assetType === "offer_builder"
+  ) {
     // No dedicated page — not a browsable asset (audio / a single field draft / fields already
     // inserted straight into the discovery form).
     return `/projects/${projectId}`;
