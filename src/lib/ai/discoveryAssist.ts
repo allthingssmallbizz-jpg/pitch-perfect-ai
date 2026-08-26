@@ -180,6 +180,72 @@ export const DISCOVERY_FIELD_GUIDANCE: Record<string, FieldGuidance> = {
     avoid: "'Learn more' — vague, low commitment.",
     exemplar: "Apply for the March cohort",
   },
+  presenter_mission: {
+    whatThisFieldIs: "The presenter's own one-line answer to 'what do you do' — mission, not offer copy.",
+    whatGreatLooksLike: "- One or two sentences, first person\n- Who they help + the core shift they create\n- Sounds like something they'd actually say out loud, not a tagline",
+    avoid: "Restating the product description. This is about the PERSON's mission, not the offer's features.",
+    exemplar: "I help overwhelmed solo consultants turn one-on-one expertise into a business that runs without them trading every hour for a dollar.",
+  },
+  presenter_years_experience: {
+    whatThisFieldIs: "How long the presenter has actually been doing this work.",
+    whatGreatLooksLike: "- A number + unit, optionally with a starting point ('since 2014')\n- Honest — including early/less-established years counts",
+    avoid: "Vague ranges like 'many years'. Give an actual number.",
+    exemplar: "9 years (started coaching in 2015 after 6 years in corporate sales)",
+  },
+  presenter_credentials: {
+    whatThisFieldIs: "Formal credentials — certifications, degrees, licenses — that back the presenter's authority.",
+    whatGreatLooksLike: "- Bullet list, most relevant/impressive first\n- Include the granting body/institution\n- If genuinely none exist, say so plainly rather than leaving it blank",
+    avoid: "Inflating informal experience into a 'credential'. A client roster is proof, not a credential — that belongs in Proof/signature win, not here.",
+    exemplar: "- Certified NLP Practitioner (ABNLP)\n- B.S. Exercise Science, Penn State\n- 200hr Yoga Alliance certification",
+  },
+  presenter_origin_story: {
+    whatThisFieldIs: "How the presenter actually ended up in this industry — their real origin story.",
+    whatGreatLooksLike: "- Start with the moment/situation that pulled them in, not a resume timeline\n- Include what they were doing before, and the specific trigger that changed direction\n- Honest and a little unpolished reads as more credible, not less",
+    avoid: "A LinkedIn-style career summary. This should read like something told out loud, not a bio paragraph.",
+    exemplar: "I was 40 pounds overweight and quietly furious about it when a client I was coaching on sales asked why I didn't practice what I preached about discipline. That question wrecked me — and six months later I'd built the exact system I now teach.",
+  },
+  presenter_signature_win: {
+    whatThisFieldIs: "The single biggest, most specific transformation the presenter has created for one real client.",
+    whatGreatLooksLike: "- ONE story, not a list of wins\n- Specific before/after — numbers, timeframe, what changed in their life\n- In the client's own words if a quote exists",
+    avoid: "Vague 'helped hundreds of clients' claims — that's aggregate proof and belongs in the Proof field. This is one concrete story.",
+    exemplar: "A client came to me making $3k/month after 2 years of trying alone. 90 days later she closed a $47k contract — her first five-figure month ever — and told me she cried in her car afterward because she finally believed she wasn't a fraud.",
+  },
+  presenter_setback_story: {
+    whatThisFieldIs: "A real setback, failure, or low point the presenter hit while building toward their goals — and how they recovered.",
+    whatGreatLooksLike: "- Name the actual failure specifically (lost money, lost a client, publicly embarrassed, nearly quit)\n- Don't rush past the low point — sit in it briefly before the turnaround\n- End on the specific decision or shift that turned it around, not just 'and then it got better'",
+    avoid: "A humble-brag disguised as a setback ('my only flaw is I work too hard'). This needs a real, uncomfortable low point to do its job.",
+    exemplar: "My first launch made $340 after three months of work — I'd built the whole thing around what I thought was smart instead of what my actual audience needed. I almost shut it down. What changed it was finally interviewing 20 past clients instead of guessing, and rebuilding the offer from what they actually said.",
+  },
+  presenter_income_goal_6mo: {
+    whatThisFieldIs: "The presenter's own personal income goal for the next 6 months — internal context, not customer-facing copy.",
+    whatGreatLooksLike: "- A specific number with a timeframe/unit\n- Realistic enough to be usable for authentic vision-casting if a generator ever references it",
+    avoid: "Overthinking this one — it's a number, not a pitch.",
+    exemplar: "$25k/month by the end of Q2",
+  },
+  presenter_income_goal_12mo: {
+    whatThisFieldIs: "The presenter's own personal income goal for the next 12 months — internal context, not customer-facing copy.",
+    whatGreatLooksLike: "- A specific number with a timeframe/unit\n- Should represent real ambition, not just 6-month goal x2 by default",
+    avoid: "Overthinking this one — it's a number, not a pitch.",
+    exemplar: "$50k/month, with the first hire brought on by month 9",
+  },
+  presenter_mission_why: {
+    whatThisFieldIs: "Why this work matters to the presenter personally — beneath the business reasons.",
+    whatGreatLooksLike: "- Personal, specific, often tied to their own past struggle or a person in their life\n- Should explain WHY they'd keep doing this even if it paid less",
+    avoid: "Restating the mission statement in different words. This is the emotional root underneath the mission, not a rephrase of it.",
+    exemplar: "My dad worked himself into a heart attack at 52 believing that's just what success costs. I do this because I refuse to let that be the only model my clients have for what achievement looks like.",
+  },
+  presenter_recognition: {
+    whatThisFieldIs: "Third-party recognition — press, podcasts, stages, awards — that exists independent of the presenter's own claims.",
+    whatGreatLooksLike: "- Bullet list, name the actual outlet/stage/award\n- Only what's real and verifiable\n- 'None yet' is a completely fine, honest answer",
+    avoid: "Inflating a single guest podcast appearance into 'featured media personality'. Keep it proportionate to what actually happened.",
+    exemplar: "- Guest on The Game Changers Podcast (2023)\n- Spoke at Traffic & Conversion Summit, breakout session\n- Featured in a local business journal profile",
+  },
+  presenter_relatable_detail: {
+    whatThisFieldIs: "One small, ordinary, human detail about the presenter that has nothing to do with their expertise.",
+    whatGreatLooksLike: "- Genuinely mundane — family, a hobby, a pet, a habit\n- Specific beats generic ('runs 5ks with my dog Biscuit on Saturdays' beats 'I like running')",
+    avoid: "Anything that's secretly another credibility flex. This should read as purely human, not another achievement.",
+    exemplar: "I'm a terrible cook and have burned water — my husband does all the cooking and I take zero credit for it.",
+  },
 };
 
 export type DiscoveryAssistInput = {

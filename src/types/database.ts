@@ -121,6 +121,20 @@ export type Project = {
   scarcity_urgency: string;
   cta: string;
   discovery_notes: string;
+  // Presenter Bio — the person behind the offer, not the offer itself. Feeds the Credibility
+  // Bridge and Opening Story beats (VSL stages 5-6, webinar Phase 1/2) that "Proof" alone can't
+  // cover, since that field is about the OFFER's evidence, not who's presenting it.
+  presenter_mission: string;
+  presenter_years_experience: string;
+  presenter_credentials: string;
+  presenter_origin_story: string;
+  presenter_signature_win: string;
+  presenter_setback_story: string;
+  presenter_income_goal_6mo: string;
+  presenter_income_goal_12mo: string;
+  presenter_mission_why: string;
+  presenter_recognition: string;
+  presenter_relatable_detail: string;
   mode: GenerationMode;
   created_at: string;
   updated_at: string;

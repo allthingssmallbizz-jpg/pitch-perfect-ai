@@ -45,6 +45,20 @@ export function formatDiscoveryBlock(project: Project): string {
     field("Primary call to action", project.cta),
     "",
     field("Additional discovery notes", project.discovery_notes),
+    "",
+    "PRESENTER BIO (the person, not the offer — use for Credibility Bridge / Opening Story / any presenter-intro beat)",
+    field("What they help people do", project.presenter_mission),
+    field("Years in this industry", project.presenter_years_experience),
+    field("Credentials, certifications, or degrees", project.presenter_credentials),
+    field("How they got into this industry", project.presenter_origin_story),
+    field("Greatest client transformation", project.presenter_signature_win),
+    field("A major setback and how they turned it around", project.presenter_setback_story),
+    field("Personal 'why'", project.presenter_mission_why),
+    field("Media, speaking, or industry recognition", project.presenter_recognition),
+    field("A relatable, human detail", project.presenter_relatable_detail),
+    field("Income goal — next 6 months", project.presenter_income_goal_6mo),
+    field("Income goal — next 12 months", project.presenter_income_goal_12mo),
+    "(Income goals are personal context for vision-casting/authenticity, not a line to quote verbatim in customer-facing copy — use judgment on whether an asset benefits from it at all.)",
   ].join("\n");
 }
 

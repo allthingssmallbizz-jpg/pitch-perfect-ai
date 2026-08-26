@@ -121,6 +121,18 @@ export async function updateProjectDiscovery(_prevState: unknown, formData: Form
     scarcity_urgency: text("scarcity_urgency"),
     cta: text("cta"),
     discovery_notes: text("discovery_notes"),
+    // Presenter Bio
+    presenter_mission: text("presenter_mission"),
+    presenter_years_experience: text("presenter_years_experience"),
+    presenter_credentials: text("presenter_credentials"),
+    presenter_origin_story: text("presenter_origin_story"),
+    presenter_signature_win: text("presenter_signature_win"),
+    presenter_setback_story: text("presenter_setback_story"),
+    presenter_income_goal_6mo: text("presenter_income_goal_6mo"),
+    presenter_income_goal_12mo: text("presenter_income_goal_12mo"),
+    presenter_mission_why: text("presenter_mission_why"),
+    presenter_recognition: text("presenter_recognition"),
+    presenter_relatable_detail: text("presenter_relatable_detail"),
     mode: (formData.get("mode") === "coach" ? "coach" : "expert") as "coach" | "expert",
   };
 
