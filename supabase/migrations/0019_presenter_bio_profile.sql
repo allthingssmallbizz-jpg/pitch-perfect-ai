@@ -35,24 +35,35 @@ drop policy if exists "presenter_bios_owner_all" on public.presenter_bios;
 create policy "presenter_bios_owner_all" on public.presenter_bios for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-insert into public.presenter_bios (
-  user_id, presenter_mission, presenter_years_experience, presenter_credentials,
-  presenter_origin_story, presenter_signature_win, presenter_setback_story,
-  presenter_income_goal_6mo, presenter_income_goal_12mo, presenter_mission_why,
-  presenter_recognition, presenter_relatable_detail
-)
-select distinct on (user_id)
-  user_id, presenter_mission, presenter_years_experience, presenter_credentials,
-  presenter_origin_story, presenter_signature_win, presenter_setback_story,
-  presenter_income_goal_6mo, presenter_income_goal_12mo, presenter_mission_why,
-  presenter_recognition, presenter_relatable_detail
-from public.projects
-where presenter_mission <> '' or presenter_years_experience <> '' or presenter_credentials <> ''
-   or presenter_origin_story <> '' or presenter_signature_win <> '' or presenter_setback_story <> ''
-   or presenter_income_goal_6mo <> '' or presenter_income_goal_12mo <> '' or presenter_mission_why <> ''
-   or presenter_recognition <> '' or presenter_relatable_detail <> ''
-order by user_id, updated_at desc
-on conflict (user_id) do nothing;
+-- Guarded by an existence check rather than assuming 0017_presenter_bio.sql already ran — if
+-- that migration was skipped (or this is a fresh database that only ever saw the final schema),
+-- `projects` never had these columns to begin with, and there's nothing to backfill.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'projects' and column_name = 'presenter_mission'
+  ) then
+    insert into public.presenter_bios (
+      user_id, presenter_mission, presenter_years_experience, presenter_credentials,
+      presenter_origin_story, presenter_signature_win, presenter_setback_story,
+      presenter_income_goal_6mo, presenter_income_goal_12mo, presenter_mission_why,
+      presenter_recognition, presenter_relatable_detail
+    )
+    select distinct on (user_id)
+      user_id, presenter_mission, presenter_years_experience, presenter_credentials,
+      presenter_origin_story, presenter_signature_win, presenter_setback_story,
+      presenter_income_goal_6mo, presenter_income_goal_12mo, presenter_mission_why,
+      presenter_recognition, presenter_relatable_detail
+    from public.projects
+    where presenter_mission <> '' or presenter_years_experience <> '' or presenter_credentials <> ''
+       or presenter_origin_story <> '' or presenter_signature_win <> '' or presenter_setback_story <> ''
+       or presenter_income_goal_6mo <> '' or presenter_income_goal_12mo <> '' or presenter_mission_why <> ''
+       or presenter_recognition <> '' or presenter_relatable_detail <> ''
+    order by user_id, updated_at desc
+    on conflict (user_id) do nothing;
+  end if;
+end $$;
 
 alter table public.projects
   drop column if exists presenter_mission,
