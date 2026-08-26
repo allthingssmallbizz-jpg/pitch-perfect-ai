@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Sparkles, Globe, Wand2 } from "lucide-react";
+import Link from "next/link";
+import { Sparkles, Globe, Wand2, UserCircle, ArrowRight } from "lucide-react";
 import type { Project } from "@/types/database";
 import { updateProjectDiscovery } from "@/lib/actions/projects";
 import { Button } from "@/components/ui/button";
@@ -25,17 +26,6 @@ const DISCOVERY_FIELD_NAMES = [
   "offer_name",
   "audience",
   "existing_assets",
-  "presenter_mission",
-  "presenter_years_experience",
-  "presenter_credentials",
-  "presenter_origin_story",
-  "presenter_signature_win",
-  "presenter_setback_story",
-  "presenter_income_goal_6mo",
-  "presenter_income_goal_12mo",
-  "presenter_mission_why",
-  "presenter_recognition",
-  "presenter_relatable_detail",
   "awareness_level",
   "pain_points",
   "false_beliefs",
@@ -214,6 +204,23 @@ export default function DiscoveryForm({
         </span>
       </button>
 
+      <Link
+        href="/bio"
+        className="flex w-full items-center justify-between gap-3 rounded-xl border border-dashed border-primary/30 bg-primary/5 p-3 text-left transition-colors hover:border-primary/50"
+      >
+        <span className="flex items-center gap-3">
+          <UserCircle className="h-5 w-5 shrink-0 text-primary" />
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-foreground">My Webinar Bio</span>
+            <span className="block text-xs text-muted-foreground">
+              One-time setup, shared across every project — your mission, credentials, origin
+              story, and a real setback, used automatically by Webinar, VSL, and every other agent.
+            </span>
+          </span>
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-primary" />
+      </Link>
+
       <Field label="Project name" name="name" defaultValue={project.name} textarea={false} required blockSubmitIfEmpty />
 
       <Section title="Discovery" subtitle="The foundation — who you are and who you serve.">
@@ -271,107 +278,6 @@ export default function DiscoveryForm({
           placeholder="Website, email list, ads, testimonials, case studies — anything you already have."
           onAssist={setAssistTarget}
         />
-      </Section>
-
-      <Section
-        title="My Webinar Bio"
-        subtitle="Who you are behind the offer — this becomes your Credibility Bridge and Opening Story wherever an asset introduces the presenter, not just the product."
-      >
-        <Field
-          label="What do you help people do?"
-          name="presenter_mission"
-          defaultValue={project.presenter_mission}
-          placeholder="In one or two sentences — your core mission."
-          hint="If a stranger asked 'what do you do,' what's the one-line answer you'd actually give?"
-          onAssist={setAssistTarget}
-        />
-        <div className="grid grid-cols-2 gap-4">
-          <Field
-            label="Years in this industry"
-            name="presenter_years_experience"
-            defaultValue={project.presenter_years_experience}
-            textarea={false}
-            placeholder="e.g. 12 years"
-            onAssist={setAssistTarget}
-          />
-          <Field
-            label="Credentials, certifications, or degrees"
-            name="presenter_credentials"
-            defaultValue={project.presenter_credentials}
-            textarea={false}
-            placeholder="Any that are relevant — or 'none, results-based' if that's the truth."
-            onAssist={setAssistTarget}
-          />
-        </div>
-        <Field
-          label="How did you get into this industry?"
-          name="presenter_origin_story"
-          defaultValue={project.presenter_origin_story}
-          placeholder="Your origin story — what led you here?"
-          hint="This is often the single most relatable thing in a whole presentation — don't polish it too much."
-          onAssist={setAssistTarget}
-        />
-        <Field
-          label="Your greatest client transformation"
-          name="presenter_signature_win"
-          defaultValue={project.presenter_signature_win}
-          placeholder="The single biggest impact you've had on a client — a specific result."
-          hint="Pick ONE story, not a list — specific beats impressive. What did their life look like before, and after?"
-          onAssist={setAssistTarget}
-        />
-        <Field
-          label="A major setback — and how you turned it around"
-          name="presenter_setback_story"
-          defaultValue={project.presenter_setback_story}
-          placeholder="Struggled, failed, or hit a wall trying to build this? Tell it honestly."
-          hint="A real setback, told honestly, builds more trust than a highlight reel — it's exactly what makes an Opening Story land."
-          onAssist={setAssistTarget}
-        />
-        <Field
-          label="Your personal 'why'"
-          name="presenter_mission_why"
-          defaultValue={project.presenter_mission_why}
-          placeholder="Why does this matter to YOU, personally — beyond the business?"
-          hint="This is what makes an audience trust you're in it for more than the sale."
-          onAssist={setAssistTarget}
-        />
-        <Field
-          label="Media, speaking, or industry recognition"
-          name="presenter_recognition"
-          defaultValue={project.presenter_recognition}
-          placeholder="Podcasts, press, stages you've spoken on, awards — leave blank if none yet."
-          onAssist={setAssistTarget}
-        />
-        <Field
-          label="A relatable, human detail about you"
-          name="presenter_relatable_detail"
-          defaultValue={project.presenter_relatable_detail}
-          placeholder="A hobby, your family, something ordinary about you."
-          hint="Often what makes a stranger start to like and trust you, not just respect you."
-          onAssist={setAssistTarget}
-        />
-        <div className="grid grid-cols-2 gap-4">
-          <Field
-            label="Income goal — next 6 months"
-            name="presenter_income_goal_6mo"
-            defaultValue={project.presenter_income_goal_6mo}
-            textarea={false}
-            placeholder="e.g. $20k/month"
-            onAssist={setAssistTarget}
-          />
-          <Field
-            label="Income goal — next 12 months"
-            name="presenter_income_goal_12mo"
-            defaultValue={project.presenter_income_goal_12mo}
-            textarea={false}
-            placeholder="e.g. $50k/month"
-            onAssist={setAssistTarget}
-          />
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Income goals are context for you, not customer-facing copy — generators only use them
-          for authentic vision-casting where it genuinely fits, never as a line to quote.
-        </p>
       </Section>
 
       <Section title="Customer Awareness" subtitle="Where your prospect is on the awareness ladder.">

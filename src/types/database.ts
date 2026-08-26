@@ -126,20 +126,6 @@ export type Project = {
   scarcity_urgency: string;
   cta: string;
   discovery_notes: string;
-  // Presenter Bio — the person behind the offer, not the offer itself. Feeds the Credibility
-  // Bridge and Opening Story beats (VSL stages 5-6, webinar Phase 1/2) that "Proof" alone can't
-  // cover, since that field is about the OFFER's evidence, not who's presenting it.
-  presenter_mission: string;
-  presenter_years_experience: string;
-  presenter_credentials: string;
-  presenter_origin_story: string;
-  presenter_signature_win: string;
-  presenter_setback_story: string;
-  presenter_income_goal_6mo: string;
-  presenter_income_goal_12mo: string;
-  presenter_mission_why: string;
-  presenter_recognition: string;
-  presenter_relatable_detail: string;
   mode: GenerationMode;
   created_at: string;
   updated_at: string;
@@ -230,6 +216,28 @@ export type BrandVoice = {
   updated_at: string;
 };
 
+// One row per user (same pattern as BrandVoice above) — filled in once on its own /bio page,
+// folded into every generation's system prompt automatically (see getPresenterBioBlock in
+// src/lib/ai/presenterBio.ts) instead of living on each project's Discovery form. Feeds the
+// Credibility Bridge and Opening Story beats (VSL stages 5-6, webinar Phase 1/2) that "Proof"
+// alone can't cover, since that field is about the OFFER's evidence, not who's presenting it.
+export type PresenterBio = {
+  user_id: string;
+  presenter_mission: string;
+  presenter_years_experience: string;
+  presenter_credentials: string;
+  presenter_origin_story: string;
+  presenter_signature_win: string;
+  presenter_setback_story: string;
+  presenter_income_goal_6mo: string;
+  presenter_income_goal_12mo: string;
+  presenter_mission_why: string;
+  presenter_recognition: string;
+  presenter_relatable_detail: string;
+  created_at: string;
+  updated_at: string;
+};
+
 // Minimal Database type shape for @supabase/ssr / @supabase/supabase-js generics.
 // Matches the GenericSchema/GenericTable shape those packages expect (Row/Insert/Update/
 // Relationships, plus Views/Functions on the schema) — see
@@ -252,6 +260,7 @@ export type Database = {
       credit_topups: Table<CreditTopup>;
       payments: Table<Payment>;
       brand_voices: Table<BrandVoice>;
+      presenter_bios: Table<PresenterBio>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

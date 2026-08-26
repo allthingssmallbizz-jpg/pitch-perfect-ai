@@ -6,6 +6,7 @@ import { checkGuardrails, decrementCredits } from "@/lib/credits";
 import { generateCompleteAsset } from "@/lib/ai/anthropic";
 import { buildSystemPrompt } from "@/lib/ai/systemPrompt";
 import { getBrandVoiceBlock } from "@/lib/ai/brandVoice";
+import { getPresenterBioBlock } from "@/lib/ai/presenterBio";
 import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
 import type { PriorGeneration } from "@/lib/ai/generators/shared";
 import { getAgent } from "@/lib/agents/config";
@@ -92,8 +93,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const brandVoiceBlock = await getBrandVoiceBlock(supabase, user.id);
+    const presenterBioBlock = await getPresenterBioBlock(supabase, user.id);
     const agentPersona = getAgent(assetType)?.personaInstructions;
-    const systemPrompt = buildSystemPrompt(mode, brandVoiceBlock, agentPersona);
+    const systemPrompt = buildSystemPrompt(mode, brandVoiceBlock, agentPersona, presenterBioBlock);
 
     // So every generator can stay consistent with whatever's already been built for this
     // project (same Big Idea, headline, offer framing — see formatPriorGenerationsBlock) instead

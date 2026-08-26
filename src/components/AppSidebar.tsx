@@ -13,6 +13,7 @@ import {
   BookOpen,
   Settings,
   GitCompareArrows,
+  UserCircle,
 } from "lucide-react";
 import { signOut } from "@/lib/actions/auth";
 import { AGENTS, type AgentAssetType } from "@/lib/agents/config";
@@ -204,6 +205,14 @@ export default function AppSidebar({ email, displayName, isAdmin, credits }: Pro
                   <Link href="/brand-voice">
                     <Mic className="h-4 w-4" />
                     <span>Brand voice</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === "/bio"} tooltip="My Webinar Bio">
+                  <Link href="/bio">
+                    <UserCircle className="h-4 w-4" />
+                    <span>My Webinar Bio</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

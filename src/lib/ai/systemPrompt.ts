@@ -62,7 +62,8 @@ const OUTPUT_RULES = `Output rules:
 export function buildSystemPrompt(
   mode: GenerationMode,
   brandVoiceBlock?: string | null,
-  agentPersona?: string | null
+  agentPersona?: string | null,
+  presenterBioBlock?: string | null
 ): string {
   return [
     PERSONA,
@@ -70,6 +71,7 @@ export function buildSystemPrompt(
     MODE_INSTRUCTIONS[mode],
     OUTPUT_RULES,
     ...(brandVoiceBlock ? [brandVoiceBlock] : []),
+    ...(presenterBioBlock ? [presenterBioBlock] : []),
     "REFERENCE — Pitch Perfect Knowledge Library (use this to structure and validate the asset; do not quote it back verbatim):",
     getKnowledgeContext(),
   ].join("\n\n");
