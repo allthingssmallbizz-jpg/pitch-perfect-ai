@@ -1,13 +1,14 @@
 import type { Project } from "@/types/database";
-import { formatDiscoveryBlock } from "./shared";
+import { formatDiscoveryBlock, formatPriorGenerationsBlock, type PriorGeneration } from "./shared";
 
 export const SALES_PAGE_CREDIT_COST = 4;
 export const SALES_PAGE_MAX_OUTPUT_TOKENS = 4500;
 
-export function buildSalesPagePrompt(project: Project): string {
+export function buildSalesPagePrompt(project: Project, priorGenerations: PriorGeneration[] = []): string {
   return `Write a complete long-form sales page using PPOS™ (Capture Attention → Build Relevance → Create New Beliefs → Build Certainty → Present the Solution → Maximize Value → Drive Commitment) for the project below.
 
 ${formatDiscoveryBlock(project)}
+${formatPriorGenerationsBlock(priorGenerations)}
 
 Output real, publish-ready copy organized under these section headers:
 1. **Headline + Subheadline** (the Big Promise — outcome-led)

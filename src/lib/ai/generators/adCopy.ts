@@ -1,13 +1,14 @@
 import type { Project } from "@/types/database";
-import { formatDiscoveryBlock } from "./shared";
+import { formatDiscoveryBlock, formatPriorGenerationsBlock, type PriorGeneration } from "./shared";
 
 export const AD_COPY_CREDIT_COST = 3;
 export const AD_COPY_MAX_OUTPUT_TOKENS = 3000;
 
-export function buildAdCopyPrompt(project: Project): string {
+export function buildAdCopyPrompt(project: Project, priorGenerations: PriorGeneration[] = []): string {
   return `Write paid ad copy for the project below — Facebook/Instagram feed ads and a YouTube pre-roll script. Ads work on scroll-stopping specificity, not the full PPOS arc, so keep every angle tight.
 
 ${formatDiscoveryBlock(project)}
+${formatPriorGenerationsBlock(priorGenerations)}
 
 Produce:
 1. **5 Facebook/Instagram ad variations**, each with: a scroll-stopping hook (first line), 2-4 sentences of body copy building one angle (pick a different angle per variation — curiosity, pain/agitation, proof/results, contrarian, direct offer), and a specific CTA button text (e.g. "Learn More", "Get Started").

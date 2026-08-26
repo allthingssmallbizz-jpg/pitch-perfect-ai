@@ -1,5 +1,5 @@
 import type { Project } from "@/types/database";
-import { formatDiscoveryBlock } from "./shared";
+import { formatDiscoveryBlock, formatPriorGenerationsBlock, type PriorGeneration } from "./shared";
 
 // Raised from 3 — the 60-90 slide requirement below roughly doubled real output-token spend
 // per generation (see PPT_OUTLINE_MAX_OUTPUT_TOKENS), so the credit price members pay was
@@ -12,10 +12,13 @@ export const PPT_OUTLINE_CREDIT_COST = 10;
 // automatically continues rather than silently truncating.
 export const PPT_OUTLINE_MAX_OUTPUT_TOKENS = 16000;
 
-export function buildPptOutlinePrompt(project: Project): string {
+export function buildPptOutlinePrompt(project: Project, priorGenerations: PriorGeneration[] = []): string {
   return `Build a slide-by-slide PowerPoint outline (titles + speaker notes, not full design) for presenting this offer. Use PPWOS™ phases if this reads as a consumer webinar/pitch, or PPSOS™ (Capture Executive Attention → Build Business Relevance → Create New Business Beliefs → Build Executive Certainty → Present the Solution → Maximize Business Value → Drive Organizational Commitment) if the discovery notes indicate a B2B/enterprise/multi-stakeholder audience.
 
 ${formatDiscoveryBlock(project)}
+${formatPriorGenerationsBlock(priorGenerations)}
+
+If a Webinar Outline already exists above for this project, build these slides directly from its phases and beats (same headline, same belief shift, same offer stack order) rather than re-deriving the arc from discovery alone — this deck should be the visual version of that exact outline, not a different pass at the same facts.
 
 For each slide output:
 - **Slide #: Title**

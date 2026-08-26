@@ -1,5 +1,5 @@
 import type { Project } from "@/types/database";
-import { formatDiscoveryBlock } from "./shared";
+import { formatDiscoveryBlock, formatPriorGenerationsBlock, type PriorGeneration } from "./shared";
 
 export const EMAIL_SEQUENCE_CREDIT_COST = 2;
 // Raised from 4000 — 7 full emails (subject + preview + real body copy each) routinely need
@@ -9,10 +9,11 @@ export const EMAIL_SEQUENCE_CREDIT_COST = 2;
 // needed.
 export const EMAIL_SEQUENCE_MAX_OUTPUT_TOKENS = 6000;
 
-export function buildEmailSequencePrompt(project: Project): string {
+export function buildEmailSequencePrompt(project: Project, priorGenerations: PriorGeneration[] = []): string {
   return `Write a launch email sequence for the project below, following the PPOS™ belief-shift arc across the sequence rather than repeating the same pitch every email.
 
 ${formatDiscoveryBlock(project)}
+${formatPriorGenerationsBlock(priorGenerations)}
 
 Write 7 emails covering this arc:
 1. **Indoctrination** — welcome + set expectations + the Big Promise

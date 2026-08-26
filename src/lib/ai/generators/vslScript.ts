@@ -1,16 +1,17 @@
 import type { Project } from "@/types/database";
 import { getKnowledgeFile } from "@/lib/ai/systemPrompt";
-import { formatDiscoveryBlock } from "./shared";
+import { formatDiscoveryBlock, formatPriorGenerationsBlock, type PriorGeneration } from "./shared";
 
 export const VSL_CREDIT_COST = 5;
 export const VSL_MAX_OUTPUT_TOKENS = 5000;
 
-export function buildVslScriptPrompt(project: Project): string {
+export function buildVslScriptPrompt(project: Project, priorGenerations: PriorGeneration[] = []): string {
   const structure = getKnowledgeFile("05-vsl-25-part.md");
 
   return `Write a full VSL (Video Sales Letter) script using the 25-part structure below for the project.
 
 ${formatDiscoveryBlock(project)}
+${formatPriorGenerationsBlock(priorGenerations)}
 
 25-PART STRUCTURE TO FOLLOW:
 ${structure}

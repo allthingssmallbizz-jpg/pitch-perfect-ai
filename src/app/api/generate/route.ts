@@ -7,6 +7,7 @@ import { generateCompleteAsset } from "@/lib/ai/anthropic";
 import { buildSystemPrompt } from "@/lib/ai/systemPrompt";
 import { getBrandVoiceBlock } from "@/lib/ai/brandVoice";
 import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
+import type { PriorGeneration } from "@/lib/ai/generators/shared";
 import { getAgent } from "@/lib/agents/config";
 import { recordGenerationVersion } from "@/lib/generations";
 import type { GenerationMode } from "@/types/database";
@@ -93,7 +94,31 @@ export async function POST(req: NextRequest) {
     const brandVoiceBlock = await getBrandVoiceBlock(supabase, user.id);
     const agentPersona = getAgent(assetType)?.personaInstructions;
     const systemPrompt = buildSystemPrompt(mode, brandVoiceBlock, agentPersona);
-    const userPrompt = generator.buildPrompt(project);
+
+    // So every generator can stay consistent with whatever's already been built for this
+    // project (same Big Idea, headline, offer framing — see formatPriorGenerationsBlock) instead
+    // of each one independently reinventing its own narrative from the discovery facts alone.
+    // Only the most recent completed generation per asset type is used, and the asset type being
+    // generated right now is excluded (nothing to be "consistent with" against itself).
+    const { data: priorRows } = await supabase
+      .from("generations")
+      .select("asset_type, content")
+      .eq("project_id", projectId)
+      .eq("status", "complete")
+      .neq("asset_type", assetType)
+      .in("asset_type", ASSET_TYPES)
+      .not("content", "is", null)
+      .order("created_at", { ascending: false });
+
+    const seenAssetTypes = new Set<string>();
+    const priorGenerations: PriorGeneration[] = [];
+    for (const row of priorRows ?? []) {
+      if (seenAssetTypes.has(row.asset_type)) continue;
+      seenAssetTypes.add(row.asset_type);
+      priorGenerations.push({ assetType: row.asset_type, content: row.content! });
+    }
+
+    const userPrompt = generator.buildPrompt(project, priorGenerations);
 
     const result = await generateCompleteAsset(systemPrompt, userPrompt, generator.maxOutputTokens);
 

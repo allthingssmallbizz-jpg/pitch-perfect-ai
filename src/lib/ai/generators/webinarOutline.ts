@@ -1,13 +1,14 @@
 import type { Project } from "@/types/database";
-import { formatDiscoveryBlock } from "./shared";
+import { formatDiscoveryBlock, formatPriorGenerationsBlock, type PriorGeneration } from "./shared";
 
 export const WEBINAR_CREDIT_COST = 3;
 export const WEBINAR_MAX_OUTPUT_TOKENS = 4000;
 
-export function buildWebinarOutlinePrompt(project: Project): string {
+export function buildWebinarOutlinePrompt(project: Project, priorGenerations: PriorGeneration[] = []): string {
   return `Build a full Webinar Outline using the Pitch Perfect Webinar Operating System™ (PPWOS™) for the project below.
 
 ${formatDiscoveryBlock(project)}
+${formatPriorGenerationsBlock(priorGenerations)}
 
 Produce the outline in this structure:
 1. **Phase 1 — Capture Attention**: Welcome beat, Big Promise (the outcome, not the topic), agenda, opening engagement trigger (poll/chat question).

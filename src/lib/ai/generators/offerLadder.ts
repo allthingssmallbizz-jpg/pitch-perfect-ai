@@ -1,13 +1,14 @@
 import type { Project } from "@/types/database";
-import { formatDiscoveryBlock } from "./shared";
+import { formatDiscoveryBlock, formatPriorGenerationsBlock, type PriorGeneration } from "./shared";
 
 export const OFFER_LADDER_CREDIT_COST = 4;
 export const OFFER_LADDER_MAX_OUTPUT_TOKENS = 3500;
 
-export function buildOfferLadderPrompt(project: Project): string {
+export function buildOfferLadderPrompt(project: Project, priorGenerations: PriorGeneration[] = []): string {
   return `Design a full offer ladder / customer ascension journey for the project below, per the Offer Creation Operating Manual's Customer Value Equation and pricing sequence (transformation → value → proof → implementation → investment).
 
 ${formatDiscoveryBlock(project)}
+${formatPriorGenerationsBlock(priorGenerations)}
 
 Produce four tiers, each with a name, one-line promise, core deliverable, suggested price point, and why it earns its place in the ladder:
 1. **Lead magnet** (free) — the smallest possible win that proves the mechanism works and starts the relationship.

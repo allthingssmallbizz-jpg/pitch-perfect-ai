@@ -1,4 +1,5 @@
 import type { AssetType, Project } from "@/types/database";
+import type { PriorGeneration } from "./shared";
 import { buildWebinarOutlinePrompt, WEBINAR_CREDIT_COST, WEBINAR_MAX_OUTPUT_TOKENS } from "./webinarOutline";
 import { buildVslScriptPrompt, VSL_CREDIT_COST, VSL_MAX_OUTPUT_TOKENS } from "./vslScript";
 import { buildSalesPagePrompt, SALES_PAGE_CREDIT_COST, SALES_PAGE_MAX_OUTPUT_TOKENS } from "./salesPage";
@@ -35,7 +36,7 @@ export interface AssetGenerator {
   description: string;
   creditCost: number;
   maxOutputTokens: number;
-  buildPrompt: (project: Project) => string;
+  buildPrompt: (project: Project, priorGenerations: PriorGeneration[]) => string;
 }
 
 export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
