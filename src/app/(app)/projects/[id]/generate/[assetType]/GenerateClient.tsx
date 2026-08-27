@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import type { AssetType, GenerationMode } from "@/types/database";
@@ -20,6 +21,7 @@ import {
   Undo2,
   Globe,
   Rocket,
+  PartyPopper,
 } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import VersionHistory from "@/components/VersionHistory";
@@ -201,6 +203,7 @@ export default function GenerateClient({
   mode,
   initialContent,
   initialGenerationId,
+  projectFunnelType,
   initialPublishSlug,
   initialPublishedAt,
   initialPastGenerations,
@@ -210,6 +213,10 @@ export default function GenerateClient({
   mode: GenerationMode;
   initialContent: string | null;
   initialGenerationId: string | null;
+  // Only meaningful on the Landing Page screen — drives the "set it first" hint next to
+  // "Generate matching Thank You Page" below, since that's what the Thank You Page generator
+  // branches its copy on (see src/lib/funnelType.ts and thankYouPage.ts).
+  projectFunnelType: string;
   initialPublishSlug: string | null;
   initialPublishedAt: string | null;
   initialPastGenerations: PastGeneration[];
@@ -350,6 +357,51 @@ export default function GenerateClient({
     setTimeout(() => setLinkCopied(false), 1500);
   }
 
+  const [generatingMatch, setGeneratingMatch] = useState(false);
+
+  // Called from the Landing Page screen only — generates a Thank You Page in this SAME project
+  // (the normal /api/generate call, just for the other asset type) instead of sending someone
+  // through "start a new project," which would create an unrelated Thank You Page with no
+  // guaranteed visual connection to this Landing Page at all. formatPriorGenerationsBlock already
+  // feeds the Landing Page's copy into the Thank You Page prompt for narrative consistency, but
+  // colors are forced to match exactly afterward here rather than trusted to the AI/brand-voice
+  // palette landing on the identical hex values by chance — the two pages have to look like the
+  // same site, not just a similar one.
+  async function generateMatchingThankYouPage() {
+    if (!content) return;
+    setGeneratingMatch(true);
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, assetType: "thank_you_page", mode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not generate the Thank You Page.");
+
+      const sourceColors = extractCssColorVars(content);
+      let matchedContent = String(data.content);
+      if (sourceColors) {
+        for (const { name } of CSS_COLOR_VARS) {
+          const hex = sourceColors[name];
+          if (hex) matchedContent = replaceCssColorVar(matchedContent, name, hex);
+        }
+        await fetch(`/api/generations/${data.generationId}/autosave`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: matchedContent }),
+        });
+      }
+
+      toast.success("Matching Thank You Page created!");
+      router.push(`/projects/${projectId}/generate/thank_you_page?generationId=${data.generationId}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not generate the Thank You Page.");
+    } finally {
+      setGeneratingMatch(false);
+    }
+  }
+
   async function run() {
     setLoading(true);
     setError(null);
@@ -488,6 +540,16 @@ export default function GenerateClient({
                       <FileDown className="mr-2 h-4 w-4" />
                       Download HTML
                     </Button>
+                    {assetType === "landing_page" && (
+                      <Button variant="outline" onClick={generateMatchingThankYouPage} disabled={generatingMatch}>
+                        {generatingMatch ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <PartyPopper className="mr-2 h-4 w-4" />
+                        )}
+                        {generatingMatch ? "Building..." : "Generate matching Thank You Page"}
+                      </Button>
+                    )}
                   </>
                 ) : (
                   <>
@@ -534,6 +596,17 @@ export default function GenerateClient({
           </>
         )}
       </div>
+
+      {assetType === "landing_page" && content && !projectFunnelType && (
+        <p className="mb-4 -mt-2 text-xs text-muted-foreground">
+          Tip: set this project&apos;s{" "}
+          <Link href={`/projects/${projectId}`} className="text-primary hover:underline">
+            Funnel type
+          </Link>{" "}
+          first (Offer section) so the matching Thank You Page&apos;s copy is specific to what your CTA
+          actually leads to, instead of a generic confirmation.
+        </p>
+      )}
 
       {pastGenerations.length > 0 && (
         <details className="mb-4 rounded-xl border border-border bg-card/30" open={pastGenerations.length <= 3}>

@@ -136,6 +136,7 @@ export default async function GenerateAssetPage({
         mode={project.mode}
         initialContent={initialContent}
         initialGenerationId={initialGenerationId}
+        projectFunnelType={project.funnel_type}
         initialPublishSlug={initialPublishSlug}
         initialPublishedAt={initialPublishedAt}
         initialPastGenerations={pastGenerations}
