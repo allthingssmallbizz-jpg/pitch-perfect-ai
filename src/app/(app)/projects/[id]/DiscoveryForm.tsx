@@ -13,6 +13,7 @@ import DiscoveryAssistDialog, { type AssistTarget } from "@/components/Discovery
 import WebsiteImportDialog from "@/components/WebsiteImportDialog";
 import OfferBuilderDialog from "@/components/OfferBuilderDialog";
 import DeleteProjectButton from "@/components/DeleteProjectButton";
+import { FUNNEL_TYPES } from "@/lib/funnelType";
 
 const AWARENESS_LEVELS = ["Unaware", "Problem-Aware", "Solution-Aware", "Product-Aware", "Most Aware"];
 
@@ -43,6 +44,7 @@ const DISCOVERY_FIELD_NAMES = [
   "bonuses",
   "scarcity_urgency",
   "cta",
+  "funnel_type",
   "discovery_notes",
 ];
 
@@ -471,6 +473,27 @@ export default function DiscoveryForm({
           required
           onAssist={setAssistTarget}
         />
+        <div>
+          <Label htmlFor="funnel_type">Funnel type</Label>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            What does that CTA actually lead to? This determines the right copy for your Thank
+            You Page — a booked call, a purchase, and a webinar registration each need a
+            genuinely different confirmation page.
+          </p>
+          <select
+            id="funnel_type"
+            name="funnel_type"
+            defaultValue={project.funnel_type}
+            className="mt-1 flex h-9 w-full rounded-md border border-input bg-input/30 px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <option value="">Select...</option>
+            {FUNNEL_TYPES.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </Section>
 
       <Field

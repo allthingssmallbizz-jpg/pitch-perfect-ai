@@ -144,6 +144,7 @@ export async function updateProjectDiscovery(_prevState: unknown, formData: Form
     bonuses: text("bonuses"),
     scarcity_urgency: text("scarcity_urgency"),
     cta: text("cta"),
+    funnel_type: text("funnel_type"),
     discovery_notes: text("discovery_notes"),
     mode: (formData.get("mode") === "coach" ? "coach" : "expert") as "coach" | "expert",
   };

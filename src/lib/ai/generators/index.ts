@@ -8,6 +8,8 @@ import { buildEmailSequencePrompt, EMAIL_SEQUENCE_CREDIT_COST, EMAIL_SEQUENCE_MA
 import { buildPptOutlinePrompt, PPT_OUTLINE_CREDIT_COST, PPT_OUTLINE_MAX_OUTPUT_TOKENS } from "./pptOutline";
 import { buildAdCopyPrompt, AD_COPY_CREDIT_COST, AD_COPY_MAX_OUTPUT_TOKENS } from "./adCopy";
 import { buildOfferLadderPrompt, OFFER_LADDER_CREDIT_COST, OFFER_LADDER_MAX_OUTPUT_TOKENS } from "./offerLadder";
+import { buildThankYouPagePrompt, THANK_YOU_PAGE_CREDIT_COST, THANK_YOU_PAGE_MAX_OUTPUT_TOKENS } from "./thankYouPage";
+export { WEB_PAGE_ASSET_TYPES } from "./htmlPage";
 
 // Excludes "presentation_analysis" and "headline_lab" — neither is driven by a project's
 // discovery fields (their input is pasted content / a topic brief), so they aren't part
@@ -106,6 +108,14 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
     creditCost: OFFER_LADDER_CREDIT_COST,
     maxOutputTokens: OFFER_LADDER_MAX_OUTPUT_TOKENS,
     buildPrompt: buildOfferLadderPrompt,
+  },
+  thank_you_page: {
+    assetType: "thank_you_page",
+    label: "Thank You Page",
+    description: "Confirmation page matching your funnel type — call, checkout, tripwire, or webinar.",
+    creditCost: THANK_YOU_PAGE_CREDIT_COST,
+    maxOutputTokens: THANK_YOU_PAGE_MAX_OUTPUT_TOKENS,
+    buildPrompt: buildThankYouPagePrompt,
   },
 };
 

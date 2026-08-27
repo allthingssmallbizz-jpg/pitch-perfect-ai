@@ -69,6 +69,7 @@ export const TEMPLATES: Template[] = [
       scarcity_urgency:
         "Cohorts run quarterly, capped at 20 seats so everyone gets hot-seat time in the weekly call. Enrollment closes when the cohort fills or one week before the start date, whichever comes first.",
       cta: "Book your free Momentum Call",
+      funnel_type: "book_call",
       discovery_notes:
         "Clients often say some version of 'I know what to do, I just don't do it' — the program's whole angle is cadence over content, since they don't need more information.",
     },
@@ -134,6 +135,7 @@ export const TEMPLATES: Template[] = [
       scarcity_urgency:
         "None manufactured — the trial itself (14 days, no card) is the only mechanism; pricing increases 10% at the start of each quarter for new signups, existing customers grandfathered.",
       cta: "Start your 14-day free trial",
+      funnel_type: "checkout",
       discovery_notes:
         "Buyers are engineering managers, not individual engineers — messaging should speak to 'give your team back deep work time,' not just 'no more meetings.'",
     },
@@ -199,6 +201,7 @@ export const TEMPLATES: Template[] = [
       scarcity_urgency:
         "Order bump ($197) and upsell ($497) pricing increase by $10 every 90 days as new bonuses are added — no fake countdown timers.",
       cta: "Get instant access for $27",
+      funnel_type: "tripwire",
       discovery_notes:
         "Buyers are burned by past 'get rich with email' hype — copy should lean into specificity/proof over big promises.",
     },
@@ -266,6 +269,7 @@ export const TEMPLATES: Template[] = [
       scarcity_urgency:
         "Only take on 4 new retainer clients per quarter to keep the strategist-to-account ratio low — audits booked beyond that queue for the following quarter.",
       cta: "Book your free Growth Audit",
+      funnel_type: "book_call",
       discovery_notes:
         "Buyers are founders/CMOs, skeptical from past agency experiences — lead with named case studies and specific numbers, not adjectives.",
     },
@@ -332,6 +336,7 @@ export const TEMPLATES: Template[] = [
       scarcity_urgency:
         "Capped at 40 total members to protect hot-seat time; currently 34 filled, application-only, next cohort opens twice a year.",
       cta: "Apply for The Inner Circle",
+      funnel_type: "book_call",
       discovery_notes:
         "This is a relationship sale — application call is the actual conversion mechanism, not the webinar itself. Webinar's job is just to get the application started.",
     },
@@ -399,6 +404,7 @@ export const TEMPLATES: Template[] = [
       scarcity_urgency:
         "Launch price of $119 (vs. $149 regular) locked for the first 500 units only, then reverts to full price.",
       cta: "Claim your launch price — $119",
+      funnel_type: "checkout",
       discovery_notes:
         "Buyers have pillow fatigue from past purchases — lead with the clinical study and neurologist involvement before anything about comfort/feel.",
     },

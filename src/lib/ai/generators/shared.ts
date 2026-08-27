@@ -1,4 +1,5 @@
 import type { AssetType, Project } from "@/types/database";
+import { getFunnelTypeLabel } from "@/lib/funnelType";
 
 // Renders a Project's full discovery brief into the block every generator prompt is built on.
 // Centralized so "discovery-before-copy" is enforced consistently — every generator sees
@@ -44,6 +45,7 @@ export function formatDiscoveryBlock(project: Project): string {
     field("Bonuses", project.bonuses),
     field("Scarcity / urgency", project.scarcity_urgency),
     field("Primary call to action", project.cta),
+    field("Funnel type (what the CTA leads to)", getFunnelTypeLabel(project.funnel_type)),
     "",
     field("Additional discovery notes", project.discovery_notes),
   ].join("\n");

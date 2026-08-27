@@ -1,48 +1,78 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import type { AssetType, GenerationMode } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Copy, FileDown, Save, Loader2, Trash2, History, Eye, Code2, ExternalLink } from "lucide-react";
+import { Sparkles, Copy, FileDown, Save, Loader2, Trash2, History, Eye, Code2, ExternalLink, Palette } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import VersionHistory from "@/components/VersionHistory";
 import TtsPlayer from "@/components/TtsPlayer";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
-import { looksLikeHtmlDocument } from "@/lib/ai/generators/landingPage";
+import {
+  CSS_COLOR_VARS,
+  extractCssColorVars,
+  looksLikeHtmlDocument,
+  replaceCssColorVar,
+  WEB_PAGE_ASSET_TYPES,
+} from "@/lib/ai/generators/htmlPage";
+import { downloadHtmlFile, openInBrowserTab } from "@/lib/browserFile";
 
 export type PastGeneration = { id: string; createdAt: string; preview: string };
 
-// Landing Page is the one generator whose content is a real HTML document, not markdown — used
-// both to build a clean preview snippet (raw tags would otherwise show up as literal text in the
-// "Past generations" list) and client-side for the .html download filename/blob.
+// Landing Page and Thank You Page are the generators whose content is a real HTML document, not
+// markdown — used both to build a clean preview snippet (raw tags would otherwise show up as
+// literal text in the "Past generations" list) and client-side for the .html download filename/blob.
 function stripHtmlTags(html: string): string {
   return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function downloadHtmlFile(filename: string, html: string) {
-  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
+const HEX_COLOR_PATTERN = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
-// The in-page preview is a sandboxed iframe (no scripts, no same-origin) so AI-generated markup
-// can never touch this app's session — a real browser tab has none of those restrictions, which
-// is exactly the point here: it's the only way to see precisely how the page will actually
-// behave/render for a real visitor, full-width, with nothing else on screen. The blob URL is
-// revoked after the new tab has had time to actually load it, not immediately.
-function openInBrowserTab(html: string) {
-  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  window.open(url, "_blank", "noopener,noreferrer");
-  setTimeout(() => URL.revokeObjectURL(url), 30000);
+// Instant, no-regeneration color editing: every HTML-page generator declares its palette as 4 CSS
+// custom properties (see htmlPage.ts), so changing a color here is a plain string replace in the
+// saved HTML — no AI call, no trip back to the Brand Voice page, no losing the rest of the page.
+function ColorVarEditor({
+  vars,
+  onChange,
+}: {
+  vars: Record<string, string>;
+  onChange: (varName: string, hex: string) => void;
+}) {
+  return (
+    <div className="card-elevated rounded-xl p-4">
+      <p className="mb-3 flex items-center gap-1.5 text-sm font-medium">
+        <Palette className="h-4 w-4" />
+        Quick colors — change instantly, no regenerating
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {CSS_COLOR_VARS.map(({ name, label }) => {
+          const value = vars[name] ?? "#888888";
+          const swatchValue = HEX_COLOR_PATTERN.test(value) ? value : "#888888";
+          return (
+            <div key={name}>
+              <label className="mb-1 block text-xs text-muted-foreground">{label}</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  aria-label={`${label} picker`}
+                  value={swatchValue}
+                  onChange={(e) => onChange(name, e.target.value)}
+                  className="h-8 w-8 shrink-0 cursor-pointer rounded-md border border-input bg-transparent p-0.5"
+                />
+                <input
+                  value={value}
+                  onChange={(e) => onChange(name, e.target.value)}
+                  className="h-8 w-full min-w-0 rounded-md border border-input bg-transparent px-2 text-xs"
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function formatWhen(iso: string) {
@@ -75,7 +105,8 @@ export default function GenerateClient({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const isLandingPage = assetType === "landing_page";
+  const isWebPageAsset = WEB_PAGE_ASSET_TYPES.includes(assetType);
+  const downloadFilename = assetType === "thank_you_page" ? "thank-you-page.html" : "landing-page.html";
   const [content, setContent] = useState<string | null>(initialContent);
   const [generationId, setGenerationId] = useState<string | null>(initialGenerationId);
   const [loading, setLoading] = useState(false);
@@ -85,9 +116,11 @@ export default function GenerateClient({
   const [saved, setSaved] = useState(false);
   const [pastGenerations, setPastGenerations] = useState<PastGeneration[]>(initialPastGenerations);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  // Landing Page's content is a real HTML document — default to seeing it rendered as an actual
-  // page, with source editing as the secondary option, rather than starting on raw markup.
+  // Web-page assets' content is a real HTML document — default to seeing it rendered as an
+  // actual page, with source editing as the secondary option, rather than starting on raw markup.
   const [viewMode, setViewMode] = useState<"preview" | "edit">("preview");
+
+  const colorVars = useMemo(() => (content && isWebPageAsset ? extractCssColorVars(content) : null), [content, isWebPageAsset]);
 
   const autosave = useDebouncedCallback((newContent: string, id: string) => {
     fetch(`/api/generations/${id}/autosave`, {
@@ -101,6 +134,14 @@ export default function GenerateClient({
     setContent(markdown);
     setSaved(false);
     if (generationId) autosave(markdown, generationId);
+  }
+
+  function updateColorVar(varName: string, hex: string) {
+    if (!content) return;
+    const updated = replaceCssColorVar(content, varName, hex);
+    setContent(updated);
+    setSaved(false);
+    if (generationId) autosave(updated, generationId);
   }
 
   async function run() {
@@ -119,7 +160,7 @@ export default function GenerateClient({
       }
       setContent(data.content);
       setGenerationId(data.generationId);
-      const previewSource = isLandingPage ? stripHtmlTags(String(data.content)) : String(data.content).replace(/\s+/g, " ").trim();
+      const previewSource = isWebPageAsset ? stripHtmlTags(String(data.content)) : String(data.content).replace(/\s+/g, " ").trim();
       setPastGenerations((prev) => [
         { id: data.generationId, createdAt: new Date().toISOString(), preview: previewSource.slice(0, 120) },
         ...prev,
@@ -217,7 +258,7 @@ export default function GenerateClient({
                   currentContent={content}
                   onRestored={(restored) => setContent(restored)}
                 />
-                {isLandingPage ? (
+                {isWebPageAsset ? (
                   <>
                     <Button
                       variant="outline"
@@ -232,7 +273,7 @@ export default function GenerateClient({
                       <ExternalLink className="mr-2 h-4 w-4" />
                       Preview in browser
                     </Button>
-                    <Button variant="outline" onClick={() => downloadHtmlFile("landing-page.html", content)}>
+                    <Button variant="outline" onClick={() => downloadHtmlFile(downloadFilename, content)}>
                       <FileDown className="mr-2 h-4 w-4" />
                       Download HTML
                     </Button>
@@ -255,7 +296,7 @@ export default function GenerateClient({
                 )}
               </>
             )}
-            {isLandingPage && (
+            {isWebPageAsset && (
               <div className="ml-auto flex overflow-hidden rounded-md border border-border">
                 <button
                   type="button"
@@ -330,8 +371,9 @@ export default function GenerateClient({
         </div>
       )}
 
-      {content && isLandingPage && (
+      {content && isWebPageAsset && (
         <div className="space-y-4">
+          {colorVars && <ColorVarEditor vars={colorVars} onChange={updateColorVar} />}
           {viewMode === "preview" ? (
             looksLikeHtmlDocument(content) ? (
               <div className="overflow-hidden rounded-xl border border-border/60 bg-white">
@@ -364,7 +406,7 @@ export default function GenerateClient({
         </div>
       )}
 
-      {content && !isLandingPage && (
+      {content && !isWebPageAsset && (
         <div className="space-y-4">
           <TtsPlayer text={content} />
           <RichTextEditor markdown={content} onChange={handleEditorChange} />

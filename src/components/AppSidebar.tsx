@@ -14,6 +14,7 @@ import {
   Settings,
   GitCompareArrows,
   UserCircle,
+  Globe,
 } from "lucide-react";
 import { signOut } from "@/lib/actions/auth";
 import { AGENTS, type AgentAssetType } from "@/lib/agents/config";
@@ -42,6 +43,7 @@ const CREATE_ASSET_TYPES: Exclude<AgentAssetType, "presentation_analysis">[] = [
   "sales_page",
   "ppt_outline",
   "landing_page",
+  "thank_you_page",
   "email_sequence",
   "ad_copy",
   "offer_ladder",
@@ -56,6 +58,7 @@ const CREATE_LABELS: Record<(typeof CREATE_ASSET_TYPES)[number], string> = {
   sales_page: "Sales Letter",
   ppt_outline: "Presentation",
   landing_page: "Landing Page",
+  thank_you_page: "Thank You Page",
   email_sequence: "Emails",
   ad_copy: "Ad Copy",
   offer_ladder: "Offer Ladder",
@@ -189,6 +192,14 @@ export default function AppSidebar({ email, displayName, isAdmin, credits }: Pro
                         Beta
                       </Badge>
                     </span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === "/websites"} tooltip="My Websites">
+                  <Link href="/websites">
+                    <Globe className="h-4 w-4" />
+                    <span>My Websites</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

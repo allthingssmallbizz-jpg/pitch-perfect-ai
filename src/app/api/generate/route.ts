@@ -7,7 +7,7 @@ import { generateCompleteAsset } from "@/lib/ai/anthropic";
 import { buildSystemPrompt } from "@/lib/ai/systemPrompt";
 import { getBrandVoiceBlock } from "@/lib/ai/brandVoice";
 import { getPresenterBioBlock } from "@/lib/ai/presenterBio";
-import { stripHtmlCodeFence } from "@/lib/ai/generators/landingPage";
+import { stripHtmlCodeFence, WEB_PAGE_ASSET_TYPES } from "@/lib/ai/generators/htmlPage";
 import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
 import type { PriorGeneration } from "@/lib/ai/generators/shared";
 import { getAgent } from "@/lib/agents/config";
@@ -125,10 +125,10 @@ export async function POST(req: NextRequest) {
 
     const result = await generateCompleteAsset(systemPrompt, userPrompt, generator.maxOutputTokens);
 
-    // The landing page generator's output is a real HTML document, not markdown — strip a stray
-    // code fence defensively in case Claude wraps it in one despite the explicit instruction not
-    // to (same pattern as parseRatedHeadlines in headlineLab.ts).
-    const finalContent = assetType === "landing_page" ? stripHtmlCodeFence(result.content) : result.content;
+    // Landing Page and Thank You Page both output a real HTML document, not markdown — strip a
+    // stray code fence defensively in case Claude wraps it in one despite the explicit instruction
+    // not to (same pattern as parseRatedHeadlines in headlineLab.ts).
+    const finalContent = WEB_PAGE_ASSET_TYPES.includes(assetType) ? stripHtmlCodeFence(result.content) : result.content;
 
     const { error: updateError } = await admin
       .from("generations")

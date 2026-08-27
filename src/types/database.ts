@@ -23,7 +23,8 @@ export type AssetType =
   | "website_import"
   | "social_compare"
   | "offer_builder"
-  | "brand_color_surprise";
+  | "brand_color_surprise"
+  | "thank_you_page";
 
 export type PresentationType =
   | "webinar"
@@ -126,6 +127,9 @@ export type Project = {
   bonuses: string;
   scarcity_urgency: string;
   cta: string;
+  // Which conversion pattern this offer's CTA actually leads to — drives the Thank You Page
+  // generator's branching (see src/lib/funnelType.ts). Empty string means not yet chosen.
+  funnel_type: string;
   discovery_notes: string;
   mode: GenerationMode;
   created_at: string;
