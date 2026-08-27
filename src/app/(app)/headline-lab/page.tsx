@@ -33,11 +33,14 @@ export default async function HeadlineLabPage({
   let initialHeadlines: RatedHeadline[] = [];
   let initialWinners: string[] = [];
   let initialGenerationId: string | null = null;
+  let initialTopic = "";
+  let initialAudience = "";
+  let initialPromise = "";
 
   if (generationId) {
     const { data: generation } = await supabase
       .from("generations")
-      .select("content, winners")
+      .select("content, winners, input_content")
       .eq("id", generationId)
       .eq("user_id", user.id)
       .eq("asset_type", "headline_lab")
@@ -50,6 +53,16 @@ export default async function HeadlineLabPage({
         initialGenerationId = generationId;
       } catch {
         initialHeadlines = [];
+      }
+      // Repopulate the form with whatever was originally submitted, so reopening a past run gives
+      // you something to tweak and regenerate from instead of a blank form next to old results.
+      try {
+        const parsedInput = generation.input_content ? JSON.parse(generation.input_content) : null;
+        initialTopic = typeof parsedInput?.topic === "string" ? parsedInput.topic : "";
+        initialAudience = typeof parsedInput?.audience === "string" ? parsedInput.audience : "";
+        initialPromise = typeof parsedInput?.promise === "string" ? parsedInput.promise : "";
+      } catch {
+        // Older or malformed input_content — leave the form blank rather than guess.
       }
     }
   }
@@ -79,10 +92,18 @@ export default async function HeadlineLabPage({
 
   return (
     <>
+      {/* Keyed on the generation id so clicking between "Recent runs" (or back to a blank form)
+          forces a full remount — without this, React keeps the same component instance across
+          a search-param-only navigation, and its useState(initial...) calls never re-run, so the
+          page visibly does nothing even though the server actually re-fetched fresh data. */}
       <HeadlineLabClient
+        key={initialGenerationId ?? "new"}
         initialHeadlines={initialHeadlines}
         initialWinners={initialWinners}
         initialGenerationId={initialGenerationId}
+        initialTopic={initialTopic}
+        initialAudience={initialAudience}
+        initialPromise={initialPromise}
       />
 
       {recentRuns.length > 0 && (

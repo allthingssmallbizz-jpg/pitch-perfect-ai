@@ -45,14 +45,20 @@ export default function HeadlineLabClient({
   initialHeadlines,
   initialWinners,
   initialGenerationId,
+  initialTopic = "",
+  initialAudience = "",
+  initialPromise = "",
 }: {
   initialHeadlines: RatedHeadline[];
   initialWinners: string[];
   initialGenerationId: string | null;
+  initialTopic?: string;
+  initialAudience?: string;
+  initialPromise?: string;
 }) {
-  const [topic, setTopic] = useState("");
-  const [audience, setAudience] = useState("");
-  const [promise, setPromise] = useState("");
+  const [topic, setTopic] = useState(initialTopic);
+  const [audience, setAudience] = useState(initialAudience);
+  const [promise, setPromise] = useState(initialPromise);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [headlines, setHeadlines] = useState<RatedHeadline[]>(initialHeadlines);
