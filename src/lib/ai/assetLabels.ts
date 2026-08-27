@@ -16,6 +16,7 @@ export function getAssetLabel(assetType: AssetType): string {
   if (assetType === "website_import") return "Import from website";
   if (assetType === "social_compare") return "Social Media Comparison";
   if (assetType === "offer_builder") return "Offer Builder";
+  if (assetType === "brand_color_surprise") return "Surprise Me (brand colors)";
   return ASSET_GENERATORS[assetType as GeneratorAssetType].label;
 }
 
@@ -34,6 +35,10 @@ export function getAssetHref(projectId: string, assetType: AssetType, generation
     // Not project-scoped (see the comment on its API route) — same as headline_lab, projectId
     // is ignored here.
     return `/social-compare${suffix}`;
+  }
+  if (assetType === "brand_color_surprise") {
+    // Account-level, not project-scoped — same as headline_lab/social_compare.
+    return `/brand-voice${suffix}`;
   }
   if (
     assetType === "tts_narration" ||

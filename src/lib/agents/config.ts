@@ -14,10 +14,9 @@ import type { AssetType } from "@/types/database";
 
 // Excludes "ad_image" — Agent Addie's Image Ads is a sub-capability reached from her own
 // ad_copy landing page, not a separate agent identity with its own AGENTS entry. Also excludes
-// "website_import" and "offer_builder" — the discovery form's "Import from your website" and
-// "Offer Builder" are both form-filling utilities, not a generator/analyzer with its own agent
-// persona. "social_compare" is Agent Annie's social media comparison sub-capability, same
-// reasoning as ad_image — see getAgent() below.
+// "website_import", "offer_builder", and "brand_color_surprise" — all form-filling utilities, not
+// a generator/analyzer with its own agent persona. "social_compare" is Agent Annie's social media
+// comparison sub-capability, same reasoning as ad_image — see getAgent() below.
 export type AgentAssetType = Exclude<
   AssetType,
   | "headline_lab"
@@ -27,6 +26,7 @@ export type AgentAssetType = Exclude<
   | "website_import"
   | "social_compare"
   | "offer_builder"
+  | "brand_color_surprise"
 >;
 
 export type Agent = {

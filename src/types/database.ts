@@ -22,7 +22,8 @@ export type AssetType =
   | "ad_image"
   | "website_import"
   | "social_compare"
-  | "offer_builder";
+  | "offer_builder"
+  | "brand_color_surprise";
 
 export type PresentationType =
   | "webinar"
