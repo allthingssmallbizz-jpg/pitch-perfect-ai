@@ -129,6 +129,30 @@ var timer=null;
 function report(){clearTimeout(timer);timer=setTimeout(function(){parent.postMessage({source:SOURCE,html:document.documentElement.outerHTML},"*");},300);}
 document.addEventListener("input",report,true);
 
+// window.confirm()/alert()/prompt() are silently no-ops inside a sandboxed iframe that lacks the
+// "allow-modals" permission — this one's sandbox is just "allow-scripts" (see the comment above
+// this function), so calling confirm() returns false immediately, as if the user had hit Cancel,
+// without ever actually showing a dialog. That looked exactly like "the delete button does
+// nothing" — clicking it silently no-opped every time. Rather than widen the sandbox to fix a
+// single dialog call, this replaces it with a same-button, click-twice confirmation: first click
+// arms it (swaps to a "Sure?" label for a few seconds), second click while armed actually deletes.
+function armConfirm(btn,label,confirmLabel,onConfirm){
+  var armed=false,resetTimer=null;
+  btn.addEventListener("click",function(e){
+    e.preventDefault();e.stopPropagation();
+    if(!armed){
+      armed=true;
+      btn.textContent=confirmLabel;
+      clearTimeout(resetTimer);
+      resetTimer=setTimeout(function(){armed=false;btn.textContent=label;},3000);
+      return;
+    }
+    clearTimeout(resetTimer);
+    armed=false;
+    onConfirm();
+  });
+}
+
 // "video" and "iframe" are deliberately excluded here — see the always-visible button block
 // below for why hover/tap can never reveal a delete control over an embedded video.
 var DEL_SELECTOR="section,div,img,figure,article,aside,form";
@@ -149,23 +173,20 @@ function showDelBtn(target){
   delBtn=document.createElement("button");
   delBtn.textContent="\\u00d7";
   delBtn.setAttribute("contenteditable","false");
-  delBtn.title="Delete this section";
-  // 28px is a compromise, not full accessibility-guideline sizing (44px) — this is a floating
-  // badge over arbitrary AI-generated content, and a bigger hit area would more often overlap
-  // neighboring text/buttons on a small mobile viewport. It responds to both mouse and touch.
-  delBtn.style.cssText="position:fixed;width:28px;height:28px;border-radius:14px;background:#ef4444;color:#fff;border:2px solid #fff;font-size:16px;line-height:24px;text-align:center;padding:0;cursor:pointer;touch-action:manipulation;z-index:2147483647;box-shadow:0 1px 4px rgba(0,0,0,.35);";
+  delBtn.title="Delete this section — click twice to confirm";
+  // 28px min-width is a compromise, not full accessibility-guideline sizing (44px) — this is a
+  // floating badge over arbitrary AI-generated content, and a bigger hit area would more often
+  // overlap neighboring text/buttons on a small mobile viewport. Auto width (not a fixed circle)
+  // so it can grow to fit the "Sure?" confirm label. Responds to both mouse and touch.
+  delBtn.style.cssText="position:fixed;min-width:28px;height:28px;padding:0 8px;border-radius:14px;background:#ef4444;color:#fff;border:2px solid #fff;font-size:13px;font-weight:600;line-height:24px;text-align:center;white-space:nowrap;cursor:pointer;touch-action:manipulation;z-index:2147483647;box-shadow:0 1px 4px rgba(0,0,0,.35);";
   delBtn.addEventListener("mousedown",function(e){e.preventDefault();e.stopPropagation();});
   delBtn.addEventListener("mouseenter",cancelHide);
   delBtn.addEventListener("mouseleave",scheduleHide);
-  delBtn.addEventListener("click",function(e){
-    e.preventDefault();e.stopPropagation();
-    if(!delTarget)return;
-    if(window.confirm("Delete this section from the page?")){
-      var t=delTarget;
-      clearDelBtn();
-      t.remove();
-      report();
-    }
+  armConfirm(delBtn,"\\u00d7","Sure?",function(){
+    var t=delTarget;
+    clearDelBtn();
+    if(t)t.remove();
+    report();
   });
   document.body.appendChild(delBtn);
   positionDelBtn();
@@ -211,15 +232,12 @@ document.querySelectorAll("iframe,video").forEach(function(el){
   var vbtn=document.createElement("button");
   vbtn.textContent="\\u00d7 Remove";
   vbtn.setAttribute("contenteditable","false");
-  vbtn.title="Delete this video";
-  vbtn.style.cssText="position:absolute;top:8px;right:8px;z-index:999999;padding:5px 12px;border-radius:16px;background:#ef4444;color:#fff;border:2px solid #fff;font-size:12px;font-weight:600;line-height:1;cursor:pointer;touch-action:manipulation;box-shadow:0 1px 4px rgba(0,0,0,.35);";
+  vbtn.title="Delete this video — click twice to confirm";
+  vbtn.style.cssText="position:absolute;top:8px;right:8px;z-index:999999;padding:5px 12px;border-radius:16px;background:#ef4444;color:#fff;border:2px solid #fff;font-size:12px;font-weight:600;line-height:1;white-space:nowrap;cursor:pointer;touch-action:manipulation;box-shadow:0 1px 4px rgba(0,0,0,.35);";
   vbtn.addEventListener("mousedown",function(e){e.preventDefault();e.stopPropagation();});
-  vbtn.addEventListener("click",function(e){
-    e.preventDefault();e.stopPropagation();
-    if(window.confirm("Delete this video from the page?")){
-      host.remove();
-      report();
-    }
+  armConfirm(vbtn,"\\u00d7 Remove","Confirm?",function(){
+    host.remove();
+    report();
   });
   host.appendChild(vbtn);
 });
