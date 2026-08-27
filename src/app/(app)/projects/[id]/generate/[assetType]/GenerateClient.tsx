@@ -656,6 +656,14 @@ export default function GenerateClient({
                         Export .docx
                       </a>
                     </Button>
+                    {assetType === "ppt_outline" && (
+                      <Button variant="outline" asChild>
+                        <a href={`/api/export/pptx?generationId=${generationId}`}>
+                          <FileDown className="mr-2 h-4 w-4" />
+                          Export .pptx (real slides)
+                        </a>
+                      </Button>
+                    )}
                   </>
                 )}
               </>
