@@ -19,10 +19,14 @@ export default async function GenerateAssetPage({
   searchParams,
 }: {
   params: Promise<{ id: string; assetType: string }>;
-  searchParams: Promise<{ generationId?: string }>;
+  searchParams: Promise<{ generationId?: string; from?: string }>;
 }) {
   const { id, assetType } = await params;
-  const { generationId } = await searchParams;
+  const { generationId, from } = await searchParams;
+  // The My Websites page (src/app/(app)/websites/page.tsx) links here with "&from=websites" when
+  // opening an already-generated page — "back" should return there, not to the project's
+  // Discovery page, since that's not actually where the person came from in that flow.
+  const cameFromWebsites = from === "websites";
 
   if (!(assetType in ASSET_GENERATORS)) notFound();
   const generator = ASSET_GENERATORS[assetType as GeneratorAssetType];
@@ -101,8 +105,11 @@ export default async function GenerateAssetPage({
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
-      <Link href={`/projects/${id}`} className="text-sm text-primary hover:underline">
-        ← {project.name}
+      <Link
+        href={cameFromWebsites ? "/websites" : `/projects/${id}`}
+        className="text-sm text-primary hover:underline"
+      >
+        ← {cameFromWebsites ? "My Websites" : project.name}
       </Link>
       <div className="mt-4 mb-1">
         <AgentBadge agent={agent} size="lg" showTagline />

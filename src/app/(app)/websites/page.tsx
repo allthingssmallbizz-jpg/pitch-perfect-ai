@@ -123,7 +123,10 @@ export default async function WebsitesPage() {
           {websites.map((w) => {
             const generator = ASSET_GENERATORS[w.assetType];
             const agent = AGENTS[w.assetType];
-            const href = `/projects/${w.projectId}/generate/${w.assetType}?generationId=${w.id}`;
+            // "&from=websites" lets the generate page's back link return here instead of the
+            // project's Discovery page, since arriving via My Websites means that's where the
+            // person actually came from and expects "back" to go.
+            const href = `/projects/${w.projectId}/generate/${w.assetType}?generationId=${w.id}&from=websites`;
             const filename = w.assetType === "thank_you_page" ? "thank-you-page.html" : "landing-page.html";
             return (
               <div

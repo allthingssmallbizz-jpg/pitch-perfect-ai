@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useMemo, useRef, useState } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import type { AssetType, GenerationMode } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Copy, FileDown, Save, Loader2, Trash2, History, Eye, Code2, ExternalLink, Palette } from "lucide-react";
+import { Sparkles, Copy, FileDown, Save, Loader2, Trash2, History, Eye, Code2, ExternalLink, Palette, Undo2 } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import VersionHistory from "@/components/VersionHistory";
 import TtsPlayer from "@/components/TtsPlayer";
@@ -33,12 +33,21 @@ const HEX_COLOR_PATTERN = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 // Instant, no-regeneration color editing: every HTML-page generator declares its palette as 4 CSS
 // custom properties (see htmlPage.ts), so changing a color here is a plain string replace in the
 // saved HTML — no AI call, no trip back to the Brand Voice page, no losing the rest of the page.
+// Each swatch carries its own undo stack (see the history/onBeginEdit/onUndo plumbing in
+// GenerateClient) so trying a color that turns out wrong is never a dead end — one click restores
+// whatever it was before, no need to remember or retype the old hex value.
 function ColorVarEditor({
   vars,
+  history,
   onChange,
+  onBeginEdit,
+  onUndo,
 }: {
   vars: Record<string, string>;
+  history: Record<string, string[]>;
   onChange: (varName: string, hex: string) => void;
+  onBeginEdit: (varName: string) => void;
+  onUndo: (varName: string) => void;
 }) {
   return (
     <div className="card-elevated rounded-xl p-4">
@@ -50,19 +59,33 @@ function ColorVarEditor({
         {CSS_COLOR_VARS.map(({ name, label }) => {
           const value = vars[name] ?? "#888888";
           const swatchValue = HEX_COLOR_PATTERN.test(value) ? value : "#888888";
+          const canUndo = (history[name]?.length ?? 0) > 0;
           return (
             <div key={name}>
-              <label className="mb-1 block text-xs text-muted-foreground">{label}</label>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <label className="block text-xs text-muted-foreground">{label}</label>
+                <button
+                  type="button"
+                  onClick={() => onUndo(name)}
+                  disabled={!canUndo}
+                  title={canUndo ? "Undo — go back to the previous color" : "No previous color to undo to yet"}
+                  className="text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  <Undo2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
                   aria-label={`${label} picker`}
                   value={swatchValue}
+                  onFocus={() => onBeginEdit(name)}
                   onChange={(e) => onChange(name, e.target.value)}
                   className="h-8 w-8 shrink-0 cursor-pointer rounded-md border border-input bg-transparent p-0.5"
                 />
                 <input
                   value={value}
+                  onFocus={() => onBeginEdit(name)}
                   onChange={(e) => onChange(name, e.target.value)}
                   className="h-8 w-full min-w-0 rounded-md border border-input bg-transparent px-2 text-xs"
                 />
@@ -105,6 +128,19 @@ export default function GenerateClient({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  // Carried through every client-side URL update below (regenerating, switching to a past run,
+  // deleting the one currently open) so the "from=websites" the My Websites page links in with
+  // survives — otherwise the very first regenerate/switch would drop it and the back link at the
+  // top of this page would revert to the project's Discovery page instead of My Websites.
+  const fromParam = searchParams.get("from");
+  function urlWithGeneration(genId?: string | null) {
+    const params = new URLSearchParams();
+    if (genId) params.set("generationId", genId);
+    if (fromParam) params.set("from", fromParam);
+    const qs = params.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  }
   const isWebPageAsset = WEB_PAGE_ASSET_TYPES.includes(assetType);
   const downloadFilename = assetType === "thank_you_page" ? "thank-you-page.html" : "landing-page.html";
   const [content, setContent] = useState<string | null>(initialContent);
@@ -121,6 +157,13 @@ export default function GenerateClient({
   const [viewMode, setViewMode] = useState<"preview" | "edit">("preview");
 
   const colorVars = useMemo(() => (content && isWebPageAsset ? extractCssColorVars(content) : null), [content, isWebPageAsset]);
+  // One undo stack per CSS color variable (keyed by "--pp-primary" etc.) — a plain array of
+  // previous hex values, most recent last. pendingPreviousColorRef tracks "the value this swatch
+  // had when the current edit session started" so a color-picker drag (which fires many onChange
+  // events in a row) or fast typing only pushes ONE history entry per session, not one per pixel
+  // dragged — recorded via onFocus (beginColorEdit) below, consumed by the first onChange after.
+  const [colorHistory, setColorHistory] = useState<Record<string, string[]>>({});
+  const pendingPreviousColorRef = useRef<Record<string, string | null>>({});
 
   const autosave = useDebouncedCallback((newContent: string, id: string) => {
     fetch(`/api/generations/${id}/autosave`, {
@@ -136,10 +179,37 @@ export default function GenerateClient({
     if (generationId) autosave(markdown, generationId);
   }
 
+  // Called on focus of either input for a swatch — snapshots "the color right now, before this
+  // edit session touches it" into a ref (not state) so it doesn't itself trigger a re-render, and
+  // so a drag/typing session that fires many onChange events only records ONE undo entry (the
+  // ref is cleared to null the first time it's consumed, in updateColorVar below).
+  function beginColorEdit(varName: string) {
+    if (!colorVars) return;
+    pendingPreviousColorRef.current[varName] = colorVars[varName] ?? null;
+  }
+
   function updateColorVar(varName: string, hex: string) {
     if (!content) return;
+    const pendingPrevious = pendingPreviousColorRef.current[varName];
+    if (pendingPrevious && pendingPrevious !== hex) {
+      setColorHistory((prev) => ({ ...prev, [varName]: [...(prev[varName] ?? []), pendingPrevious] }));
+      pendingPreviousColorRef.current[varName] = null;
+    }
     const updated = replaceCssColorVar(content, varName, hex);
     setContent(updated);
+    setSaved(false);
+    if (generationId) autosave(updated, generationId);
+  }
+
+  function undoColorVar(varName: string) {
+    if (!content) return;
+    const history = colorHistory[varName];
+    if (!history || history.length === 0) return;
+    const previous = history[history.length - 1];
+    const updated = replaceCssColorVar(content, varName, previous);
+    setContent(updated);
+    setColorHistory((prev) => ({ ...prev, [varName]: prev[varName].slice(0, -1) }));
+    pendingPreviousColorRef.current[varName] = null;
     setSaved(false);
     if (generationId) autosave(updated, generationId);
   }
@@ -172,7 +242,7 @@ export default function GenerateClient({
       // that just happened — a stale re-read could reflect the row before it finished saving).
       // All this needs to do is update the address bar so a refresh doesn't lose track of which
       // generation is showing; it doesn't need — and must not trigger — any re-render.
-      window.history.replaceState(null, "", `${pathname}?generationId=${data.generationId}`);
+      window.history.replaceState(null, "", urlWithGeneration(data.generationId));
     } catch {
       setError("Network error — try again.");
     } finally {
@@ -181,7 +251,7 @@ export default function GenerateClient({
   }
 
   function openPast(pastId: string) {
-    router.push(`${pathname}?generationId=${pastId}`);
+    router.push(urlWithGeneration(pastId));
   }
 
   async function deletePast(pastId: string) {
@@ -197,7 +267,7 @@ export default function GenerateClient({
       if (generationId === pastId) {
         setContent(null);
         setGenerationId(null);
-        router.replace(pathname);
+        router.replace(urlWithGeneration());
       }
       toast.success("Deleted");
     } catch (e) {
@@ -373,7 +443,15 @@ export default function GenerateClient({
 
       {content && isWebPageAsset && (
         <div className="space-y-4">
-          {colorVars && <ColorVarEditor vars={colorVars} onChange={updateColorVar} />}
+          {colorVars && (
+            <ColorVarEditor
+              vars={colorVars}
+              history={colorHistory}
+              onChange={updateColorVar}
+              onBeginEdit={beginColorEdit}
+              onUndo={undoColorVar}
+            />
+          )}
           {viewMode === "preview" ? (
             looksLikeHtmlDocument(content) ? (
               <div className="overflow-hidden rounded-xl border border-border/60 bg-white">
