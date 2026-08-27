@@ -81,8 +81,8 @@ export default function HeadlineLabClient({
     });
   }
 
-  function copyOne(h: string) {
-    navigator.clipboard.writeText(h);
+  function copyOne(h: RatedHeadline) {
+    navigator.clipboard.writeText(h.subheadline ? `${h.headline}\n${h.subheadline}` : h.headline);
     toast.success("Copied");
   }
 
@@ -91,7 +91,11 @@ export default function HeadlineLabClient({
       toast.error("Pick some winners first");
       return;
     }
-    navigator.clipboard.writeText(Array.from(winners).join("\n"));
+    const text = headlines
+      .filter((h) => winners.has(h.headline))
+      .map((h) => (h.subheadline ? `${h.headline}\n${h.subheadline}` : h.headline))
+      .join("\n\n");
+    navigator.clipboard.writeText(text);
     toast.success(`Copied ${winners.size} winners`);
   }
 
@@ -106,8 +110,8 @@ export default function HeadlineLabClient({
         <div>
           <h1 className="font-display text-3xl font-bold text-gradient-silver">Headline lab</h1>
           <p className="mt-1 text-muted-foreground">
-            Generate 20 rated headlines — {HEADLINE_LAB_CREDIT_COST} credits. The AI scores each 1-10 with
-            reasoning; you pick the winners.
+            Generate 20 rated headlines, each with a matching subheadline — {HEADLINE_LAB_CREDIT_COST} credits.
+            The AI scores each pair 1-10 with reasoning; you pick the winners.
           </p>
         </div>
       </div>
@@ -195,11 +199,12 @@ export default function HeadlineLabClient({
                   </button>
                   <div className="min-w-0 flex-1">
                     <p className="font-medium">{h.headline}</p>
-                    {h.reasoning && <p className="mt-0.5 text-xs text-muted-foreground">{h.reasoning}</p>}
+                    {h.subheadline && <p className="mt-0.5 text-sm text-foreground/80">{h.subheadline}</p>}
+                    {h.reasoning && <p className="mt-1 text-xs text-muted-foreground">{h.reasoning}</p>}
                   </div>
                   <button
                     type="button"
-                    onClick={() => copyOne(h.headline)}
+                    onClick={() => copyOne(h)}
                     className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                     title="Copy"
                   >
