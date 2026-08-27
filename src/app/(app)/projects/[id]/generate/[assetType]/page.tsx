@@ -85,11 +85,17 @@ export default async function GenerateAssetPage({
     .order("created_at", { ascending: false })
     .limit(30);
 
-  const pastGenerations = (pastGenerationRows ?? []).map((g) => ({
-    id: g.id,
-    createdAt: g.created_at,
-    preview: (g.content ?? "").replace(/\s+/g, " ").trim().slice(0, 120),
-  }));
+  // Landing Page's content is a real HTML document — raw tags would otherwise show up as
+  // literal text in this preview snippet instead of readable copy.
+  const pastGenerations = (pastGenerationRows ?? []).map((g) => {
+    const raw = g.content ?? "";
+    const cleaned = generator.assetType === "landing_page" ? raw.replace(/<[^>]*>/g, " ") : raw;
+    return {
+      id: g.id,
+      createdAt: g.created_at,
+      preview: cleaned.replace(/\s+/g, " ").trim().slice(0, 120),
+    };
+  });
 
   const agent = AGENTS[generator.assetType];
 

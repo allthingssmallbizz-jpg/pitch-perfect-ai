@@ -7,6 +7,7 @@ import { generateCompleteAsset } from "@/lib/ai/anthropic";
 import { buildSystemPrompt } from "@/lib/ai/systemPrompt";
 import { getBrandVoiceBlock } from "@/lib/ai/brandVoice";
 import { getPresenterBioBlock } from "@/lib/ai/presenterBio";
+import { stripHtmlCodeFence } from "@/lib/ai/generators/landingPage";
 import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
 import type { PriorGeneration } from "@/lib/ai/generators/shared";
 import { getAgent } from "@/lib/agents/config";
@@ -124,11 +125,16 @@ export async function POST(req: NextRequest) {
 
     const result = await generateCompleteAsset(systemPrompt, userPrompt, generator.maxOutputTokens);
 
+    // The landing page generator's output is a real HTML document, not markdown — strip a stray
+    // code fence defensively in case Claude wraps it in one despite the explicit instruction not
+    // to (same pattern as parseRatedHeadlines in headlineLab.ts).
+    const finalContent = assetType === "landing_page" ? stripHtmlCodeFence(result.content) : result.content;
+
     const { error: updateError } = await admin
       .from("generations")
       .update({
         status: "complete",
-        content: result.content,
+        content: finalContent,
         model: result.model,
         input_tokens: result.inputTokens,
         output_tokens: result.outputTokens,
@@ -140,12 +146,12 @@ export async function POST(req: NextRequest) {
     // that silently isn't actually saved, which is worse than an honest error.
     if (updateError) throw new Error(`Generated successfully but could not save: ${updateError.message}`);
 
-    await recordGenerationVersion(generationId, user.id, result.content, "generate", "Generated draft");
+    await recordGenerationVersion(generationId, user.id, finalContent, "generate", "Generated draft");
     await decrementCredits(user.id, generator.creditCost);
 
     return NextResponse.json({
       generationId,
-      content: result.content,
+      content: finalContent,
       creditsCharged: generator.creditCost,
     });
   } catch (err) {

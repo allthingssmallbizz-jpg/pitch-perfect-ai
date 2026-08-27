@@ -5,13 +5,32 @@ import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import type { AssetType, GenerationMode } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Copy, FileDown, Save, Loader2, Trash2, History } from "lucide-react";
+import { Sparkles, Copy, FileDown, Save, Loader2, Trash2, History, Eye, Code2 } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import VersionHistory from "@/components/VersionHistory";
 import TtsPlayer from "@/components/TtsPlayer";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 
 export type PastGeneration = { id: string; createdAt: string; preview: string };
+
+// Landing Page is the one generator whose content is a real HTML document, not markdown — used
+// both to build a clean preview snippet (raw tags would otherwise show up as literal text in the
+// "Past generations" list) and client-side for the .html download filename/blob.
+function stripHtmlTags(html: string): string {
+  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function downloadHtmlFile(filename: string, html: string) {
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 function formatWhen(iso: string) {
   const d = new Date(iso);
@@ -43,6 +62,7 @@ export default function GenerateClient({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const isLandingPage = assetType === "landing_page";
   const [content, setContent] = useState<string | null>(initialContent);
   const [generationId, setGenerationId] = useState<string | null>(initialGenerationId);
   const [loading, setLoading] = useState(false);
@@ -52,6 +72,9 @@ export default function GenerateClient({
   const [saved, setSaved] = useState(false);
   const [pastGenerations, setPastGenerations] = useState<PastGeneration[]>(initialPastGenerations);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Landing Page's content is a real HTML document — default to seeing it rendered as an actual
+  // page, with source editing as the secondary option, rather than starting on raw markup.
+  const [viewMode, setViewMode] = useState<"preview" | "edit">("preview");
 
   const autosave = useDebouncedCallback((newContent: string, id: string) => {
     fetch(`/api/generations/${id}/autosave`, {
@@ -83,8 +106,9 @@ export default function GenerateClient({
       }
       setContent(data.content);
       setGenerationId(data.generationId);
+      const previewSource = isLandingPage ? stripHtmlTags(String(data.content)) : String(data.content).replace(/\s+/g, " ").trim();
       setPastGenerations((prev) => [
-        { id: data.generationId, createdAt: new Date().toISOString(), preview: String(data.content).replace(/\s+/g, " ").trim().slice(0, 120) },
+        { id: data.generationId, createdAt: new Date().toISOString(), preview: previewSource.slice(0, 120) },
         ...prev,
       ]);
       // A plain browser History API call, not router.replace() — this page reads searchParams
@@ -180,19 +204,52 @@ export default function GenerateClient({
                   currentContent={content}
                   onRestored={(restored) => setContent(restored)}
                 />
-                <Button variant="outline" asChild>
-                  <a href={`/api/export/pdf?generationId=${generationId}`}>
+                {isLandingPage ? (
+                  <Button variant="outline" onClick={() => downloadHtmlFile("landing-page.html", content)}>
                     <FileDown className="mr-2 h-4 w-4" />
-                    Export PDF
-                  </a>
-                </Button>
-                <Button variant="outline" asChild>
-                  <a href={`/api/export/docx?generationId=${generationId}`}>
-                    <FileDown className="mr-2 h-4 w-4" />
-                    Export .docx
-                  </a>
-                </Button>
+                    Download HTML
+                  </Button>
+                ) : (
+                  <>
+                    <Button variant="outline" asChild>
+                      <a href={`/api/export/pdf?generationId=${generationId}`}>
+                        <FileDown className="mr-2 h-4 w-4" />
+                        Export PDF
+                      </a>
+                    </Button>
+                    <Button variant="outline" asChild>
+                      <a href={`/api/export/docx?generationId=${generationId}`}>
+                        <FileDown className="mr-2 h-4 w-4" />
+                        Export .docx
+                      </a>
+                    </Button>
+                  </>
+                )}
               </>
+            )}
+            {isLandingPage && (
+              <div className="ml-auto flex overflow-hidden rounded-md border border-border">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("preview")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm ${
+                    viewMode === "preview" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Eye className="h-4 w-4" />
+                  Preview
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("edit")}
+                  className={`flex items-center gap-1.5 border-l border-border px-3 py-1.5 text-sm ${
+                    viewMode === "edit" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Code2 className="h-4 w-4" />
+                  Edit HTML
+                </button>
+              </div>
             )}
           </>
         )}
@@ -245,7 +302,33 @@ export default function GenerateClient({
         </div>
       )}
 
-      {content && (
+      {content && isLandingPage && (
+        <div className="space-y-4">
+          {viewMode === "preview" ? (
+            <div className="overflow-hidden rounded-xl border border-border/60 bg-white">
+              {/* sandbox with no allow-scripts/allow-same-origin — this is AI-generated markup
+                  rendered inside an authenticated app, so it must not be able to run script or
+                  reach this origin's session, even though the generator is instructed not to
+                  include any <script> tags in the first place. */}
+              <iframe
+                title="Landing page preview"
+                srcDoc={content}
+                sandbox=""
+                className="h-[900px] w-full"
+              />
+            </div>
+          ) : (
+            <textarea
+              value={content}
+              onChange={(e) => handleEditorChange(e.target.value)}
+              spellCheck={false}
+              className="h-[600px] w-full rounded-xl border border-border/60 bg-card/40 p-4 font-mono text-xs leading-relaxed focus:outline-none"
+            />
+          )}
+        </div>
+      )}
+
+      {content && !isLandingPage && (
         <div className="space-y-4">
           <TtsPlayer text={content} />
           <RichTextEditor markdown={content} onChange={handleEditorChange} />
