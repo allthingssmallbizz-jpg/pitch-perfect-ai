@@ -13,6 +13,7 @@ import DiscoveryAssistDialog, { type AssistTarget } from "@/components/Discovery
 import WebsiteImportDialog from "@/components/WebsiteImportDialog";
 import OfferBuilderDialog from "@/components/OfferBuilderDialog";
 import DeleteProjectButton from "@/components/DeleteProjectButton";
+import WhyThisMatters from "@/components/WhyThisMatters";
 import { FUNNEL_TYPES } from "@/lib/funnelType";
 
 const AWARENESS_LEVELS = ["Unaware", "Problem-Aware", "Solution-Aware", "Product-Aware", "Most Aware"];
@@ -104,6 +105,7 @@ function Field({
         )}
       </div>
       {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
+      <WhyThisMatters fieldKey={name} />
       {textarea ? (
         <Textarea
           id={name}
@@ -303,6 +305,7 @@ export default function DiscoveryForm({
             How much does your audience already know? Not sure — &quot;Problem-Aware&quot; is a
             safe default: most people know they have the problem, just not your solution yet.
           </p>
+          <WhyThisMatters fieldKey="awareness_level" />
           <select
             id="awareness_level"
             name="awareness_level"
@@ -480,6 +483,7 @@ export default function DiscoveryForm({
             You Page — a booked call, a purchase, and a webinar registration each need a
             genuinely different confirmation page.
           </p>
+          <WhyThisMatters fieldKey="funnel_type" />
           <select
             id="funnel_type"
             name="funnel_type"

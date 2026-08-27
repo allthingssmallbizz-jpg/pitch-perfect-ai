@@ -6,6 +6,7 @@ import { GUIDED_REQUIRED_QUESTIONS, GUIDED_OPTIONAL_QUESTIONS, type GuidedQuesti
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import WhyThisMatters from "@/components/WhyThisMatters";
 import { ArrowRight, ArrowLeft, CheckCircle2, ListChecks } from "lucide-react";
 import type { Project } from "@/types/database";
 
@@ -190,6 +191,7 @@ export default function GuidedIntake({
           <p className="text-xs font-medium tracking-wide text-primary uppercase">{requiredQuestion.section}</p>
           <h3 className="font-display text-lg font-semibold">{requiredQuestion.question}</h3>
           {requiredQuestion.helper && <p className="text-sm text-muted-foreground">{requiredQuestion.helper}</p>}
+          <WhyThisMatters fieldKey={requiredQuestion.key} />
           {renderInput(requiredQuestion)}
           {showValidation && (
             <p className="text-xs text-amber-400">
@@ -247,6 +249,7 @@ export default function GuidedIntake({
           <p className="text-xs font-medium tracking-wide text-primary uppercase">{optionalQuestion.section}</p>
           <h3 className="font-display text-lg font-semibold">{optionalQuestion.question}</h3>
           {optionalQuestion.helper && <p className="text-sm text-muted-foreground">{optionalQuestion.helper}</p>}
+          <WhyThisMatters fieldKey={optionalQuestion.key} />
           {renderInput(optionalQuestion)}
           <div className="flex items-center justify-between pt-2">
             <Button type="button" variant="ghost" onClick={goBackOptional}>
