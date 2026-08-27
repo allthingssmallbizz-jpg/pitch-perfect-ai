@@ -1,7 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { ArrowLeftRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
+import { ASSET_GENERATORS, WEB_PAGE_ASSET_TYPES, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
 import { projectNeedsDiscovery } from "@/lib/projects";
 import { isPresenterBioEmpty } from "@/lib/ai/presenterBio";
@@ -19,17 +20,18 @@ export default async function GenerateAssetPage({
   searchParams,
 }: {
   params: Promise<{ id: string; assetType: string }>;
-  searchParams: Promise<{ generationId?: string; from?: string }>;
+  searchParams: Promise<{ generationId?: string }>;
 }) {
   const { id, assetType } = await params;
-  const { generationId, from } = await searchParams;
-  // The My Websites page (src/app/(app)/websites/page.tsx) links here with "&from=websites" when
-  // opening an already-generated page — "back" should return there, not to the project's
-  // Discovery page, since that's not actually where the person came from in that flow.
-  const cameFromWebsites = from === "websites";
+  const { generationId } = await searchParams;
 
   if (!(assetType in ASSET_GENERATORS)) notFound();
   const generator = ASSET_GENERATORS[assetType as GeneratorAssetType];
+  // Landing Page and Thank You Page both live under the "My Websites" hub, not a project's
+  // Discovery page — so their back link always returns there, regardless of how someone
+  // actually navigated in (My Websites, the sidebar, the matching-page toggle below, a fresh
+  // "Generate matching Thank You Page"). Every other asset type still belongs to its project.
+  const isWebPageAsset = WEB_PAGE_ASSET_TYPES.includes(generator.assetType);
 
   const supabase = await createClient();
   const {
@@ -105,18 +107,43 @@ export default async function GenerateAssetPage({
     };
   });
 
+  // The "other" web-page type in this same project (Landing Page <-> Thank You Page) — lets the
+  // toggle below jump straight to it without leaving the project or hunting through My Websites,
+  // since the two are meant to be viewed/edited as a pair. Only queried for web-page assets; null
+  // for every other generator.
+  let matchingPage: { assetType: "landing_page" | "thank_you_page"; generationId: string } | null = null;
+  if (isWebPageAsset) {
+    const otherAssetType = generator.assetType === "landing_page" ? "thank_you_page" : "landing_page";
+    const { data: match } = await supabase
+      .from("generations")
+      .select("id")
+      .eq("project_id", id)
+      .eq("asset_type", otherAssetType)
+      .eq("status", "complete")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (match) matchingPage = { assetType: otherAssetType, generationId: match.id };
+  }
+
   const agent = AGENTS[generator.assetType];
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
-      <Link
-        href={cameFromWebsites ? "/websites" : `/projects/${id}`}
-        className="text-sm text-primary hover:underline"
-      >
-        ← {cameFromWebsites ? "My Websites" : project.name}
+      <Link href={isWebPageAsset ? "/websites" : `/projects/${id}`} className="text-sm text-primary hover:underline">
+        ← {isWebPageAsset ? "My Websites" : project.name}
       </Link>
-      <div className="mt-4 mb-1">
+      <div className="mt-4 mb-1 flex flex-wrap items-center justify-between gap-3">
         <AgentBadge agent={agent} size="lg" showTagline />
+        {matchingPage && (
+          <Link
+            href={`/projects/${id}/generate/${matchingPage.assetType}?generationId=${matchingPage.generationId}`}
+            className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+          >
+            <ArrowLeftRight className="h-3.5 w-3.5" />
+            View {AGENTS[matchingPage.assetType].name}&apos;s {ASSET_GENERATORS[matchingPage.assetType].label}
+          </Link>
+        )}
       </div>
       <p className="mb-6 text-sm text-muted-foreground">
         {generator.label} · {generator.creditCost} credits per generation · {project.mode} mode

@@ -88,3 +88,37 @@ export const FORM_ACTION_PLACEHOLDER = "{{PP_FORM_ACTION}}";
 export function injectFormAction(html: string, actionUrl: string): string {
   return html.split(FORM_ACTION_PLACEHOLDER).join(actionUrl);
 }
+
+// The message "source" tag used by the inline-editor script below and read back by
+// GenerateClient's postMessage listener — namespaced so it can never be confused with a message
+// from anything else running in that window (a browser extension, devtools, etc.).
+export const INLINE_EDITOR_MESSAGE_SOURCE = "pp-inline-editor";
+
+// Wraps a generated page with a small, TRUSTED script — authored here, never by the AI — that
+// makes visible text content directly editable in place and reports the updated document back to
+// the parent window via postMessage on every change. Used only for the iframe's srcDoc in
+// GenerateClient's "Edit inline" view mode; never written back into generations.content itself.
+//
+// This requires the iframe's sandbox to include "allow-scripts" (see GenerateClient), which is
+// deliberately NOT paired with "allow-same-origin" — the frame keeps a unique, opaque origin, so
+// even if the AI-generated content violated its instructions and included a stray <script> tag,
+// that script would still be unable to read cookies, local storage, or reach this app's own
+// origin. postMessage works across that boundary by design, which is all this editor needs.
+export function buildEditableHtml(html: string): string {
+  const editorScript = `<script>(function(){
+var SOURCE=${JSON.stringify(INLINE_EDITOR_MESSAGE_SOURCE)};
+var SELECTOR="h1,h2,h3,h4,h5,h6,p,span,a,li,button,label,small,blockquote,figcaption";
+document.querySelectorAll(SELECTOR).forEach(function(el){
+  if(el.children.length>0)return;
+  if(!el.textContent||!el.textContent.trim())return;
+  el.setAttribute("contenteditable","true");
+  el.addEventListener("focus",function(){el.style.outline="2px dashed rgba(99,102,241,0.6)";el.style.outlineOffset="2px";});
+  el.addEventListener("blur",function(){el.style.outline="none";report();});
+});
+document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a");if(a)e.preventDefault();},true);
+var timer=null;
+function report(){clearTimeout(timer);timer=setTimeout(function(){parent.postMessage({source:SOURCE,html:document.documentElement.outerHTML},"*");},300);}
+document.addEventListener("input",report,true);
+})();</script>`;
+  return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, `${editorScript}</body>`) : `${html}${editorScript}`;
+}

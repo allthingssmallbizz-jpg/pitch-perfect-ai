@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import type { AssetType, GenerationMode } from "@/types/database";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
   Globe,
   Rocket,
   PartyPopper,
+  Pencil,
 } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import VersionHistory from "@/components/VersionHistory";
@@ -33,9 +34,12 @@ import {
   looksLikeHtmlDocument,
   replaceCssColorVar,
   WEB_PAGE_ASSET_TYPES,
+  buildEditableHtml,
+  INLINE_EDITOR_MESSAGE_SOURCE,
 } from "@/lib/ai/generators/htmlPage";
 import { downloadHtmlFile, openInBrowserTab } from "@/lib/browserFile";
 import { getPublicSiteUrl } from "@/lib/publishing";
+import PageEditPanel from "./PageEditPanel";
 
 export type PastGeneration = { id: string; createdAt: string; preview: string };
 
@@ -223,18 +227,8 @@ export default function GenerateClient({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  // Carried through every client-side URL update below (regenerating, switching to a past run,
-  // deleting the one currently open) so the "from=websites" the My Websites page links in with
-  // survives — otherwise the very first regenerate/switch would drop it and the back link at the
-  // top of this page would revert to the project's Discovery page instead of My Websites.
-  const fromParam = searchParams.get("from");
   function urlWithGeneration(genId?: string | null) {
-    const params = new URLSearchParams();
-    if (genId) params.set("generationId", genId);
-    if (fromParam) params.set("from", fromParam);
-    const qs = params.toString();
-    return qs ? `${pathname}?${qs}` : pathname;
+    return genId ? `${pathname}?generationId=${genId}` : pathname;
   }
   const isWebPageAsset = WEB_PAGE_ASSET_TYPES.includes(assetType);
   const downloadFilename = assetType === "thank_you_page" ? "thank-you-page.html" : "landing-page.html";
@@ -248,8 +242,10 @@ export default function GenerateClient({
   const [pastGenerations, setPastGenerations] = useState<PastGeneration[]>(initialPastGenerations);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   // Web-page assets' content is a real HTML document — default to seeing it rendered as an
-  // actual page, with source editing as the secondary option, rather than starting on raw markup.
-  const [viewMode, setViewMode] = useState<"preview" | "edit">("preview");
+  // actual page. "inline" is a live, click-to-edit rendering of that same page (see
+  // buildEditableHtml); "html" is the raw-source textarea, the power-user fallback.
+  const [viewMode, setViewMode] = useState<"preview" | "inline" | "html">("preview");
+  const inlineIframeRef = useRef<HTMLIFrameElement>(null);
 
   const colorVars = useMemo(() => (content && isWebPageAsset ? extractCssColorVars(content) : null), [content, isWebPageAsset]);
   // One undo stack per CSS color variable (keyed by "--pp-primary" etc.) — a plain array of
@@ -273,6 +269,25 @@ export default function GenerateClient({
       body: JSON.stringify({ content: newContent }),
     }).catch(() => {});
   }, 1200);
+
+  // Listens for edits made directly in the "Edit inline" iframe (see buildEditableHtml's
+  // injected script) and folds them back into this page's content exactly like any other edit —
+  // same state update, same autosave. `e.source` is checked against the specific iframe's own
+  // contentWindow so a message from anything else in the page (a browser extension, etc.) can
+  // never be mistaken for a real edit.
+  useEffect(() => {
+    function handleInlineEdit(e: MessageEvent) {
+      if (!e.data || e.data.source !== INLINE_EDITOR_MESSAGE_SOURCE) return;
+      if (e.source !== inlineIframeRef.current?.contentWindow) return;
+      const html = e.data.html;
+      if (typeof html !== "string") return;
+      setContent(html);
+      setSaved(false);
+      if (generationId) autosave(html, generationId);
+    }
+    window.addEventListener("message", handleInlineEdit);
+    return () => window.removeEventListener("message", handleInlineEdit);
+  }, [generationId, autosave]);
 
   function handleEditorChange(markdown: string) {
     setContent(markdown);
@@ -490,6 +505,13 @@ export default function GenerateClient({
     }
   }
 
+  // The edit route already persisted the update directly to the DB row — this just reflects it
+  // in local state, no autosave round-trip needed.
+  function handleAiEditApplied(newContent: string) {
+    setContent(newContent);
+    setSaved(false);
+  }
+
   async function copyToClipboard() {
     if (!content) return;
     await navigator.clipboard.writeText(content);
@@ -583,9 +605,20 @@ export default function GenerateClient({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setViewMode("edit")}
+                  onClick={() => setViewMode("inline")}
+                  title="Click any text on the page and type to edit it directly"
                   className={`flex items-center gap-1.5 border-l border-border px-3 py-1.5 text-sm ${
-                    viewMode === "edit" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+                    viewMode === "inline" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit inline
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("html")}
+                  className={`flex items-center gap-1.5 border-l border-border px-3 py-1.5 text-sm ${
+                    viewMode === "html" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <Code2 className="h-4 w-4" />
@@ -667,6 +700,7 @@ export default function GenerateClient({
               copied={linkCopied}
             />
           )}
+          {generationId && <PageEditPanel generationId={generationId} onApplied={handleAiEditApplied} />}
           {colorVars && (
             <ColorVarEditor
               vars={colorVars}
@@ -676,34 +710,49 @@ export default function GenerateClient({
               onUndo={undoColorVar}
             />
           )}
-          {viewMode === "preview" ? (
-            looksLikeHtmlDocument(content) ? (
-              <div className="overflow-hidden rounded-xl border border-border/60 bg-white">
-                {/* sandbox with no allow-scripts/allow-same-origin — this is AI-generated markup
-                    rendered inside an authenticated app, so it must not be able to run script or
-                    reach this origin's session, even though the generator is instructed not to
-                    include any <script> tags in the first place. */}
-                <iframe
-                  title="Landing page preview"
-                  srcDoc={content}
-                  sandbox=""
-                  className="h-[900px] w-full"
-                />
-              </div>
-            ) : (
-              <div className="card-elevated rounded-2xl border-dashed p-10 text-center text-muted-foreground">
-                This was generated before the visual redesign, so it&apos;s plain text, not a real
-                page — click <strong>Regenerate</strong> above to get an actual designed page, or
-                switch to <strong>Edit HTML</strong> to see the old content.
-              </div>
-            )
-          ) : (
+          {viewMode === "html" ? (
             <textarea
               value={content}
               onChange={(e) => handleEditorChange(e.target.value)}
               spellCheck={false}
               className="h-[600px] w-full rounded-xl border border-border/60 bg-card/40 p-4 font-mono text-xs leading-relaxed focus:outline-none"
             />
+          ) : !looksLikeHtmlDocument(content) ? (
+            <div className="card-elevated rounded-2xl border-dashed p-10 text-center text-muted-foreground">
+              This was generated before the visual redesign, so it&apos;s plain text, not a real
+              page — click <strong>Regenerate</strong> above to get an actual designed page, or
+              switch to <strong>Edit HTML</strong> to see the old content.
+            </div>
+          ) : viewMode === "inline" ? (
+            <div className="overflow-hidden rounded-xl border border-border/60 bg-white">
+              <p className="border-b border-border/60 bg-primary/5 px-4 py-2 text-xs text-muted-foreground">
+                Click any text on the page below and start typing — changes save automatically.
+              </p>
+              {/* sandbox="allow-scripts" only (no allow-same-origin, no allow-forms) — this iframe
+                  runs a small script WE inject (buildEditableHtml, not AI-generated) so clicking
+                  text makes it directly editable, but it still can't read cookies/local storage,
+                  reach this app's own origin, or submit the real opt-in form inside it. */}
+              <iframe
+                ref={inlineIframeRef}
+                title="Edit page inline"
+                srcDoc={buildEditableHtml(content)}
+                sandbox="allow-scripts"
+                className="h-[900px] w-full"
+              />
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-border/60 bg-white">
+              {/* sandbox with no allow-scripts/allow-same-origin — this is AI-generated markup
+                  rendered inside an authenticated app, so it must not be able to run script or
+                  reach this origin's session, even though the generator is instructed not to
+                  include any <script> tags in the first place. */}
+              <iframe
+                title="Landing page preview"
+                srcDoc={content}
+                sandbox=""
+                className="h-[900px] w-full"
+              />
+            </div>
           )}
         </div>
       )}
