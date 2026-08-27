@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import type { AssetType, GenerationMode } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Copy, FileDown, Save, Loader2, Trash2, History, Eye, Code2 } from "lucide-react";
+import { Sparkles, Copy, FileDown, Save, Loader2, Trash2, History, Eye, Code2, ExternalLink } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import VersionHistory from "@/components/VersionHistory";
 import TtsPlayer from "@/components/TtsPlayer";
@@ -31,6 +31,18 @@ function downloadHtmlFile(filename: string, html: string) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+// The in-page preview is a sandboxed iframe (no scripts, no same-origin) so AI-generated markup
+// can never touch this app's session — a real browser tab has none of those restrictions, which
+// is exactly the point here: it's the only way to see precisely how the page will actually
+// behave/render for a real visitor, full-width, with nothing else on screen. The blob URL is
+// revoked after the new tab has had time to actually load it, not immediately.
+function openInBrowserTab(html: string) {
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank", "noopener,noreferrer");
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
 function formatWhen(iso: string) {
@@ -206,10 +218,25 @@ export default function GenerateClient({
                   onRestored={(restored) => setContent(restored)}
                 />
                 {isLandingPage ? (
-                  <Button variant="outline" onClick={() => downloadHtmlFile("landing-page.html", content)}>
-                    <FileDown className="mr-2 h-4 w-4" />
-                    Download HTML
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => openInBrowserTab(content)}
+                      disabled={!looksLikeHtmlDocument(content)}
+                      title={
+                        looksLikeHtmlDocument(content)
+                          ? "Open in a new browser tab, full-width, exactly as a visitor would see it"
+                          : "Regenerate first — this was saved before the visual redesign"
+                      }
+                    >
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Preview in browser
+                    </Button>
+                    <Button variant="outline" onClick={() => downloadHtmlFile("landing-page.html", content)}>
+                      <FileDown className="mr-2 h-4 w-4" />
+                      Download HTML
+                    </Button>
+                  </>
                 ) : (
                   <>
                     <Button variant="outline" asChild>
