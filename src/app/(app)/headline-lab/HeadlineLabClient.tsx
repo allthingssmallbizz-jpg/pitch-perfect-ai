@@ -2,13 +2,37 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Sparkles, Copy, Loader2, ArrowDownAZ } from "lucide-react";
+import { Sparkles, Copy, Loader2, ArrowDownAZ, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { RatedHeadline } from "@/lib/ai/headlineLab";
 import { HEADLINE_LAB_CREDIT_COST } from "@/lib/ai/headlineLab";
 import { cn } from "@/lib/utils";
+
+function formatHeadlineForFile(h: RatedHeadline): string {
+  const lines = [`Score ${h.score}/10 — ${h.headline}`];
+  if (h.subheadline) lines.push(h.subheadline);
+  if (h.reasoning) lines.push(`Reasoning: ${h.reasoning}`);
+  return lines.join("\n");
+}
+
+// Every run already saves to the database the moment it completes (see the "Recent runs" list
+// on this page) — what was actually missing was a way to get a working file out of it once you
+// leave the page, since re-opening a past run here doesn't help if you wanted these pasted into
+// a doc or spreadsheet elsewhere. Plain .txt, not a server round-trip — this is just the
+// on-screen data written to a file, no reason to involve the API for it.
+function downloadText(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 function scoreColor(score: number) {
   if (score >= 8) return "text-emerald-400 border-emerald-500/40 bg-emerald-500/10";
@@ -99,6 +123,25 @@ export default function HeadlineLabClient({
     toast.success(`Copied ${winners.size} winners`);
   }
 
+  function downloadAll() {
+    const text = displayed.map(formatHeadlineForFile).join("\n\n");
+    downloadText(`headlines-${topic.trim() || "all"}.txt`.replace(/\s+/g, "-").toLowerCase(), text);
+    toast.success(`Downloaded ${displayed.length} headlines`);
+  }
+
+  function downloadWinners() {
+    if (winners.size === 0) {
+      toast.error("Pick some winners first");
+      return;
+    }
+    const text = headlines
+      .filter((h) => winners.has(h.headline))
+      .map(formatHeadlineForFile)
+      .join("\n\n");
+    downloadText(`headlines-winners-${topic.trim() || "selected"}.txt`.replace(/\s+/g, "-").toLowerCase(), text);
+    toast.success(`Downloaded ${winners.size} winners`);
+  }
+
   const displayed = sortByScore ? [...headlines].sort((a, b) => b.score - a.score) : headlines;
 
   return (
@@ -163,7 +206,7 @@ export default function HeadlineLabClient({
             <div className="text-sm text-muted-foreground">
               {winners.size} winner{winners.size === 1 ? "" : "s"} selected
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={() => setSortByScore((s) => !s)}>
                 <ArrowDownAZ className="mr-2 h-4 w-4" />
                 {sortByScore ? "Sorted by score" : "Original order"}
@@ -171,6 +214,14 @@ export default function HeadlineLabClient({
               <Button variant="outline" size="sm" onClick={copyWinners}>
                 <Copy className="mr-2 h-4 w-4" />
                 Copy winners
+              </Button>
+              <Button variant="outline" size="sm" onClick={downloadAll}>
+                <FileDown className="mr-2 h-4 w-4" />
+                Download all
+              </Button>
+              <Button variant="outline" size="sm" onClick={downloadWinners}>
+                <FileDown className="mr-2 h-4 w-4" />
+                Download winners
               </Button>
             </div>
           </div>
@@ -199,7 +250,9 @@ export default function HeadlineLabClient({
                   </button>
                   <div className="min-w-0 flex-1">
                     <p className="font-medium">{h.headline}</p>
-                    {h.subheadline && <p className="mt-0.5 text-sm text-foreground/80">{h.subheadline}</p>}
+                    <p className={cn("mt-0.5 text-sm", h.subheadline ? "text-foreground/80" : "italic text-muted-foreground/60")}>
+                      {h.subheadline || "(no subheadline generated for this one)"}
+                    </p>
                     {h.reasoning && <p className="mt-1 text-xs text-muted-foreground">{h.reasoning}</p>}
                   </div>
                   <button
