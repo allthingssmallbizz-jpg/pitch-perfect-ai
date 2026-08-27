@@ -95,9 +95,16 @@ export function injectFormAction(html: string, actionUrl: string): string {
 export const INLINE_EDITOR_MESSAGE_SOURCE = "pp-inline-editor";
 
 // Wraps a generated page with a small, TRUSTED script — authored here, never by the AI — that
-// makes visible text content directly editable in place and reports the updated document back to
-// the parent window via postMessage on every change. Used only for the iframe's srcDoc in
-// GenerateClient's "Edit inline" view mode; never written back into generations.content itself.
+// (1) makes visible text content directly editable in place, and (2) shows a small × button over
+// whichever block-level element (section/div/img/video/iframe/figure/article/aside/form) the
+// mouse is over, deleting that exact element on click. Both report the updated document back to
+// the parent window via postMessage. Used only for the iframe's srcDoc in GenerateClient's
+// "Edit inline" view mode; never written back into generations.content itself.
+//
+// The delete button exists specifically so removing something unwanted (a stray/duplicate
+// section, an embed that didn't come out right) is a direct, deterministic, one-click action —
+// never a "please remove X" request handed to an AI to go find and interpret, which is what
+// proved unreliable in practice.
 //
 // This requires the iframe's sandbox to include "allow-scripts" (see GenerateClient), which is
 // deliberately NOT paired with "allow-same-origin" — the frame keeps a unique, opaque origin, so
@@ -119,6 +126,55 @@ document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&
 var timer=null;
 function report(){clearTimeout(timer);timer=setTimeout(function(){parent.postMessage({source:SOURCE,html:document.documentElement.outerHTML},"*");},300);}
 document.addEventListener("input",report,true);
+
+var DEL_SELECTOR="section,div,img,video,iframe,figure,article,aside,form";
+var delBtn=null,delTarget=null,hideTimer=null;
+function cancelHide(){if(hideTimer){clearTimeout(hideTimer);hideTimer=null;}}
+function clearDelBtn(){if(delBtn){delBtn.remove();delBtn=null;}delTarget=null;}
+function scheduleHide(){cancelHide();hideTimer=setTimeout(clearDelBtn,250);}
+function positionDelBtn(){
+  if(!delBtn||!delTarget)return;
+  var r=delTarget.getBoundingClientRect();
+  delBtn.style.top=Math.max(4,r.top+4)+"px";
+  delBtn.style.left=Math.max(4,r.right-26)+"px";
+}
+function showDelBtn(target){
+  if(delTarget===target)return;
+  clearDelBtn();
+  delTarget=target;
+  delBtn=document.createElement("button");
+  delBtn.textContent="\\u00d7";
+  delBtn.setAttribute("contenteditable","false");
+  delBtn.title="Delete this section";
+  delBtn.style.cssText="position:fixed;width:22px;height:22px;border-radius:11px;background:#ef4444;color:#fff;border:2px solid #fff;font-size:14px;line-height:18px;text-align:center;padding:0;cursor:pointer;z-index:2147483647;box-shadow:0 1px 4px rgba(0,0,0,.35);";
+  delBtn.addEventListener("mousedown",function(e){e.preventDefault();e.stopPropagation();});
+  delBtn.addEventListener("mouseenter",cancelHide);
+  delBtn.addEventListener("mouseleave",scheduleHide);
+  delBtn.addEventListener("click",function(e){
+    e.preventDefault();e.stopPropagation();
+    if(!delTarget)return;
+    if(window.confirm("Delete this section from the page?")){
+      var t=delTarget;
+      clearDelBtn();
+      t.remove();
+      report();
+    }
+  });
+  document.body.appendChild(delBtn);
+  positionDelBtn();
+}
+document.addEventListener("mouseover",function(e){
+  var target=e.target&&e.target.closest&&e.target.closest(DEL_SELECTOR);
+  if(!target||target===document.body||target===document.documentElement)return;
+  if(target.getBoundingClientRect().height>document.documentElement.scrollHeight*0.85)return;
+  cancelHide();
+  showDelBtn(target);
+});
+document.addEventListener("mouseout",function(e){
+  if(e.target&&e.target.closest&&e.target.closest(DEL_SELECTOR))scheduleHide();
+});
+document.addEventListener("scroll",positionDelBtn,true);
+window.addEventListener("resize",positionDelBtn);
 })();</script>`;
   return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, `${editorScript}</body>`) : `${html}${editorScript}`;
 }

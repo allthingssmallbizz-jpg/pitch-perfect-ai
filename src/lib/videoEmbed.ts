@@ -77,42 +77,52 @@ export function parseVideoEmbedUrl(rawUrl: string): { html: string; label: strin
 }
 
 // Marks the block this module inserts so a later call can find and replace it deterministically
-// — no AI involved in placement OR replacement. This is what actually fixes "adding a video keeps
-// stacking a new one on top of the last": every insert is either "there's no marked block yet, add
-// one" or "there's already one, replace exactly that region," never "add another."
+// — no AI involved in placement OR replacement.
 const MARKER_START = "<!-- pp-video-embed:start -->";
 const MARKER_END = "<!-- pp-video-embed:end -->";
-const MARKED_BLOCK_PATTERN = new RegExp(`${MARKER_START}[\\s\\S]*?${MARKER_END}`, "i");
+
+// A fresh RegExp per call, always with the "g" flag — this is deliberate, not incidental. A
+// single shared module-level regex with "g" would carry a stale `lastIndex` between calls
+// (a classic footgun: `.test()` on a global regex resumes from wherever the last call left off,
+// not from the start), and without "g" at all, `.replace()` only ever touches the FIRST match —
+// which was the actual bug: after more than one video got added before this fix existed, "remove"
+// and "replace" only ever cleaned up one of them, leaving the others stuck on the page forever.
+function markedBlockPattern(): RegExp {
+  return new RegExp(`${MARKER_START}[\\s\\S]*?${MARKER_END}`, "g");
+}
+
+function stripAllVideoEmbeds(html: string): string {
+  return html.replace(markedBlockPattern(), "");
+}
 
 export function hasVideoEmbed(html: string): boolean {
   return html.includes(MARKER_START);
 }
 
-// Inserts (or, if one already exists, replaces) the page's single video embed — a plain string
+// Inserts (or, if one or more already exist, replaces) the page's video embed — a plain string
 // operation, not an AI call, so it can never be mangled, reworded, or duplicated the way routing
-// it through a freeform edit prompt was. Placement for a first-time insert is a fixed, always-
-// present anchor (right before <footer> if the page has one, else right before </body>) rather
-// than something an AI decides — less elegant than "under the hero," but 100% reliable, which is
-// what actually matters after a video embed silently failing to render at all.
+// it through a freeform edit prompt was. Always normalizes down to exactly one embed: every
+// existing marked block is stripped first (self-healing any duplicates stacked by the old bug,
+// no matter how many), then the single new block is inserted fresh at a fixed, always-present
+// anchor (right before <footer> if the page has one, else right before </body>) rather than
+// somewhere an AI decides — less elegant than "under the hero," but 100% reliable, which is what
+// actually matters after a video embed silently failing to render at all.
 export function upsertVideoEmbed(html: string, embedHtml: string): string {
+  const cleaned = stripAllVideoEmbeds(html);
   const block = `${MARKER_START}\n<div style="max-width:720px;margin:32px auto;padding:0 20px;">${embedHtml}</div>\n${MARKER_END}`;
 
-  if (MARKED_BLOCK_PATTERN.test(html)) {
-    return html.replace(MARKED_BLOCK_PATTERN, block);
-  }
-
-  const footerMatch = html.match(/<footer[\s>]/i);
+  const footerMatch = cleaned.match(/<footer[\s>]/i);
   if (footerMatch && typeof footerMatch.index === "number") {
-    return `${html.slice(0, footerMatch.index)}${block}\n${html.slice(footerMatch.index)}`;
+    return `${cleaned.slice(0, footerMatch.index)}${block}\n${cleaned.slice(footerMatch.index)}`;
   }
 
-  if (/<\/body>/i.test(html)) {
-    return html.replace(/<\/body>/i, `${block}\n</body>`);
+  if (/<\/body>/i.test(cleaned)) {
+    return cleaned.replace(/<\/body>/i, `${block}\n</body>`);
   }
 
-  return `${html}\n${block}`;
+  return `${cleaned}\n${block}`;
 }
 
 export function removeVideoEmbed(html: string): string {
-  return html.replace(MARKED_BLOCK_PATTERN, "");
+  return stripAllVideoEmbeds(html);
 }
