@@ -7,6 +7,7 @@ import type { AwarenessLevel } from "@/types/database";
 import { ASSET_TYPES } from "@/lib/ai/generators";
 import { getTemplate } from "@/lib/templates";
 import { getMissingDiscoveryFieldLabels } from "@/lib/projects";
+import { isPresenterBioEmpty } from "@/lib/ai/presenterBio";
 
 // Where to land after creating a project. A brand-new project has no discovery data yet, so
 // generating anything from it immediately would just come back empty ("I don't have enough
@@ -75,6 +76,28 @@ export async function createProjectFromTemplate(formData: FormData) {
     .single();
 
   if (error || !data) redirect("/templates");
+
+  // Presenter Bio is account-level, not project-scoped (see src/lib/ai/presenterBio.ts) — only
+  // seed the template's demo bio if the user hasn't written their own real one yet. Never
+  // overwrite an existing bio just because someone tried a template, same non-destructive rule
+  // Website Import and Offer Builder already follow for discovery fields.
+  // Selecting only the presenter_* columns (not user_id/created_at/updated_at) matters here —
+  // isPresenterBioEmpty checks every value on the object it's given, and a row's own id/timestamp
+  // strings are never blank, which would make it look "not empty" even when every actual bio
+  // field is.
+  const { data: existingBio } = await supabase
+    .from("presenter_bios")
+    .select(
+      "presenter_mission, presenter_years_experience, presenter_credentials, presenter_origin_story, presenter_signature_win, presenter_setback_story, presenter_income_goal_6mo, presenter_income_goal_12mo, presenter_mission_why, presenter_recognition, presenter_relatable_detail"
+    )
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (isPresenterBioEmpty(existingBio)) {
+    await supabase
+      .from("presenter_bios")
+      .upsert({ user_id: user.id, ...template.presenterBio }, { onConflict: "user_id" });
+  }
 
   redirect(`/projects/${data.id}`);
 }
