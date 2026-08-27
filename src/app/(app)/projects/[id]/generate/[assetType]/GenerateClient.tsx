@@ -700,7 +700,9 @@ export default function GenerateClient({
               copied={linkCopied}
             />
           )}
-          {generationId && <PageEditPanel generationId={generationId} onApplied={handleAiEditApplied} />}
+          {generationId && (
+            <PageEditPanel generationId={generationId} content={content} onApplied={handleAiEditApplied} />
+          )}
           {colorVars && (
             <ColorVarEditor
               vars={colorVars}

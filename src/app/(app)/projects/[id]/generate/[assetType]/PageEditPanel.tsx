@@ -2,12 +2,13 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Wand2, ImagePlus, X, Loader2, Video } from "lucide-react";
+import { Wand2, ImagePlus, X, Loader2, Video, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import { PAGE_EDIT_CREDIT_COST } from "@/lib/ai/generators/pageEdit";
+import { hasVideoEmbed } from "@/lib/videoEmbed";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
@@ -18,11 +19,17 @@ const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 // page. The image itself is uploaded straight to Supabase Storage from the browser (same
 // pattern Agent Addie's Image Ads already uses) rather than round-tripping through our own
 // server — the edit call then just gets a real, permanent URL to place in the page.
+//
+// The video link field is handled differently on purpose: it's a plain, deterministic
+// insert-or-replace (see videoEmbed.ts), never an AI call — pasting a new link always replaces
+// the existing video instead of stacking another one on top of it, and it's free.
 export default function PageEditPanel({
   generationId,
+  content,
   onApplied,
 }: {
   generationId: string;
+  content: string;
   onApplied: (newContent: string) => void;
 }) {
   const [instruction, setInstruction] = useState("");
@@ -30,8 +37,10 @@ export default function PageEditPanel({
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [applying, setApplying] = useState(false);
+  const [removingVideo, setRemovingVideo] = useState(false);
   const [statusLabel, setStatusLabel] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoAlreadyOnPage = hasVideoEmbed(content);
 
   function pickImage(file: File | null) {
     if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
@@ -97,6 +106,27 @@ export default function PageEditPanel({
     }
   }
 
+  async function handleRemoveVideo() {
+    setRemovingVideo(true);
+    try {
+      const res = await fetch(`/api/generations/${generationId}/edit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ removeVideo: true }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "Could not remove the video.");
+      onApplied(data.content);
+      toast.success("Video removed.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not remove the video.");
+    } finally {
+      setRemovingVideo(false);
+    }
+  }
+
+  const isVideoOnlyRequest = !instruction.trim() && !imageFile && videoUrl.trim().length > 0;
+
   return (
     <div className="card-elevated rounded-xl p-4">
       <p className="mb-2 flex items-center gap-1.5 text-sm font-medium">
@@ -115,7 +145,20 @@ export default function PageEditPanel({
         disabled={applying}
       />
       <div className="mt-2">
-        <label className="mb-1 block text-xs text-muted-foreground">Video link (optional)</label>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <label className="block text-xs text-muted-foreground">Video link (optional)</label>
+          {videoAlreadyOnPage && (
+            <button
+              type="button"
+              onClick={handleRemoveVideo}
+              disabled={removingVideo || applying}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive disabled:opacity-50"
+            >
+              {removingVideo ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+              Remove current video
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <Video className="h-4 w-4 shrink-0 text-muted-foreground" />
           <Input
@@ -127,10 +170,11 @@ export default function PageEditPanel({
           />
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Works with YouTube, Vimeo, or a direct video file link (.mp4/.webm/.mov). Say where it
-          should go in the text box above, or leave that blank and it&apos;ll be placed somewhere
-          sensible. Note: it won&apos;t play inside this in-app Preview tab (a safety sandbox) —
-          use <strong>Preview in browser</strong> or check the published live page to see it play.
+          Works with YouTube, Vimeo, or a direct video file link (.mp4/.webm/.mov) — added near the
+          bottom of the page, above the footer. Pasting a new link always replaces the current
+          video rather than adding another one. Note: it won&apos;t play inside this in-app Preview
+          tab (a safety sandbox) — use <strong>Preview in browser</strong> or check the published
+          live page to see it actually play.
         </p>
       </div>
       {imagePreviewUrl && (
@@ -163,7 +207,11 @@ export default function PageEditPanel({
         </Button>
         <Button type="button" size="sm" className="ml-auto" onClick={handleApply} disabled={applying}>
           {applying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-          {applying ? statusLabel || "Working..." : `Apply update (${PAGE_EDIT_CREDIT_COST} credits)`}
+          {applying
+            ? statusLabel || "Working..."
+            : isVideoOnlyRequest
+              ? "Apply update (free)"
+              : `Apply update (${PAGE_EDIT_CREDIT_COST} credits)`}
         </Button>
       </div>
     </div>

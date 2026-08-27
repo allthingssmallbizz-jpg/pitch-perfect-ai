@@ -75,3 +75,44 @@ export function parseVideoEmbedUrl(rawUrl: string): { html: string; label: strin
 
   return null;
 }
+
+// Marks the block this module inserts so a later call can find and replace it deterministically
+// — no AI involved in placement OR replacement. This is what actually fixes "adding a video keeps
+// stacking a new one on top of the last": every insert is either "there's no marked block yet, add
+// one" or "there's already one, replace exactly that region," never "add another."
+const MARKER_START = "<!-- pp-video-embed:start -->";
+const MARKER_END = "<!-- pp-video-embed:end -->";
+const MARKED_BLOCK_PATTERN = new RegExp(`${MARKER_START}[\\s\\S]*?${MARKER_END}`, "i");
+
+export function hasVideoEmbed(html: string): boolean {
+  return html.includes(MARKER_START);
+}
+
+// Inserts (or, if one already exists, replaces) the page's single video embed — a plain string
+// operation, not an AI call, so it can never be mangled, reworded, or duplicated the way routing
+// it through a freeform edit prompt was. Placement for a first-time insert is a fixed, always-
+// present anchor (right before <footer> if the page has one, else right before </body>) rather
+// than something an AI decides — less elegant than "under the hero," but 100% reliable, which is
+// what actually matters after a video embed silently failing to render at all.
+export function upsertVideoEmbed(html: string, embedHtml: string): string {
+  const block = `${MARKER_START}\n<div style="max-width:720px;margin:32px auto;padding:0 20px;">${embedHtml}</div>\n${MARKER_END}`;
+
+  if (MARKED_BLOCK_PATTERN.test(html)) {
+    return html.replace(MARKED_BLOCK_PATTERN, block);
+  }
+
+  const footerMatch = html.match(/<footer[\s>]/i);
+  if (footerMatch && typeof footerMatch.index === "number") {
+    return `${html.slice(0, footerMatch.index)}${block}\n${html.slice(footerMatch.index)}`;
+  }
+
+  if (/<\/body>/i.test(html)) {
+    return html.replace(/<\/body>/i, `${block}\n</body>`);
+  }
+
+  return `${html}\n${block}`;
+}
+
+export function removeVideoEmbed(html: string): string {
+  return html.replace(MARKED_BLOCK_PATTERN, "");
+}
