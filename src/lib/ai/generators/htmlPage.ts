@@ -136,7 +136,7 @@ function positionDelBtn(){
   if(!delBtn||!delTarget)return;
   var r=delTarget.getBoundingClientRect();
   delBtn.style.top=Math.max(4,r.top+4)+"px";
-  delBtn.style.left=Math.max(4,r.right-26)+"px";
+  delBtn.style.left=Math.max(4,r.right-32)+"px";
 }
 function showDelBtn(target){
   if(delTarget===target)return;
@@ -146,7 +146,10 @@ function showDelBtn(target){
   delBtn.textContent="\\u00d7";
   delBtn.setAttribute("contenteditable","false");
   delBtn.title="Delete this section";
-  delBtn.style.cssText="position:fixed;width:22px;height:22px;border-radius:11px;background:#ef4444;color:#fff;border:2px solid #fff;font-size:14px;line-height:18px;text-align:center;padding:0;cursor:pointer;z-index:2147483647;box-shadow:0 1px 4px rgba(0,0,0,.35);";
+  // 28px is a compromise, not full accessibility-guideline sizing (44px) — this is a floating
+  // badge over arbitrary AI-generated content, and a bigger hit area would more often overlap
+  // neighboring text/buttons on a small mobile viewport. It responds to both mouse and touch.
+  delBtn.style.cssText="position:fixed;width:28px;height:28px;border-radius:14px;background:#ef4444;color:#fff;border:2px solid #fff;font-size:16px;line-height:24px;text-align:center;padding:0;cursor:pointer;touch-action:manipulation;z-index:2147483647;box-shadow:0 1px 4px rgba(0,0,0,.35);";
   delBtn.addEventListener("mousedown",function(e){e.preventDefault();e.stopPropagation();});
   delBtn.addEventListener("mouseenter",cancelHide);
   delBtn.addEventListener("mouseleave",scheduleHide);
@@ -163,6 +166,9 @@ function showDelBtn(target){
   document.body.appendChild(delBtn);
   positionDelBtn();
 }
+// Hover shows/hides the button on desktop (mouse). Touchscreens have no hover at all, so a tap
+// on any deletable block also shows it (a second tap, on the button itself, deletes) — without
+// this, the entire click-to-delete feature would be invisible and unusable on a phone.
 document.addEventListener("mouseover",function(e){
   var target=e.target&&e.target.closest&&e.target.closest(DEL_SELECTOR);
   if(!target||target===document.body||target===document.documentElement)return;
@@ -172,6 +178,15 @@ document.addEventListener("mouseover",function(e){
 });
 document.addEventListener("mouseout",function(e){
   if(e.target&&e.target.closest&&e.target.closest(DEL_SELECTOR))scheduleHide();
+});
+document.addEventListener("click",function(e){
+  var target=e.target&&e.target.closest&&e.target.closest(DEL_SELECTOR);
+  if(!target||target===document.body||target===document.documentElement||target.getBoundingClientRect().height>document.documentElement.scrollHeight*0.85){
+    clearDelBtn();
+    return;
+  }
+  cancelHide();
+  showDelBtn(target);
 });
 document.addEventListener("scroll",positionDelBtn,true);
 window.addEventListener("resize",positionDelBtn);
