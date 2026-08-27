@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { updateBrandVoice } from "@/lib/actions/brandVoice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,48 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Save } from "lucide-react";
 import type { BrandVoice } from "@/types/database";
+
+const HEX_COLOR_PATTERN = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+// Native color picker + a hex text field kept in sync — lets someone pick visually, or paste
+// an exact hex code straight from their existing brand guidelines, whichever they have on hand.
+function ColorField({
+  name,
+  label,
+  placeholder,
+  defaultValue,
+}: {
+  name: string;
+  label: string;
+  placeholder: string;
+  defaultValue: string;
+}) {
+  const [value, setValue] = useState(defaultValue);
+  const swatchValue = HEX_COLOR_PATTERN.test(value) ? value : "#888888";
+
+  return (
+    <div>
+      <Label htmlFor={name}>{label}</Label>
+      <div className="mt-1 flex items-center gap-2">
+        <input
+          type="color"
+          aria-label={`${label} picker`}
+          value={swatchValue}
+          onChange={(e) => setValue(e.target.value)}
+          className="h-9 w-9 shrink-0 cursor-pointer rounded-md border border-input bg-transparent p-0.5"
+        />
+        <Input
+          id={name}
+          name={name}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={placeholder}
+          className="flex-1"
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function BrandVoiceForm({ brandVoice }: { brandVoice: BrandVoice | null }) {
   const [state, formAction, pending] = useActionState(updateBrandVoice, undefined);
@@ -75,6 +117,28 @@ export default function BrandVoiceForm({ brandVoice }: { brandVoice: BrandVoice 
           placeholder="e.g. Always end emails with 'Talk soon,'. Never use exclamation points."
           className="mt-1"
         />
+      </div>
+
+      <div className="border-t border-border pt-6">
+        <h2 className="mb-1 text-sm font-semibold">Brand colors (optional)</h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Set your actual brand colors and the Landing Page generator uses them as its accent
+          color scheme instead of picking its own each time.
+        </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <ColorField
+            name="primary_color"
+            label="Primary color"
+            placeholder="#3366FF"
+            defaultValue={brandVoice?.primary_color ?? ""}
+          />
+          <ColorField
+            name="secondary_color"
+            label="Secondary color"
+            placeholder="#111827"
+            defaultValue={brandVoice?.secondary_color ?? ""}
+          />
+        </div>
       </div>
 
       <div className="flex items-center justify-between">

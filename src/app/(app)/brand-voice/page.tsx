@@ -19,10 +19,11 @@ export default async function BrandVoicePage() {
           <Mic className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="font-display text-3xl font-bold text-gradient-silver">Brand voice profile</h1>
+          <h1 className="font-display text-3xl font-bold text-gradient-silver">Brand voice &amp; colors</h1>
           <p className="mt-1 text-muted-foreground">
-            Teach Pitch Perfect AI to sound like you. Every deliverable — webinar, VSL, emails, ads — will
-            match this voice automatically.
+            Teach Pitch Perfect AI to sound — and look — like you. Every deliverable matches this
+            voice automatically, and your brand colors become the accent scheme on the Landing
+            Page generator instead of it picking its own.
           </p>
         </div>
       </div>
