@@ -4,6 +4,7 @@ import { History } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { parseRatedHeadlines, type RatedHeadline } from "@/lib/ai/headlineLab";
 import HeadlineLabClient from "./HeadlineLabClient";
+import DeleteHeadlineRunButton from "./DeleteHeadlineRunButton";
 
 function formatRelativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -114,16 +115,18 @@ export default async function HeadlineLabPage({
           </h2>
           <div className="space-y-2">
             {recentRuns.map((run) => (
-              <Link
-                key={run.id}
-                href={`/headline-lab?generationId=${run.id}`}
-                className={`flex items-center justify-between rounded-lg border bg-card/40 px-4 py-2 text-sm transition-colors hover:border-primary/40 ${
-                  run.id === initialGenerationId ? "border-primary/50 bg-primary/5" : "border-border"
-                }`}
-              >
-                <span className="min-w-0 truncate">{run.topic}</span>
-                <span className="ml-3 shrink-0 text-xs text-muted-foreground">{formatRelativeTime(run.createdAt)}</span>
-              </Link>
+              <div key={run.id} className="flex items-center gap-2">
+                <Link
+                  href={`/headline-lab?generationId=${run.id}`}
+                  className={`flex min-w-0 flex-1 items-center justify-between rounded-lg border bg-card/40 px-4 py-2 text-sm transition-colors hover:border-primary/40 ${
+                    run.id === initialGenerationId ? "border-primary/50 bg-primary/5" : "border-border"
+                  }`}
+                >
+                  <span className="min-w-0 truncate">{run.topic}</span>
+                  <span className="ml-3 shrink-0 text-xs text-muted-foreground">{formatRelativeTime(run.createdAt)}</span>
+                </Link>
+                <DeleteHeadlineRunButton generationId={run.id} isOpen={run.id === initialGenerationId} />
+              </div>
             ))}
           </div>
         </div>
