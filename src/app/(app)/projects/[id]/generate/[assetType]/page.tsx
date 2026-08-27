@@ -63,6 +63,8 @@ export default async function GenerateAssetPage({
 
   let initialContent: string | null = null;
   let initialGenerationId: string | null = null;
+  let initialPublishSlug: string | null = null;
+  let initialPublishedAt: string | null = null;
 
   if (generationId) {
     const { data: generation } = await supabase
@@ -74,6 +76,8 @@ export default async function GenerateAssetPage({
     if (generation) {
       initialContent = generation.content;
       initialGenerationId = generation.id;
+      initialPublishSlug = generation.publish_slug;
+      initialPublishedAt = generation.published_at;
     }
   }
 
@@ -121,11 +125,19 @@ export default async function GenerateAssetPage({
       {showBioReminder && <BioReminderDialog />}
 
       <GenerateClient
+        // Forces a full remount whenever the open generation changes (a fresh visit, opening a
+        // past run, or a just-completed Regenerate updating the URL) — without this, switching
+        // to a different generation via the "Past generations" list only ever changes the URL,
+        // since useState(initialContent) etc. don't re-run their initializer on a prop change
+        // alone. Same fix already applied to HeadlineLabClient for the identical symptom.
+        key={initialGenerationId ?? "new"}
         projectId={id}
         assetType={generator.assetType}
         mode={project.mode}
         initialContent={initialContent}
         initialGenerationId={initialGenerationId}
+        initialPublishSlug={initialPublishSlug}
+        initialPublishedAt={initialPublishedAt}
         initialPastGenerations={pastGenerations}
       />
     </div>

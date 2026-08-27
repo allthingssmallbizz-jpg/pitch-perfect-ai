@@ -5,7 +5,22 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import type { AssetType, GenerationMode } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Copy, FileDown, Save, Loader2, Trash2, History, Eye, Code2, ExternalLink, Palette, Undo2 } from "lucide-react";
+import {
+  Sparkles,
+  Copy,
+  FileDown,
+  Save,
+  Loader2,
+  Trash2,
+  History,
+  Eye,
+  Code2,
+  ExternalLink,
+  Palette,
+  Undo2,
+  Globe,
+  Rocket,
+} from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import VersionHistory from "@/components/VersionHistory";
 import TtsPlayer from "@/components/TtsPlayer";
@@ -18,6 +33,7 @@ import {
   WEB_PAGE_ASSET_TYPES,
 } from "@/lib/ai/generators/htmlPage";
 import { downloadHtmlFile, openInBrowserTab } from "@/lib/browserFile";
+import { getPublicSiteUrl } from "@/lib/publishing";
 
 export type PastGeneration = { id: string; createdAt: string; preview: string };
 
@@ -98,6 +114,74 @@ function ColorVarEditor({
   );
 }
 
+// Everything needed to make this page a real, publicly reachable website with no hosting account
+// and no DNS — the HTML already lives in the database; Publish just assigns a slug and flips a
+// flag so /site/[slug] (a fully public route) can serve it. Unpublishing keeps the slug, so
+// republishing later brings back the exact same link instead of generating a new one.
+function PublishPanel({
+  publishedAt,
+  liveUrl,
+  publishing,
+  onToggle,
+  onCopy,
+  copied,
+}: {
+  publishedAt: string | null;
+  liveUrl: string | null;
+  publishing: boolean;
+  onToggle: () => void;
+  onCopy: () => void;
+  copied: boolean;
+}) {
+  const isLive = Boolean(publishedAt);
+  return (
+    <div className={`card-elevated rounded-xl p-4 ${isLive ? "border-emerald-500/30" : ""}`}>
+      <div className="flex flex-wrap items-center gap-3">
+        <span
+          className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+            isLive ? "bg-emerald-500/15 text-emerald-400" : "bg-muted text-muted-foreground"
+          }`}
+        >
+          <Globe className="h-3.5 w-3.5" />
+          {isLive ? "Live" : "Not published"}
+        </span>
+        {isLive && liveUrl && (
+          <>
+            <a
+              href={liveUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="min-w-0 flex-1 truncate text-sm text-primary hover:underline"
+            >
+              {liveUrl}
+            </a>
+            <Button variant="outline" size="sm" onClick={onCopy}>
+              <Copy className="mr-1.5 h-3.5 w-3.5" />
+              {copied ? "Copied!" : "Copy link"}
+            </Button>
+          </>
+        )}
+        <Button
+          variant={isLive ? "outline" : "default"}
+          size="sm"
+          className={isLive ? "" : "ml-auto"}
+          onClick={onToggle}
+          disabled={publishing}
+        >
+          {publishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Rocket className="mr-2 h-4 w-4" />}
+          {publishing ? "Working..." : isLive ? "Unpublish" : "Publish — go live"}
+        </Button>
+      </div>
+      {!isLive && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          No hosting account or coding needed — this makes the page above reachable at a real,
+          public link instantly.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function formatWhen(iso: string) {
   const d = new Date(iso);
   const diffMs = Date.now() - d.getTime();
@@ -117,6 +201,8 @@ export default function GenerateClient({
   mode,
   initialContent,
   initialGenerationId,
+  initialPublishSlug,
+  initialPublishedAt,
   initialPastGenerations,
 }: {
   projectId: string;
@@ -124,6 +210,8 @@ export default function GenerateClient({
   mode: GenerationMode;
   initialContent: string | null;
   initialGenerationId: string | null;
+  initialPublishSlug: string | null;
+  initialPublishedAt: string | null;
   initialPastGenerations: PastGeneration[];
 }) {
   const router = useRouter();
@@ -164,6 +252,12 @@ export default function GenerateClient({
   // dragged — recorded via onFocus (beginColorEdit) below, consumed by the first onChange after.
   const [colorHistory, setColorHistory] = useState<Record<string, string[]>>({});
   const pendingPreviousColorRef = useRef<Record<string, string | null>>({});
+
+  const [publishSlug, setPublishSlug] = useState<string | null>(initialPublishSlug);
+  const [publishedAt, setPublishedAt] = useState<string | null>(initialPublishedAt);
+  const [publishing, setPublishing] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const liveUrl = publishSlug ? getPublicSiteUrl(publishSlug) : null;
 
   const autosave = useDebouncedCallback((newContent: string, id: string) => {
     fetch(`/api/generations/${id}/autosave`, {
@@ -214,6 +308,48 @@ export default function GenerateClient({
     if (generationId) autosave(updated, generationId);
   }
 
+  async function togglePublish() {
+    if (!generationId) return;
+    setPublishing(true);
+    try {
+      const goingLive = !publishedAt;
+      if (goingLive && content !== null) {
+        // Autosave already debounces content edits (color tweaks, HTML edits) — this makes sure
+        // whatever's about to go live is exactly what's on screen right now, not a slightly
+        // stale version still waiting out that debounce window.
+        await fetch(`/api/generations/${generationId}/autosave`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content }),
+        });
+      }
+      const res = await fetch(`/api/generations/${generationId}/${goingLive ? "publish" : "unpublish"}`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "Could not update publish status.");
+      if (goingLive) {
+        setPublishSlug(data.slug);
+        setPublishedAt(new Date().toISOString());
+        toast.success("Live! Your page is now public.");
+      } else {
+        setPublishedAt(null);
+        toast.success("Unpublished.");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update publish status.");
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  async function copyLiveLink() {
+    if (!liveUrl) return;
+    await navigator.clipboard.writeText(liveUrl);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 1500);
+  }
+
   async function run() {
     setLoading(true);
     setError(null);
@@ -230,6 +366,9 @@ export default function GenerateClient({
       }
       setContent(data.content);
       setGenerationId(data.generationId);
+      // A fresh generation is a brand-new row — never already published under this id.
+      setPublishSlug(null);
+      setPublishedAt(null);
       const previewSource = isWebPageAsset ? stripHtmlTags(String(data.content)) : String(data.content).replace(/\s+/g, " ").trim();
       setPastGenerations((prev) => [
         { id: data.generationId, createdAt: new Date().toISOString(), preview: previewSource.slice(0, 120) },
@@ -267,6 +406,8 @@ export default function GenerateClient({
       if (generationId === pastId) {
         setContent(null);
         setGenerationId(null);
+        setPublishSlug(null);
+        setPublishedAt(null);
         router.replace(urlWithGeneration());
       }
       toast.success("Deleted");
@@ -443,6 +584,16 @@ export default function GenerateClient({
 
       {content && isWebPageAsset && (
         <div className="space-y-4">
+          {generationId && (
+            <PublishPanel
+              publishedAt={publishedAt}
+              liveUrl={liveUrl}
+              publishing={publishing}
+              onToggle={togglePublish}
+              onCopy={copyLiveLink}
+              copied={linkCopied}
+            />
+          )}
           {colorVars && (
             <ColorVarEditor
               vars={colorVars}

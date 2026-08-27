@@ -7,8 +7,9 @@ import { generateCompleteAsset } from "@/lib/ai/anthropic";
 import { buildSystemPrompt } from "@/lib/ai/systemPrompt";
 import { getBrandVoiceBlock } from "@/lib/ai/brandVoice";
 import { getPresenterBioBlock } from "@/lib/ai/presenterBio";
-import { stripHtmlCodeFence, WEB_PAGE_ASSET_TYPES } from "@/lib/ai/generators/htmlPage";
+import { stripHtmlCodeFence, WEB_PAGE_ASSET_TYPES, injectFormAction } from "@/lib/ai/generators/htmlPage";
 import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
+import { getFormSubmitUrl } from "@/lib/publishing";
 import type { PriorGeneration } from "@/lib/ai/generators/shared";
 import { getAgent } from "@/lib/agents/config";
 import { recordGenerationVersion } from "@/lib/generations";
@@ -128,7 +129,15 @@ export async function POST(req: NextRequest) {
     // Landing Page and Thank You Page both output a real HTML document, not markdown — strip a
     // stray code fence defensively in case Claude wraps it in one despite the explicit instruction
     // not to (same pattern as parseRatedHeadlines in headlineLab.ts).
-    const finalContent = WEB_PAGE_ASSET_TYPES.includes(assetType) ? stripHtmlCodeFence(result.content) : result.content;
+    let finalContent = WEB_PAGE_ASSET_TYPES.includes(assetType) ? stripHtmlCodeFence(result.content) : result.content;
+
+    // Only Landing Page's prompt writes the FORM_ACTION_PLACEHOLDER (its opt-in form) — swap it
+    // for the real, generation-specific submission URL now that generationId exists. This is what
+    // makes the form actually submit somewhere (straight into the member's Go High Level account,
+    // if connected) with zero manual wiring on their end.
+    if (assetType === "landing_page") {
+      finalContent = injectFormAction(finalContent, getFormSubmitUrl(generationId));
+    }
 
     const { error: updateError } = await admin
       .from("generations")

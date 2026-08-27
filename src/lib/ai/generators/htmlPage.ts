@@ -75,3 +75,16 @@ export function replaceCssColorVar(html: string, varName: string, newHex: string
 // and Thank You Page — used to branch on "is this a webpage, not copy" (GenerateClient's
 // preview/color-editor UI, the /api/generate content cleanup step).
 export const WEB_PAGE_ASSET_TYPES: AssetType[] = ["landing_page", "thank_you_page"];
+
+// Landing Page's generator prompt is instructed to write the opt-in form's action as this exact
+// literal string (see buildLandingPagePrompt) instead of leaving it unwired — /api/generate/route.ts
+// then swaps it for the real, generation-specific submission URL right after generation completes
+// (generationId is already known by then), the same "placeholder now, real value filled in after"
+// pattern the CSS color variables use. Lets the form actually submit — straight into the member's
+// Go High Level account via /api/forms/submit/[generationId] — with zero manual wiring, while the
+// AI itself never needs to know the real URL (which doesn't exist until the row is saved anyway).
+export const FORM_ACTION_PLACEHOLDER = "{{PP_FORM_ACTION}}";
+
+export function injectFormAction(html: string, actionUrl: string): string {
+  return html.split(FORM_ACTION_PLACEHOLDER).join(actionUrl);
+}

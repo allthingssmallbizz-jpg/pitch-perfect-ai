@@ -175,6 +175,11 @@ export type Generation = {
   // `content` holds the generated copy as JSON: {"headline","subheadline","cta"}.
   image_source_path: string | null;
   image_result_path: string | null;
+  // Publishing (Landing Page / Thank You Page only) — see src/lib/publishing.ts and
+  // src/app/site/[slug]/route.ts. publish_slug persists across unpublish/republish so a shared
+  // link never silently changes; published_at null means "not currently live."
+  publish_slug: string | null;
+  published_at: string | null;
 };
 
 export type GenerationVersionSource = "generate" | "edit" | "snapshot";
@@ -251,6 +256,33 @@ export type PresenterBio = {
   updated_at: string;
 };
 
+// One row per user — a Go High Level Private Integration token + Location ID, pasted in from
+// their own GHL sub-account (Settings > Private Integrations). See src/lib/integrations/ghl.ts.
+// Empty strings mean "not connected yet," same convention as BrandVoice's optional fields.
+export type GhlConnection = {
+  user_id: string;
+  location_id: string;
+  api_token: string;
+  created_at: string;
+  updated_at: string;
+};
+
+// One row per form submission from a published Landing Page — written regardless of whether the
+// GHL sync succeeds, so a lead is never silently lost to a CRM API hiccup or to GHL not being
+// connected yet. See src/app/api/forms/submit/[generationId]/route.ts.
+export type FormLead = {
+  id: string;
+  user_id: string;
+  project_id: string | null;
+  generation_id: string | null;
+  name: string;
+  email: string;
+  phone: string;
+  ghl_synced: boolean;
+  ghl_error: string | null;
+  created_at: string;
+};
+
 // Minimal Database type shape for @supabase/ssr / @supabase/supabase-js generics.
 // Matches the GenericSchema/GenericTable shape those packages expect (Row/Insert/Update/
 // Relationships, plus Views/Functions on the schema) — see
@@ -274,6 +306,8 @@ export type Database = {
       payments: Table<Payment>;
       brand_voices: Table<BrandVoice>;
       presenter_bios: Table<PresenterBio>;
+      ghl_connections: Table<GhlConnection>;
+      form_leads: Table<FormLead>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

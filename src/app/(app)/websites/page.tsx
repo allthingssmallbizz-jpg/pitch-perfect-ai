@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, ArrowRight } from "lucide-react";
+import { Plus, ArrowRight, Globe } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AGENTS } from "@/lib/agents/config";
 import { ASSET_GENERATORS, WEB_PAGE_ASSET_TYPES, type GeneratorAssetType } from "@/lib/ai/generators";
+import { getPublicSiteUrl } from "@/lib/publishing";
 import DeleteGenerationButton from "@/components/DeleteGenerationButton";
 import WebsiteRowActions from "@/components/WebsiteRowActions";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,7 @@ export default async function WebsitesPage() {
     supabase.from("projects").select("id, name").eq("user_id", user.id).is("deleted_at", null),
     supabase
       .from("generations")
-      .select("id, project_id, asset_type, content, created_at")
+      .select("id, project_id, asset_type, content, created_at, publish_slug, published_at")
       .eq("user_id", user.id)
       .in("asset_type", WEB_PAGE_ASSET_TYPES)
       .eq("status", "complete")
@@ -66,6 +67,8 @@ export default async function WebsitesPage() {
         content: g.content as string,
         preview: stripHtmlTags(g.content as string).slice(0, 140),
         createdAt: g.created_at,
+        isLive: Boolean(g.published_at),
+        liveUrl: g.publish_slug ? getPublicSiteUrl(g.publish_slug) : null,
       };
     });
 
@@ -141,9 +144,32 @@ export default async function WebsitesPage() {
                     <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                       <span aria-hidden>{agent.emoji}</span> {generator.label}
                     </span>
+                    <span
+                      className={`flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                        w.isLive ? "bg-emerald-500/15 text-emerald-400" : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      <Globe className="h-2.5 w-2.5" />
+                      {w.isLive ? "Live" : "Draft"}
+                    </span>
                   </div>
                   <p className="mt-1 truncate text-xs text-muted-foreground">{w.preview || "(empty)"}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{formatRelativeTime(w.createdAt)}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {formatRelativeTime(w.createdAt)}
+                    {w.isLive && w.liveUrl && (
+                      <>
+                        {" · "}
+                        <a
+                          href={w.liveUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          {w.liveUrl.replace(/^https?:\/\//, "")}
+                        </a>
+                      </>
+                    )}
+                  </p>
                 </div>
                 <Button variant="ghost" size="sm" asChild>
                   <Link href={href}>

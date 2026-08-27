@@ -1,7 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth", "/", "/api/stripe/webhook"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/auth",
+  "/",
+  "/api/stripe/webhook",
+  // Published Landing/Thank You Pages (src/app/site/[slug]/route.ts) and their opt-in form
+  // submissions (src/app/api/forms/submit/[generationId]/route.ts) — real, unauthenticated
+  // visitors, not app members, so these must never redirect to /login.
+  "/site",
+  "/api/forms",
+];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
