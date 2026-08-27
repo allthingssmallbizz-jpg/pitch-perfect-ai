@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AGENTS } from "@/lib/agents/config";
 import { ASSET_GENERATORS, WEB_PAGE_ASSET_TYPES, type GeneratorAssetType } from "@/lib/ai/generators";
 import { getPublicSiteUrl } from "@/lib/publishing";
+import { getPageStatsForGenerations } from "@/lib/analytics";
 import DeleteGenerationButton from "@/components/DeleteGenerationButton";
 import WebsiteRowActions from "@/components/WebsiteRowActions";
 import { Button } from "@/components/ui/button";
@@ -55,22 +56,26 @@ export default async function WebsitesPage() {
   const loadErrorDetail = [projectsError?.message, generationsError?.message].filter(Boolean).join(" / ");
 
   const projectNameById = new Map((projects ?? []).map((p) => [p.id, p.name]));
-  const websites = (generations ?? [])
-    .filter((g) => g.project_id && projectNameById.has(g.project_id) && g.content)
-    .map((g) => {
-      const assetType = g.asset_type as GeneratorAssetType;
-      return {
-        id: g.id,
-        projectId: g.project_id as string,
-        projectName: projectNameById.get(g.project_id as string) ?? "Untitled project",
-        assetType,
-        content: g.content as string,
-        preview: stripHtmlTags(g.content as string).slice(0, 140),
-        createdAt: g.created_at,
-        isLive: Boolean(g.published_at),
-        liveUrl: g.publish_slug ? getPublicSiteUrl(g.publish_slug) : null,
-      };
-    });
+  const liveGenerations = (generations ?? []).filter((g) => g.project_id && projectNameById.has(g.project_id) && g.content);
+  const statsById = await getPageStatsForGenerations(
+    supabase,
+    liveGenerations.map((g) => g.id)
+  );
+  const websites = liveGenerations.map((g) => {
+    const assetType = g.asset_type as GeneratorAssetType;
+    return {
+      id: g.id,
+      projectId: g.project_id as string,
+      projectName: projectNameById.get(g.project_id as string) ?? "Untitled project",
+      assetType,
+      content: g.content as string,
+      preview: stripHtmlTags(g.content as string).slice(0, 140),
+      createdAt: g.created_at,
+      isLive: Boolean(g.published_at),
+      liveUrl: g.publish_slug ? getPublicSiteUrl(g.publish_slug) : null,
+      stats: statsById.get(g.id) ?? { views: 0, leads: 0, conversionPct: null },
+    };
+  });
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
@@ -164,6 +169,15 @@ export default async function WebsitesPage() {
                         >
                           {w.liveUrl.replace(/^https?:\/\//, "")}
                         </a>
+                      </>
+                    )}
+                    {(w.stats.views > 0 || w.stats.leads > 0) && (
+                      <>
+                        {" · "}
+                        {w.stats.views} view{w.stats.views === 1 ? "" : "s"}
+                        {" · "}
+                        {w.stats.leads} lead{w.stats.leads === 1 ? "" : "s"}
+                        {w.stats.conversionPct !== null && <> · {w.stats.conversionPct}% conversion</>}
                       </>
                     )}
                   </p>

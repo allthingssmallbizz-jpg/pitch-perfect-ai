@@ -23,7 +23,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
 
   const { data } = await admin
     .from("generations")
-    .select("content")
+    .select("id, user_id, content")
     .eq("publish_slug", slug)
     .not("published_at", "is", null)
     .maybeSingle();
@@ -31,6 +31,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   if (!data?.content) {
     return new NextResponse(NOT_FOUND_HTML, { status: 404, headers: { "Content-Type": "text/html; charset=utf-8" } });
   }
+
+  // Basic analytics (see src/lib/analytics.ts) — one row per load, no visitor dedup. Awaited so a
+  // view is never silently dropped, same "record it before anything else can fail" approach as
+  // form_leads in the submit route.
+  await admin.from("page_views").insert({ user_id: data.user_id, generation_id: data.id });
 
   return new NextResponse(data.content, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }

@@ -283,6 +283,16 @@ export type FormLead = {
   created_at: string;
 };
 
+// One row per page load on a published page (see src/app/site/[slug]/route.ts) — paired with
+// FormLead above to compute views / leads / conversion % per page. No dedup by visitor; a raw
+// pageview count, same "basic analytics" scope as the rest of this feature.
+export type PageView = {
+  id: string;
+  user_id: string;
+  generation_id: string;
+  created_at: string;
+};
+
 // Minimal Database type shape for @supabase/ssr / @supabase/supabase-js generics.
 // Matches the GenericSchema/GenericTable shape those packages expect (Row/Insert/Update/
 // Relationships, plus Views/Functions on the schema) — see
@@ -308,6 +318,7 @@ export type Database = {
       presenter_bios: Table<PresenterBio>;
       ghl_connections: Table<GhlConnection>;
       form_leads: Table<FormLead>;
+      page_views: Table<PageView>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

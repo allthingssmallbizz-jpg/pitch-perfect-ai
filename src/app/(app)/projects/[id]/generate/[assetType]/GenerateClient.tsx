@@ -23,6 +23,8 @@ import {
   Rocket,
   PartyPopper,
   Pencil,
+  BarChart3,
+  RefreshCw,
 } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import VersionHistory from "@/components/VersionHistory";
@@ -39,6 +41,7 @@ import {
 } from "@/lib/ai/generators/htmlPage";
 import { downloadHtmlFile, openInBrowserTab } from "@/lib/browserFile";
 import { getPublicSiteUrl } from "@/lib/publishing";
+import type { PageStats } from "@/lib/analytics";
 import PageEditPanel from "./PageEditPanel";
 
 export type PastGeneration = { id: string; createdAt: string; preview: string };
@@ -188,6 +191,55 @@ function PublishPanel({
   );
 }
 
+// Basic performance numbers for a published page — views come from every /site/[slug] load,
+// leads from form submissions (see src/lib/analytics.ts). Shown even pre-publish (as zeros/dashes)
+// so the panel doesn't just appear out of nowhere the first time someone hits Publish.
+function PageStatsPanel({
+  stats,
+  refreshing,
+  onRefresh,
+}: {
+  stats: PageStats;
+  refreshing: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className="card-elevated rounded-xl p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-sm font-medium">
+          <BarChart3 className="h-4 w-4" />
+          Page performance
+        </p>
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
+          Refresh
+        </button>
+      </div>
+      <div className="grid grid-cols-3 gap-3 text-center">
+        <div>
+          <div className="font-display text-xl font-semibold">{stats.views}</div>
+          <div className="text-xs text-muted-foreground">Views</div>
+        </div>
+        <div>
+          <div className="font-display text-xl font-semibold">{stats.leads}</div>
+          <div className="text-xs text-muted-foreground">Leads</div>
+        </div>
+        <div>
+          <div className="font-display text-xl font-semibold">
+            {stats.conversionPct === null ? "—" : `${stats.conversionPct}%`}
+          </div>
+          <div className="text-xs text-muted-foreground">Conversion</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function formatWhen(iso: string) {
   const d = new Date(iso);
   const diffMs = Date.now() - d.getTime();
@@ -210,6 +262,7 @@ export default function GenerateClient({
   projectFunnelType,
   initialPublishSlug,
   initialPublishedAt,
+  initialStats,
   initialPastGenerations,
 }: {
   projectId: string;
@@ -223,6 +276,7 @@ export default function GenerateClient({
   projectFunnelType: string;
   initialPublishSlug: string | null;
   initialPublishedAt: string | null;
+  initialStats: PageStats | null;
   initialPastGenerations: PastGeneration[];
 }) {
   const router = useRouter();
@@ -261,6 +315,21 @@ export default function GenerateClient({
   const [publishing, setPublishing] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const liveUrl = publishSlug ? getPublicSiteUrl(publishSlug) : null;
+
+  const [stats, setStats] = useState<PageStats | null>(initialStats);
+  const [statsRefreshing, setStatsRefreshing] = useState(false);
+  async function refreshStats() {
+    if (!generationId) return;
+    setStatsRefreshing(true);
+    try {
+      const res = await fetch(`/api/generations/${generationId}/stats`);
+      if (res.ok) setStats(await res.json());
+    } catch {
+      // best-effort — leave the previous numbers showing
+    } finally {
+      setStatsRefreshing(false);
+    }
+  }
 
   const autosave = useDebouncedCallback((newContent: string, id: string) => {
     fetch(`/api/generations/${id}/autosave`, {
@@ -699,6 +768,9 @@ export default function GenerateClient({
               onCopy={copyLiveLink}
               copied={linkCopied}
             />
+          )}
+          {generationId && stats && (
+            <PageStatsPanel stats={stats} refreshing={statsRefreshing} onRefresh={refreshStats} />
           )}
           {generationId && (
             <PageEditPanel generationId={generationId} content={content} onApplied={handleAiEditApplied} />

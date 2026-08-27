@@ -6,6 +6,7 @@ import { ASSET_GENERATORS, WEB_PAGE_ASSET_TYPES, type GeneratorAssetType } from 
 import { AGENTS } from "@/lib/agents/config";
 import { projectNeedsDiscovery } from "@/lib/projects";
 import { isPresenterBioEmpty } from "@/lib/ai/presenterBio";
+import { getPageStats, type PageStats } from "@/lib/analytics";
 import AgentBadge from "@/components/AgentBadge";
 import GenerateClient from "./GenerateClient";
 import BioReminderDialog from "./BioReminderDialog";
@@ -126,6 +127,14 @@ export default async function GenerateAssetPage({
     if (match) matchingPage = { assetType: otherAssetType, generationId: match.id };
   }
 
+  // Views/leads/conversion % for the currently-open generation — only meaningful once it's been
+  // published at least once, but computing it is cheap and the panel just shows zeros/dashes
+  // otherwise (see PageStatsPanel in GenerateClient.tsx).
+  let initialStats: PageStats | null = null;
+  if (isWebPageAsset && initialGenerationId) {
+    initialStats = await getPageStats(supabase, initialGenerationId);
+  }
+
   const agent = AGENTS[generator.assetType];
 
   return (
@@ -166,6 +175,7 @@ export default async function GenerateAssetPage({
         projectFunnelType={project.funnel_type}
         initialPublishSlug={initialPublishSlug}
         initialPublishedAt={initialPublishedAt}
+        initialStats={initialStats}
         initialPastGenerations={pastGenerations}
       />
     </div>
