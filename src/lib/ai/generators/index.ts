@@ -9,6 +9,7 @@ import { buildPptOutlinePrompt, PPT_OUTLINE_CREDIT_COST, PPT_OUTLINE_MAX_OUTPUT_
 import { buildAdCopyPrompt, AD_COPY_CREDIT_COST, AD_COPY_MAX_OUTPUT_TOKENS } from "./adCopy";
 import { buildOfferLadderPrompt, OFFER_LADDER_CREDIT_COST, OFFER_LADDER_MAX_OUTPUT_TOKENS } from "./offerLadder";
 import { buildThankYouPagePrompt, THANK_YOU_PAGE_CREDIT_COST, THANK_YOU_PAGE_MAX_OUTPUT_TOKENS } from "./thankYouPage";
+import { buildChallengeOutlinePrompt, CHALLENGE_CREDIT_COST, CHALLENGE_MAX_OUTPUT_TOKENS } from "./challengeOutline";
 export { WEB_PAGE_ASSET_TYPES } from "./htmlPage";
 
 // Excludes "presentation_analysis" and "headline_lab" — neither is driven by a project's
@@ -116,6 +117,14 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
     creditCost: THANK_YOU_PAGE_CREDIT_COST,
     maxOutputTokens: THANK_YOU_PAGE_MAX_OUTPUT_TOKENS,
     buildPrompt: buildThankYouPagePrompt,
+  },
+  challenge_outline: {
+    assetType: "challenge_outline",
+    label: "Challenge Outline",
+    description: "Day-by-day free challenge structure — daily wins, engagement, and a pitch day.",
+    creditCost: CHALLENGE_CREDIT_COST,
+    maxOutputTokens: CHALLENGE_MAX_OUTPUT_TOKENS,
+    buildPrompt: buildChallengeOutlinePrompt,
   },
 };
 

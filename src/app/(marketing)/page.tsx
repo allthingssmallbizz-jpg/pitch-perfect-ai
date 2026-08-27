@@ -5,6 +5,7 @@ import AgentBadge from "@/components/AgentBadge";
 const AGENT_ORDER: AgentAssetType[] = [
   "webinar_outline",
   "vsl_script",
+  "challenge_outline",
   "sales_page",
   "landing_page",
   "email_sequence",

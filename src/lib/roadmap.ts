@@ -23,9 +23,8 @@ export interface RoadmapStep {
   // The asset type the step's main "Start"/"View" button targets. Omitted only for the "offer"
   // step, which isn't a generator at all — it's the Discovery brief itself.
   primaryAssetType?: GeneratorAssetType;
-  // A second, lower-emphasis path for steps with more than one acceptable asset type.
-  altAssetType?: GeneratorAssetType;
-  altLabel?: string;
+  // Lower-emphasis alternate paths for steps with more than one acceptable asset type.
+  alts?: { assetType: GeneratorAssetType; label: string }[];
 }
 
 export const ROADMAP_STEPS: RoadmapStep[] = [
@@ -37,12 +36,14 @@ export const ROADMAP_STEPS: RoadmapStep[] = [
   },
   {
     id: "core_presentation",
-    title: "Build your Webinar or VSL",
+    title: "Build your Webinar, VSL, or Challenge",
     description: "The core presentation that teaches, builds belief, and makes the pitch.",
-    assetTypes: ["webinar_outline", "vsl_script"],
+    assetTypes: ["webinar_outline", "vsl_script", "challenge_outline"],
     primaryAssetType: "webinar_outline",
-    altAssetType: "vsl_script",
-    altLabel: "or start with a VSL Script instead",
+    alts: [
+      { assetType: "vsl_script", label: "or start with a VSL Script instead" },
+      { assetType: "challenge_outline", label: "or run a multi-day Challenge instead" },
+    ],
   },
   {
     id: "landing_page",

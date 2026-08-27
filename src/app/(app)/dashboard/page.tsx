@@ -15,6 +15,7 @@ import {
   Megaphone,
   Layers,
   PartyPopper,
+  Flag,
   type LucideIcon,
 } from "lucide-react";
 import { Undo2 } from "lucide-react";
@@ -50,6 +51,7 @@ function formatRelativeTime(iso: string): string {
 const DELIVERABLE_TYPES: GeneratorAssetType[] = [
   "webinar_outline",
   "vsl_script",
+  "challenge_outline",
   "sales_page",
   "ppt_outline",
   "landing_page",
@@ -62,6 +64,7 @@ const DELIVERABLE_TYPES: GeneratorAssetType[] = [
 const DELIVERABLE_ICONS: Record<GeneratorAssetType, LucideIcon> = {
   webinar_outline: Presentation,
   vsl_script: Video,
+  challenge_outline: Flag,
   sales_page: FileText,
   ppt_outline: MonitorPlay,
   landing_page: Layout,

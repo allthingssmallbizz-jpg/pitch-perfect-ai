@@ -118,17 +118,22 @@ export default function RoadmapSection({
                   {step.description}
                   {generator && <span className="ml-1 whitespace-nowrap text-xs">· {generator.creditCost} credits</span>}
                 </p>
-                {step.altAssetType && step.altLabel && !complete && (
-                  <Link
-                    href={
-                      discoveryComplete
-                        ? `/projects/${projectId}/generate/${step.altAssetType}`
-                        : `/projects/${projectId}?intent=${step.altAssetType}`
-                    }
-                    className="mt-1 inline-block text-xs text-primary hover:underline"
-                  >
-                    {step.altLabel}
-                  </Link>
+                {step.alts && !complete && (
+                  <div className="mt-1 flex flex-wrap gap-x-3">
+                    {step.alts.map((alt) => (
+                      <Link
+                        key={alt.assetType}
+                        href={
+                          discoveryComplete
+                            ? `/projects/${projectId}/generate/${alt.assetType}`
+                            : `/projects/${projectId}?intent=${alt.assetType}`
+                        }
+                        className="inline-block text-xs text-primary hover:underline"
+                      >
+                        {alt.label}
+                      </Link>
+                    ))}
+                  </div>
                 )}
               </div>
             </li>

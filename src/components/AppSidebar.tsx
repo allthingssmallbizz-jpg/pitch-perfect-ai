@@ -40,6 +40,7 @@ import {
 const CREATE_ASSET_TYPES: Exclude<AgentAssetType, "presentation_analysis">[] = [
   "webinar_outline",
   "vsl_script",
+  "challenge_outline",
   "sales_page",
   "ppt_outline",
   "landing_page",
@@ -55,6 +56,7 @@ const CREATE_ASSET_TYPES: Exclude<AgentAssetType, "presentation_analysis">[] = [
 const CREATE_LABELS: Record<(typeof CREATE_ASSET_TYPES)[number], string> = {
   webinar_outline: "Webinar",
   vsl_script: "VSL",
+  challenge_outline: "Challenge",
   sales_page: "Sales Letter",
   ppt_outline: "Presentation",
   landing_page: "Landing Page",

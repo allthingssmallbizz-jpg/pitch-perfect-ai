@@ -24,7 +24,8 @@ export type AssetType =
   | "social_compare"
   | "offer_builder"
   | "brand_color_surprise"
-  | "thank_you_page";
+  | "thank_you_page"
+  | "challenge_outline";
 
 export type PresentationType =
   | "webinar"
