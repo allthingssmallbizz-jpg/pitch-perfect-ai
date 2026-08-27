@@ -9,17 +9,26 @@ export const PAGE_EDIT_CREDIT_COST = 2;
 // as a fresh Landing Page generation.
 export const PAGE_EDIT_MAX_OUTPUT_TOKENS = 8000;
 
-export function buildPageEditPrompt(currentHtml: string, instruction: string, imageUrl?: string): string {
+export function buildPageEditPrompt(
+  currentHtml: string,
+  instruction: string,
+  options: { imageUrl?: string; videoEmbedHtml?: string } = {}
+): string {
   return `You are making a SPECIFIC, TARGETED edit to an existing, already-finished HTML page — you are not writing a new page. Apply ONLY the change requested below. Every other word of copy, every other section, and all existing styling must come back exactly as it already is.
 
 CURRENT PAGE (the complete HTML document, exactly as it exists right now):
 ${currentHtml}
 
 REQUESTED CHANGE:
-${instruction}
+${instruction || "(No specific text change requested — see the image/video instructions below, if any.)"}
 ${
-  imageUrl
-    ? `\nAN IMAGE WAS UPLOADED — it is already hosted at this exact URL. Place it where the request above describes (or, if no placement is described, somewhere sensible like the hero or bio section) using <img src="${imageUrl}" alt="..." style="..."> with reasonable sizing/rounding to match the page's existing visual style. Use this URL exactly, verbatim — do not invent a different URL, do not use a placeholder, and do not try to embed the image as base64.`
+  options.imageUrl
+    ? `\nAN IMAGE WAS UPLOADED — it is already hosted at this exact URL. Place it where the request above describes (or, if no placement is described, somewhere sensible like the hero or bio section) using <img src="${options.imageUrl}" alt="..." style="..."> with reasonable sizing/rounding to match the page's existing visual style. Use this URL exactly, verbatim — do not invent a different URL, do not use a placeholder, and do not try to embed the image as base64.`
+    : ""
+}
+${
+  options.videoEmbedHtml
+    ? `\nA VIDEO EMBED WAS PREPARED — insert this EXACT HTML block, completely unmodified, character-for-character, at the location the request above describes (or, if no placement is described, in a sensible spot such as right after the hero section or before the FAQ/footer). Do NOT alter, regenerate, rewrite, minify, or paraphrase this block in any way — your only job is deciding where it goes, then copying it in verbatim:\n\n${options.videoEmbedHtml}\n`
     : ""
 }
 

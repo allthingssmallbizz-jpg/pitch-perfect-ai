@@ -6,14 +6,23 @@ import { checkGuardrails, decrementCredits } from "@/lib/credits";
 import { generateCompleteAsset } from "@/lib/ai/anthropic";
 import { WEB_PAGE_ASSET_TYPES, stripHtmlCodeFence } from "@/lib/ai/generators/htmlPage";
 import { buildPageEditPrompt, PAGE_EDIT_CREDIT_COST, PAGE_EDIT_MAX_OUTPUT_TOKENS } from "@/lib/ai/generators/pageEdit";
+import { parseVideoEmbedUrl } from "@/lib/videoEmbed";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
-const requestSchema = z.object({
-  instruction: z.string().trim().min(1).max(2000),
-  imageUrl: z.string().url().optional(),
-});
+const requestSchema = z
+  .object({
+    instruction: z.string().trim().max(2000).default(""),
+    imageUrl: z.string().url().optional(),
+    // A plain source URL only — never raw HTML. The actual embed markup is built server-side by
+    // parseVideoEmbedUrl from a narrowly-validated video ID, specifically so a client can never
+    // get arbitrary HTML inserted into a page via this endpoint (see videoEmbed.ts).
+    videoUrl: z.string().trim().max(2000).optional(),
+  })
+  .refine((data) => data.instruction.trim().length > 0 || data.imageUrl || data.videoUrl, {
+    message: "Describe a change, attach a photo, or add a video link.",
+  });
 
 // The "ask for an update" panel's endpoint — a targeted edit to an already-generated Landing/
 // Thank You Page ("change the headline to X," "add a photo here"), not a full regeneration.
@@ -34,7 +43,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const parsed = requestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Please describe the change you want." }, { status: 400 });
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request." }, { status: 400 });
+  }
+
+  let videoEmbedHtml: string | undefined;
+  if (parsed.data.videoUrl) {
+    const parsedVideo = parseVideoEmbedUrl(parsed.data.videoUrl);
+    if (!parsedVideo) {
+      return NextResponse.json(
+        { error: "Couldn't recognize that as a YouTube, Vimeo, or direct video (.mp4/.webm/.mov) link." },
+        { status: 400 }
+      );
+    }
+    videoEmbedHtml = parsedVideo.html;
   }
 
   const guardrail = await checkGuardrails(userId, PAGE_EDIT_CREDIT_COST);
@@ -43,7 +64,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   try {
-    const prompt = buildPageEditPrompt(generation.content, parsed.data.instruction, parsed.data.imageUrl);
+    const prompt = buildPageEditPrompt(generation.content, parsed.data.instruction, {
+      imageUrl: parsed.data.imageUrl,
+      videoEmbedHtml,
+    });
     const result = await generateCompleteAsset(
       "You are a precise web page editor. You make exactly the change requested and leave everything else untouched.",
       prompt,
@@ -67,7 +91,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .eq("id", id);
     if (updateError) throw new Error("Could not save the update.");
 
-    await recordGenerationVersion(id, userId, updated, "edit", `Update: ${parsed.data.instruction.slice(0, 80)}`);
+    const versionLabel = parsed.data.instruction.trim()
+      ? `Update: ${parsed.data.instruction.slice(0, 80)}`
+      : videoEmbedHtml
+        ? "Update: added a video"
+        : "Update: added a photo";
+    await recordGenerationVersion(id, userId, updated, "edit", versionLabel);
     await decrementCredits(userId, PAGE_EDIT_CREDIT_COST);
 
     return NextResponse.json({ content: updated, creditsCharged: PAGE_EDIT_CREDIT_COST });

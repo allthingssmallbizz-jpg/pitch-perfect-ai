@@ -2,9 +2,10 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Wand2, ImagePlus, X, Loader2 } from "lucide-react";
+import { Wand2, ImagePlus, X, Loader2, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import { PAGE_EDIT_CREDIT_COST } from "@/lib/ai/generators/pageEdit";
 
@@ -27,6 +28,7 @@ export default function PageEditPanel({
   const [instruction, setInstruction] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState("");
   const [applying, setApplying] = useState(false);
   const [statusLabel, setStatusLabel] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,8 +49,8 @@ export default function PageEditPanel({
   }
 
   async function handleApply() {
-    if (!instruction.trim()) {
-      toast.error("Describe the change you want first.");
+    if (!instruction.trim() && !imageFile && !videoUrl.trim()) {
+      toast.error("Describe a change, attach a photo, or paste a video link first.");
       return;
     }
     setApplying(true);
@@ -77,13 +79,14 @@ export default function PageEditPanel({
       const res = await fetch(`/api/generations/${generationId}/edit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ instruction, imageUrl }),
+        body: JSON.stringify({ instruction, imageUrl, videoUrl: videoUrl.trim() || undefined }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || "Could not apply that update.");
 
       onApplied(data.content);
       setInstruction("");
+      setVideoUrl("");
       pickImage(null);
       toast.success("Updated!");
     } catch (e) {
@@ -111,6 +114,25 @@ export default function PageEditPanel({
         rows={3}
         disabled={applying}
       />
+      <div className="mt-2">
+        <label className="mb-1 block text-xs text-muted-foreground">Video link (optional)</label>
+        <div className="flex items-center gap-2">
+          <Video className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <Input
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+            placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
+            disabled={applying}
+            className="flex-1"
+          />
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Works with YouTube, Vimeo, or a direct video file link (.mp4/.webm/.mov). Say where it
+          should go in the text box above, or leave that blank and it&apos;ll be placed somewhere
+          sensible. Note: it won&apos;t play inside this in-app Preview tab (a safety sandbox) —
+          use <strong>Preview in browser</strong> or check the published live page to see it play.
+        </p>
+      </div>
       {imagePreviewUrl && (
         <div className="mt-2 flex items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element -- local object URL preview, not a remote image */}
