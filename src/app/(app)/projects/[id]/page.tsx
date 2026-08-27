@@ -13,6 +13,7 @@ import AgentBadge from "@/components/AgentBadge";
 import DiscoveryForm from "./DiscoveryForm";
 import DiscoveryWalkthroughVideo from "@/components/DiscoveryWalkthroughVideo";
 import ToolLink from "./ToolLink";
+import RoadmapSection from "./RoadmapSection";
 
 export default async function ProjectPage({
   params,
@@ -70,8 +71,18 @@ export default async function ProjectPage({
     (f) => f.label
   );
 
-  const [{ data: generations }, { data: settings }] = await Promise.all([
+  const [{ data: generations }, { data: completeGenerations }, { data: settings }] = await Promise.all([
     supabase.from("generations").select("*").eq("project_id", id).order("created_at", { ascending: false }).limit(20),
+    // Unlimited (unlike the History list above, capped at 20) and scoped to complete rows only —
+    // the roadmap needs the true latest completed generation per asset type, which the capped
+    // History list can't guarantee once a project has more than 20 generations across every
+    // asset type combined.
+    supabase
+      .from("generations")
+      .select("id, asset_type, created_at")
+      .eq("project_id", id)
+      .eq("status", "complete")
+      .order("created_at", { ascending: false }),
     // admin_settings' RLS is admin-select-only (see 0001_init.sql) — this value isn't
     // sensitive, so the admin client reads just this one field rather than opening RLS up to
     // every member for the whole table (kill switch, spend cap, etc.).
@@ -85,8 +96,14 @@ export default async function ProjectPage({
       </Link>
       <h1 className="mt-2 mb-6 font-display text-2xl font-semibold text-gradient-silver">{project.name}</h1>
 
+      <RoadmapSection
+        projectId={project.id}
+        completeGenerations={completeGenerations ?? []}
+        discoveryComplete={discoveryComplete}
+      />
+
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
-        <div className="lg:col-span-2">
+        <div id="discovery-form" className="scroll-mt-20 lg:col-span-2">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Discovery
           </h2>
