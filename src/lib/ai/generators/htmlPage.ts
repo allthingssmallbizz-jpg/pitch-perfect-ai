@@ -95,10 +95,12 @@ export function injectFormAction(html: string, actionUrl: string): string {
 export const INLINE_EDITOR_MESSAGE_SOURCE = "pp-inline-editor";
 
 // Wraps a generated page with a small, TRUSTED script — authored here, never by the AI — that
-// (1) makes visible text content directly editable in place, and (2) shows a small × button over
-// whichever block-level element (section/div/img/video/iframe/figure/article/aside/form) the
-// mouse is over, deleting that exact element on click. Both report the updated document back to
-// the parent window via postMessage. Used only for the iframe's srcDoc in GenerateClient's
+// (1) makes visible text content directly editable in place, (2) shows a small × button over
+// whichever block-level element (section/div/img/figure/article/aside/form) the mouse hovers or a
+// tap lands on, deleting that exact element on click, and (3) gives every video embed its own
+// always-visible "Remove" button, since hover/tap can never reveal one over an embedded video —
+// see the block near the bottom of this script for why. All three report the updated document
+// back to the parent window via postMessage. Used only for the iframe's srcDoc in GenerateClient's
 // "Edit inline" view mode; never written back into generations.content itself.
 //
 // The delete button exists specifically so removing something unwanted (a stray/duplicate
@@ -127,7 +129,9 @@ var timer=null;
 function report(){clearTimeout(timer);timer=setTimeout(function(){parent.postMessage({source:SOURCE,html:document.documentElement.outerHTML},"*");},300);}
 document.addEventListener("input",report,true);
 
-var DEL_SELECTOR="section,div,img,video,iframe,figure,article,aside,form";
+// "video" and "iframe" are deliberately excluded here — see the always-visible button block
+// below for why hover/tap can never reveal a delete control over an embedded video.
+var DEL_SELECTOR="section,div,img,figure,article,aside,form";
 var delBtn=null,delTarget=null,hideTimer=null;
 function cancelHide(){if(hideTimer){clearTimeout(hideTimer);hideTimer=null;}}
 function clearDelBtn(){if(delBtn){delBtn.remove();delBtn=null;}delTarget=null;}
@@ -190,6 +194,35 @@ document.addEventListener("click",function(e){
 });
 document.addEventListener("scroll",positionDelBtn,true);
 window.addEventListener("resize",positionDelBtn);
+
+// A video embed (YouTube/Vimeo iframe, or a <video> tag) is a dead zone for the hover/tap
+// mechanism above: the visible surface of an embedded cross-origin iframe belongs to a
+// completely separate browsing context, so a click or tap that lands on the video itself is
+// NEVER observable from out here — no mouseover, no click, nothing crosses that boundary. That's
+// exactly why clicking the X for a video didn't do anything: the X never even had a chance to
+// appear, because the tap that was supposed to reveal it landed on the video instead. The fix is
+// to never rely on revealing it at all — every video gets its own small "Remove" button, shown
+// permanently in its corner from the moment this page loads, positioned as part of this
+// document's own layout (not a floating overlay), so it can never be hidden behind or intercepted
+// by the embedded content beneath it.
+document.querySelectorAll("iframe,video").forEach(function(el){
+  var host=el.parentElement||el;
+  if(window.getComputedStyle(host).position==="static")host.style.position="relative";
+  var vbtn=document.createElement("button");
+  vbtn.textContent="\\u00d7 Remove";
+  vbtn.setAttribute("contenteditable","false");
+  vbtn.title="Delete this video";
+  vbtn.style.cssText="position:absolute;top:8px;right:8px;z-index:999999;padding:5px 12px;border-radius:16px;background:#ef4444;color:#fff;border:2px solid #fff;font-size:12px;font-weight:600;line-height:1;cursor:pointer;touch-action:manipulation;box-shadow:0 1px 4px rgba(0,0,0,.35);";
+  vbtn.addEventListener("mousedown",function(e){e.preventDefault();e.stopPropagation();});
+  vbtn.addEventListener("click",function(e){
+    e.preventDefault();e.stopPropagation();
+    if(window.confirm("Delete this video from the page?")){
+      host.remove();
+      report();
+    }
+  });
+  host.appendChild(vbtn);
+});
 })();</script>`;
   return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, `${editorScript}</body>`) : `${html}${editorScript}`;
 }
