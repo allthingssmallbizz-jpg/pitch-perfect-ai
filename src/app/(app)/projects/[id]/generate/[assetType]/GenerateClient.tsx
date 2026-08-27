@@ -10,6 +10,7 @@ import RichTextEditor from "@/components/RichTextEditor";
 import VersionHistory from "@/components/VersionHistory";
 import TtsPlayer from "@/components/TtsPlayer";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
+import { looksLikeHtmlDocument } from "@/lib/ai/generators/landingPage";
 
 export type PastGeneration = { id: string; createdAt: string; preview: string };
 
@@ -305,18 +306,26 @@ export default function GenerateClient({
       {content && isLandingPage && (
         <div className="space-y-4">
           {viewMode === "preview" ? (
-            <div className="overflow-hidden rounded-xl border border-border/60 bg-white">
-              {/* sandbox with no allow-scripts/allow-same-origin — this is AI-generated markup
-                  rendered inside an authenticated app, so it must not be able to run script or
-                  reach this origin's session, even though the generator is instructed not to
-                  include any <script> tags in the first place. */}
-              <iframe
-                title="Landing page preview"
-                srcDoc={content}
-                sandbox=""
-                className="h-[900px] w-full"
-              />
-            </div>
+            looksLikeHtmlDocument(content) ? (
+              <div className="overflow-hidden rounded-xl border border-border/60 bg-white">
+                {/* sandbox with no allow-scripts/allow-same-origin — this is AI-generated markup
+                    rendered inside an authenticated app, so it must not be able to run script or
+                    reach this origin's session, even though the generator is instructed not to
+                    include any <script> tags in the first place. */}
+                <iframe
+                  title="Landing page preview"
+                  srcDoc={content}
+                  sandbox=""
+                  className="h-[900px] w-full"
+                />
+              </div>
+            ) : (
+              <div className="card-elevated rounded-2xl border-dashed p-10 text-center text-muted-foreground">
+                This was generated before the visual redesign, so it&apos;s plain text, not a real
+                page — click <strong>Regenerate</strong> above to get an actual designed page, or
+                switch to <strong>Edit HTML</strong> to see the old content.
+              </div>
+            )
           ) : (
             <textarea
               value={content}
