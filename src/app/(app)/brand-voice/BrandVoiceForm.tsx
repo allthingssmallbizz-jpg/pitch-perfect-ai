@@ -120,10 +120,12 @@ export default function BrandVoiceForm({ brandVoice }: { brandVoice: BrandVoice 
       </div>
 
       <div className="border-t border-border pt-6">
-        <h2 className="mb-1 text-sm font-semibold">Brand colors (optional)</h2>
+        <h2 className="mb-1 text-sm font-semibold">Brand color palette (optional)</h2>
         <p className="mb-3 text-xs text-muted-foreground">
-          Set your actual brand colors and the Landing Page generator uses them as its accent
-          color scheme instead of picking its own each time.
+          Set up to 4 brand colors and the Landing Page generator uses this exact palette instead
+          of picking its own — it decides which color works best for buttons, backgrounds,
+          borders/outlines, and small accents, so the page gets real visual range instead of just
+          two colors repeated everywhere. Leave any of these blank if you don&apos;t have one.
         </p>
         <div className="grid gap-4 md:grid-cols-2">
           <ColorField
@@ -137,6 +139,18 @@ export default function BrandVoiceForm({ brandVoice }: { brandVoice: BrandVoice 
             label="Secondary color"
             placeholder="#111827"
             defaultValue={brandVoice?.secondary_color ?? ""}
+          />
+          <ColorField
+            name="accent_color"
+            label="Accent color"
+            placeholder="#F59E0B"
+            defaultValue={brandVoice?.accent_color ?? ""}
+          />
+          <ColorField
+            name="outline_color"
+            label="Outline / border color"
+            placeholder="#E5E7EB"
+            defaultValue={brandVoice?.outline_color ?? ""}
           />
         </div>
       </div>

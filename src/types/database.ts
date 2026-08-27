@@ -212,10 +212,14 @@ export type BrandVoice = {
   preferred_words: string;
   sample_writing: string;
   extra_notes: string;
-  // Hex color strings (e.g. "#3366ff"), or "" if unset — used by visual generators (currently
-  // Landing Page) as the accent color scheme instead of picking one on their own.
+  // Hex color strings (e.g. "#3366ff"), or "" if unset — a 4-color palette used by visual
+  // generators (currently Landing Page) instead of picking colors on their own. The generator
+  // decides which color goes where (buttons, backgrounds, borders, small accents) — these aren't
+  // fixed roles, just the available palette.
   primary_color: string;
   secondary_color: string;
+  accent_color: string;
+  outline_color: string;
   created_at: string;
   updated_at: string;
 };
