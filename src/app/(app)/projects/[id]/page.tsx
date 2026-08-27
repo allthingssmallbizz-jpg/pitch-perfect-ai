@@ -10,10 +10,10 @@ import { AGENTS, getAgent } from "@/lib/agents/config";
 import { projectNeedsDiscovery, REQUIRED_DISCOVERY_FIELDS } from "@/lib/projects";
 import { Badge } from "@/components/ui/badge";
 import AgentBadge from "@/components/AgentBadge";
-import DiscoveryForm from "./DiscoveryForm";
 import DiscoveryWalkthroughVideo from "@/components/DiscoveryWalkthroughVideo";
 import ToolLink from "./ToolLink";
 import RoadmapSection from "./RoadmapSection";
+import DiscoveryEntry from "./DiscoveryEntry";
 
 export default async function ProjectPage({
   params,
@@ -124,7 +124,7 @@ export default async function ProjectPage({
               <span className="font-medium text-foreground">{intentAgent.name}</span>.
             </p>
           )}
-          <DiscoveryForm project={project} redirectTo={intentHref} />
+          <DiscoveryEntry project={project} redirectTo={intentHref} discoveryComplete={discoveryComplete} />
         </div>
 
         <div className="lg:col-span-3">
