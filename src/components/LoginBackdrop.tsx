@@ -9,15 +9,16 @@ import { AGENTS, type AgentAssetType } from "@/lib/agents/config";
 // page wraps its actual content in a `relative z-10` sibling) — purely decorative, so the photo
 // and badges are `aria-hidden`.
 //
-// public/creator-silhouette.png (the faint fill) is pre-processed: grayscale, a "levels" lift
-// (`.linear(0.68, 58)`) that raises the hoodie's near-black shadows to a faint mid-gray so the
-// WHOLE figure reads at low opacity — not just the bright bits — plus a radial alpha feather
-// baked in so the rectangular image bounds never show a hard edge. public/creator-outline.png is
-// a separate asset: a Sobel edge-detection pass over the same photo, recolored blue-to-gold via
-// an SVG gradient luminance mask, so only his actual contours carry color/light — this is what
-// gives an energetic "rim light" without a blurred glow blob washing out his face (an earlier
-// version used blurred color blobs positioned near the cap/shoulders, which read as fog and
-// obscured him — replaced entirely by this edge-outline approach).
+// public/creator-silhouette.png (the faint fill) is the ORIGINAL photo, full color, completely
+// unaltered pixel-wise — no grayscale, no levels/contrast changes — with only a radial alpha
+// feather baked in so the rectangular image bounds fade into the page instead of showing a hard
+// edge; a plain opacity in the JSX below is what makes it read as a background element, not any
+// change to the image itself. public/creator-outline.png is a separate asset: a Sobel
+// edge-detection pass over that same original photo, recolored blue-to-gold via an SVG gradient
+// luminance mask, so only his actual contours carry extra color/light — an energetic "rim
+// light" traced from his real silhouette rather than a blurred glow blob (an earlier version
+// used blurred color blobs near the cap/shoulders, which read as fog and obscured him; a version
+// before that grayscaled the base photo, which lost too much of the original — both replaced).
 
 type BadgeSpec = {
   assetType: AgentAssetType;
@@ -122,20 +123,20 @@ export default function LoginBackdrop() {
       ))}
 
       {/* The silhouette itself — centered directly behind the form, positioned so his face and
-          cap sit clearly above the card rather than being washed out or cropped. Two images
-          stacked: a faint grayscale fill (creator-silhouette.png, same "you can tell someone's
-          there" presence as before) underneath a real edge-detected outline
-          (creator-outline.png — a Sobel edge map recolored blue-to-gold via an SVG gradient
-          mask) on top. The outline is what actually reads as a defined, energetic rim rather
-          than a haze, because it only has ink at his actual contours — cap brim, glasses, beard,
-          the "AI OUTLAW" print, hands — not a blurred blob sitting over his whole face. Hidden
-          below `lg`, same breakpoint as the agent badges: at narrower widths the card runs close
-          to full width, so there's no room for the overflow that makes this composition work. */}
+          cap sit clearly above the card rather than being cropped. Two images stacked: the
+          original color photo (creator-silhouette.png, unaltered pixel-wise — see the file
+          comment above) underneath a real edge-detected outline (creator-outline.png — a Sobel
+          edge map recolored blue-to-gold via an SVG gradient mask) on top. The outline is what
+          reads as a defined, energetic rim, because it only has ink at his actual contours — cap
+          brim, glasses, beard, the "AI OUTLAW" print, hands — not a blurred blob sitting over his
+          whole face. Hidden below `lg`, same breakpoint as the agent badges: at narrower widths
+          the card runs close to full width, so there's no room for the overflow that makes this
+          composition work. */}
       <div className="absolute top-[-15%] left-1/2 hidden w-[48vw] max-w-[760px] -translate-x-1/2 lg:block">
         {/* eslint-disable-next-line @next/next/no-img-element -- decorative background art, not
             the page's LCP element; needs a raw <img> for free positioning that next/image's fill
             mode doesn't support cleanly */}
-        <img src="/creator-silhouette.png" alt="" className="block w-full opacity-30" />
+        <img src="/creator-silhouette.png" alt="" className="block w-full opacity-55" />
         {/* eslint-disable-next-line @next/next/no-img-element -- see above */}
         <img
           src="/creator-outline.png"
