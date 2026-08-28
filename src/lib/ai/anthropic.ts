@@ -93,12 +93,24 @@ export async function generateAsset(
 // generator can silently cut off mid-sentence with no indication anything was truncated —
 // no fixed token cap can guarantee covering every business's content density in one shot.
 // Costs/tokens across all calls are summed into a single result.
+//
+// `isIncomplete`, when given, ALSO triggers a continuation even when Claude stopped on its own
+// (stop_reason "end_turn") — added after a real PPT Outline generation came back with only 7-8
+// slides instead of the required 60-90: Claude had judged itself "done" well short of the target
+// (one slide per phase instead of per beat, despite the prompt explicitly warning against exactly
+// that), so stop_reason was never "max_tokens" and no continuation ever fired. Prompt wording
+// alone isn't reliable enough for a hard length requirement like this one, so callers that have a
+// cheap, concrete way to check "did this actually reach the required length" (e.g. counting
+// parsed slides) can catch that failure here instead of silently shipping a short result as if it
+// were complete.
 export async function generateCompleteAsset(
   systemPrompt: string,
   userPrompt: string,
   maxOutputTokens: number,
   images?: ImageInput[],
-  maxContinuations = 4
+  maxContinuations = 4,
+  isIncomplete?: (content: string) => boolean,
+  continuationHint?: string
 ): Promise<GenerateResult> {
   const first = await generateAsset(systemPrompt, userPrompt, maxOutputTokens, images);
 
@@ -119,8 +131,17 @@ export async function generateCompleteAsset(
       ]
     : userPrompt;
 
+  const needsMore = () => stopReason === "max_tokens" || (stopReason === "end_turn" && (isIncomplete?.(combinedContent) ?? false));
+
+  const continuationInstruction = [
+    "Continue exactly where you left off — don't repeat anything already written, don't restart or summarize, just keep going from the exact next word/slide/section.",
+    continuationHint,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   let continuations = 0;
-  while (stopReason === "max_tokens" && continuations < maxContinuations) {
+  while (needsMore() && continuations < maxContinuations) {
     continuations++;
     const message = await anthropic.messages.create({
       model: DEFAULT_MODEL,
@@ -128,11 +149,16 @@ export async function generateCompleteAsset(
       system: systemPrompt,
       messages: [
         { role: "user", content: messageContent },
-        { role: "assistant", content: combinedContent },
+        // The API rejects an assistant-prefill message that ends in whitespace. A response cut
+        // off by max_tokens mid-word never does, but an "end_turn" one that only continues
+        // because of `isIncomplete` almost always ends in a trailing newline (ordinary markdown),
+        // so this trim is only load-bearing on that path — without it, the very continuation
+        // meant to fix a short PPT Outline would itself 400 and turn a short-but-saved result
+        // into an outright failed generation.
+        { role: "assistant", content: combinedContent.trimEnd() },
         {
           role: "user",
-          content:
-            "Continue exactly where you left off — don't repeat anything already written, don't restart or summarize, just keep going from the exact next word/slide/section.",
+          content: continuationInstruction,
         },
       ],
     });

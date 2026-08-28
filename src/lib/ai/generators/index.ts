@@ -5,7 +5,13 @@ import { buildVslScriptPrompt, VSL_CREDIT_COST, VSL_MAX_OUTPUT_TOKENS } from "./
 import { buildSalesPagePrompt, SALES_PAGE_CREDIT_COST, SALES_PAGE_MAX_OUTPUT_TOKENS } from "./salesPage";
 import { buildLandingPagePrompt, LANDING_PAGE_CREDIT_COST, LANDING_PAGE_MAX_OUTPUT_TOKENS } from "./landingPage";
 import { buildEmailSequencePrompt, EMAIL_SEQUENCE_CREDIT_COST, EMAIL_SEQUENCE_MAX_OUTPUT_TOKENS } from "./emailSequence";
-import { buildPptOutlinePrompt, PPT_OUTLINE_CREDIT_COST, PPT_OUTLINE_MAX_OUTPUT_TOKENS } from "./pptOutline";
+import {
+  buildPptOutlinePrompt,
+  PPT_OUTLINE_CREDIT_COST,
+  PPT_OUTLINE_MAX_OUTPUT_TOKENS,
+  isPptOutlineIncomplete,
+  PPT_OUTLINE_CONTINUATION_HINT,
+} from "./pptOutline";
 import { buildAdCopyPrompt, AD_COPY_CREDIT_COST, AD_COPY_MAX_OUTPUT_TOKENS } from "./adCopy";
 import { buildOfferLadderPrompt, OFFER_LADDER_CREDIT_COST, OFFER_LADDER_MAX_OUTPUT_TOKENS } from "./offerLadder";
 import { buildThankYouPagePrompt, THANK_YOU_PAGE_CREDIT_COST, THANK_YOU_PAGE_MAX_OUTPUT_TOKENS } from "./thankYouPage";
@@ -45,6 +51,12 @@ export interface AssetGenerator {
   creditCost: number;
   maxOutputTokens: number;
   buildPrompt: (project: Project, priorGenerations: PriorGeneration[]) => string;
+  // Optional extra completeness check passed through to generateCompleteAsset (anthropic.ts) —
+  // for a generator with a hard, checkable length requirement the prompt alone can't reliably
+  // enforce (PPT Outline's 60-90 slides), this catches Claude stopping on its own well short of
+  // that instead of only catching a hard max_tokens cutoff. Most generators don't need this.
+  isOutputIncomplete?: (content: string) => boolean;
+  continuationHint?: string;
 }
 
 export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
@@ -95,6 +107,8 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
     creditCost: PPT_OUTLINE_CREDIT_COST,
     maxOutputTokens: PPT_OUTLINE_MAX_OUTPUT_TOKENS,
     buildPrompt: buildPptOutlinePrompt,
+    isOutputIncomplete: isPptOutlineIncomplete,
+    continuationHint: PPT_OUTLINE_CONTINUATION_HINT,
   },
   ad_copy: {
     assetType: "ad_copy",

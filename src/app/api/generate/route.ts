@@ -124,7 +124,15 @@ export async function POST(req: NextRequest) {
 
     const userPrompt = generator.buildPrompt(project, priorGenerations);
 
-    const result = await generateCompleteAsset(systemPrompt, userPrompt, generator.maxOutputTokens);
+    const result = await generateCompleteAsset(
+      systemPrompt,
+      userPrompt,
+      generator.maxOutputTokens,
+      undefined,
+      undefined,
+      generator.isOutputIncomplete,
+      generator.continuationHint
+    );
 
     // Landing Page and Thank You Page both output a real HTML document, not markdown — strip a
     // stray code fence defensively in case Claude wraps it in one despite the explicit instruction
