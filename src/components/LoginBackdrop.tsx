@@ -1,18 +1,23 @@
 import { AGENTS, type AgentAssetType } from "@/lib/agents/config";
 
 // Ambient hero background for /login — Aaron Bowe, "The AI Outlaw" and creator of Pitch Perfect
-// AI, as a faint silhouette centered directly behind the auth form, with a blue/gold rim glow
-// along his shoulders for a bit of energy, flanked on both sides by small glowing badges for a
-// few of the app's actual AI agents (pulled from AGENTS, not invented copy) so the two flanks
-// read as "AI agents at work" rather than empty space. Everything here is `pointer-events-none`
-// and sits behind the page's real content (the page wraps its actual content in a `relative
-// z-10` sibling) — purely decorative, so the photo and badges are `aria-hidden`.
+// AI, as a faint silhouette centered directly behind the auth form, with a crisp blue/gold
+// edge-outline for energy (see the two-image stack near the bottom of this file), flanked on
+// both sides by small glowing badges for a few of the app's actual AI agents (pulled from
+// AGENTS, not invented copy) so the two flanks read as "AI agents at work" rather than empty
+// space. Everything here is `pointer-events-none` and sits behind the page's real content (the
+// page wraps its actual content in a `relative z-10` sibling) — purely decorative, so the photo
+// and badges are `aria-hidden`.
 //
-// public/creator-silhouette.png is pre-processed: grayscale, a "levels" lift (`.linear(0.68,
-// 58)`) that raises the hoodie's near-black shadows to a faint mid-gray so the WHOLE figure's
-// outline reads at low opacity — not just the bright bits (skin, the white "AI OUTLAW" print,
-// the paper) — plus a radial alpha feather baked in so the rectangular image bounds never show a
-// hard edge. Sized wide enough that his shoulders and arms extend past the card on both sides.
+// public/creator-silhouette.png (the faint fill) is pre-processed: grayscale, a "levels" lift
+// (`.linear(0.68, 58)`) that raises the hoodie's near-black shadows to a faint mid-gray so the
+// WHOLE figure reads at low opacity — not just the bright bits — plus a radial alpha feather
+// baked in so the rectangular image bounds never show a hard edge. public/creator-outline.png is
+// a separate asset: a Sobel edge-detection pass over the same photo, recolored blue-to-gold via
+// an SVG gradient luminance mask, so only his actual contours carry color/light — this is what
+// gives an energetic "rim light" without a blurred glow blob washing out his face (an earlier
+// version used blurred color blobs positioned near the cap/shoulders, which read as fog and
+// obscured him — replaced entirely by this edge-outline approach).
 
 type BadgeSpec = {
   assetType: AgentAssetType;
@@ -116,37 +121,27 @@ export default function LoginBackdrop() {
         <AgentBadge key={spec.assetType} spec={spec} />
       ))}
 
-      {/* The silhouette itself — centered directly behind the form, wide enough that his
-          shoulders and arms extend past the card on both sides. A trio of blurred color blobs
-          sits behind it, roughly hugging the cap and both shoulders, so the figure reads with a
-          bit of rim-light energy rather than a flat gray cutout — blue on the left, gold on the
-          right. Hidden below `lg`, same breakpoint as the agent badges: at narrower widths the
-          card runs close to full width, so there's no room for the overflow that makes this
-          composition work. */}
-      <div className="absolute top-[-9%] left-1/2 hidden w-[52vw] max-w-[820px] -translate-x-1/2 lg:block">
-        <div
-          className="absolute top-[12%] left-[24%] h-[18%] w-[50%] rounded-full blur-[38px]"
-          style={{ background: "radial-gradient(ellipse, oklch(0.75 0.14 250 / 60%) 0%, transparent 72%)" }}
-        />
-        <div
-          className="absolute top-[30%] left-[6%] h-[48%] w-[34%] rotate-[-18deg] rounded-full blur-[38px]"
-          style={{ background: "radial-gradient(ellipse, oklch(0.68 0.2 250 / 55%) 0%, transparent 70%)" }}
-        />
-        <div
-          className="absolute top-[28%] left-[58%] h-[50%] w-[36%] rotate-[16deg] rounded-full blur-[38px]"
-          style={{ background: "radial-gradient(ellipse, oklch(0.8 0.16 85 / 55%) 0%, transparent 70%)" }}
-        />
+      {/* The silhouette itself — centered directly behind the form, positioned so his face and
+          cap sit clearly above the card rather than being washed out or cropped. Two images
+          stacked: a faint grayscale fill (creator-silhouette.png, same "you can tell someone's
+          there" presence as before) underneath a real edge-detected outline
+          (creator-outline.png — a Sobel edge map recolored blue-to-gold via an SVG gradient
+          mask) on top. The outline is what actually reads as a defined, energetic rim rather
+          than a haze, because it only has ink at his actual contours — cap brim, glasses, beard,
+          the "AI OUTLAW" print, hands — not a blurred blob sitting over his whole face. Hidden
+          below `lg`, same breakpoint as the agent badges: at narrower widths the card runs close
+          to full width, so there's no room for the overflow that makes this composition work. */}
+      <div className="absolute top-[-15%] left-1/2 hidden w-[48vw] max-w-[760px] -translate-x-1/2 lg:block">
         {/* eslint-disable-next-line @next/next/no-img-element -- decorative background art, not
-            the page's LCP element; needs a raw <img> for drop-shadow + free positioning that
-            next/image's fill mode doesn't support cleanly */}
+            the page's LCP element; needs a raw <img> for free positioning that next/image's fill
+            mode doesn't support cleanly */}
+        <img src="/creator-silhouette.png" alt="" className="block w-full opacity-30" />
+        {/* eslint-disable-next-line @next/next/no-img-element -- see above */}
         <img
-          src="/creator-silhouette.png"
+          src="/creator-outline.png"
           alt=""
-          className="relative block w-full opacity-[0.42]"
-          style={{
-            filter:
-              "drop-shadow(0 0 8px oklch(0.75 0.16 250 / 55%)) drop-shadow(0 0 18px oklch(0.8 0.14 85 / 30%))",
-          }}
+          className="absolute inset-0 block w-full opacity-90"
+          style={{ filter: "drop-shadow(0 0 6px oklch(0.7 0.15 260 / 55%))" }}
         />
       </div>
     </div>
