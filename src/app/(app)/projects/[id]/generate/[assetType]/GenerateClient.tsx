@@ -660,7 +660,7 @@ export default function GenerateClient({
                       <Button variant="outline" asChild>
                         <a href={`/api/export/pptx?generationId=${generationId}`}>
                           <FileDown className="mr-2 h-4 w-4" />
-                          Export .pptx (real slides)
+                          Export .pptx (designed deck)
                         </a>
                       </Button>
                     )}
