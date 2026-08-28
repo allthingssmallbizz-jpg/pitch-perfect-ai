@@ -119,6 +119,17 @@ export default function AppSidebar({ email, displayName, isAdmin, credits }: Pro
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {/* First stop for a new member, before anything else — the bio (including the "I
+                  Help" statement) feeds every generator's system prompt, so filling it in before
+                  creating anything means the very first generation already has it available. */}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === "/bio"} tooltip="My Webinar Bio">
+                  <Link href="/bio">
+                    <UserCircle className="h-4 w-4" />
+                    <span>My Webinar Bio</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === "/projects/new"} tooltip="New project">
                   <Link href="/projects/new" data-tour="sidebar-new-project">
@@ -218,14 +229,6 @@ export default function AppSidebar({ email, displayName, isAdmin, credits }: Pro
                   <Link href="/brand-voice">
                     <Mic className="h-4 w-4" />
                     <span>Brand voice</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === "/bio"} tooltip="My Webinar Bio">
-                  <Link href="/bio">
-                    <UserCircle className="h-4 w-4" />
-                    <span>My Webinar Bio</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
