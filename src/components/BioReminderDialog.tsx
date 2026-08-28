@@ -13,9 +13,13 @@ import {
 import { Button } from "@/components/ui/button";
 
 // Only rendered (and only ever opens) when the server component already determined the bio is
-// empty for a webinar/VSL generate page — see page.tsx. Dismissing doesn't remember anything;
-// it'll ask again next visit until the bio is actually filled in, same as the Discovery
-// completeness gate elsewhere in the app.
+// empty — see the agent landing page (src/app/(app)/agents/[assetType]/page.tsx, the moment
+// someone clicks into any agent) and the generate page (src/app/(app)/projects/[id]/generate/
+// [assetType]/page.tsx, in case they land there some other way). Generic copy rather than
+// per-agent wording since getPresenterBioBlock folds the bio into every generator's system
+// prompt, not just Webinar/VSL's Credibility Bridge/Opening Story beats it originally covered.
+// Dismissing doesn't remember anything; it'll ask again next visit until the bio is actually
+// filled in, same as the Discovery completeness gate elsewhere in the app — a nudge, not a gate.
 export default function BioReminderDialog() {
   const [open, setOpen] = useState(true);
 
@@ -25,10 +29,10 @@ export default function BioReminderDialog() {
         <DialogHeader>
           <DialogTitle>Finish your presenter bio first?</DialogTitle>
           <DialogDescription>
-            This asset&apos;s Credibility Bridge and Opening Story beats are built from your
-            presenter bio — years in the industry, your origin story, a client transformation, a
-            setback you turned around. You haven&apos;t filled it in yet, so those beats will come
-            back flagged as a gap instead of using your real story.
+            Every agent uses your presenter bio — your &quot;I Help&quot; statement, your story, a
+            client transformation, a setback you turned around — to make hooks, headlines, and
+            credibility beats sound like you instead of something generic. You haven&apos;t
+            filled it in yet.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2">

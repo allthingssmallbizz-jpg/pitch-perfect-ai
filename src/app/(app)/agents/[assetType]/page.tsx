@@ -4,8 +4,10 @@ import { Plus, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
+import { isPresenterBioEmpty } from "@/lib/ai/presenterBio";
 import AgentBadge from "@/components/AgentBadge";
 import DeleteGenerationButton from "@/components/DeleteGenerationButton";
+import BioReminderDialog from "@/components/BioReminderDialog";
 import { Button } from "@/components/ui/button";
 
 function formatRelativeTime(iso: string): string {
@@ -48,6 +50,7 @@ export default async function AgentLandingPage({
     { data: projects, error: projectsError },
     { data: generations, error: generationsError },
     { data: imageAdRows },
+    { data: bio },
   ] = await Promise.all([
     supabase
       .from("projects")
@@ -75,7 +78,12 @@ export default async function AgentLandingPage({
           .order("created_at", { ascending: false })
           .limit(24)
       : Promise.resolve({ data: null }),
+    // Fetched here rather than only on the generate page — this landing page is the actual
+    // moment someone "clicks on an agent," so the nudge to finish the bio first belongs here,
+    // before they even pick a project, not several clicks later.
+    supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle(),
   ]);
+  const showBioReminder = isPresenterBioEmpty(bio);
 
   // Neither of these queries should ever actually fail for a normal request — but they used to
   // be destructured without looking at `error` at all, so a real failure (a missing column after
@@ -132,6 +140,8 @@ export default async function AgentLandingPage({
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
+      {showBioReminder && <BioReminderDialog />}
+
       <div className="mb-1">
         <AgentBadge agent={agent} size="lg" showTagline />
       </div>
