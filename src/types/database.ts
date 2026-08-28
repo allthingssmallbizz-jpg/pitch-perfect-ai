@@ -242,6 +242,9 @@ export type BrandVoice = {
 // alone can't cover, since that field is about the OFFER's evidence, not who's presenting it.
 export type PresenterBio = {
   user_id: string;
+  presenter_ihelp_audience: string;
+  presenter_ihelp_outcome: string;
+  presenter_ihelp_mechanism: string;
   presenter_mission: string;
   presenter_years_experience: string;
   presenter_credentials: string;

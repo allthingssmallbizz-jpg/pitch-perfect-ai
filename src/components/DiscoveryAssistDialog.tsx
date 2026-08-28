@@ -18,6 +18,9 @@ export type AssistTarget = {
 };
 
 const EXAMPLES: Record<string, string> = {
+  presenter_ihelp_audience: "e.g. 'Retired teachers who want a second income' or 'B2B sales managers'",
+  presenter_ihelp_outcome: "e.g. 'Book their first 5 coaching clients' or 'launch a course without tech overwhelm'",
+  presenter_ihelp_mechanism: "e.g. 'a done-for-you webinar funnel' or 'my 90-day group program'",
   business_name: "e.g. 'I run a coaching business helping female founders scale to 7 figures'",
   industry: "e.g. 'I coach real estate agents who are stuck under $100k/yr'",
   product: "e.g. '12-week group program, weekly calls, private community, done-for-you scripts'",

@@ -13,9 +13,17 @@ export async function getPresenterBioBlock(
   if (!data || isPresenterBioEmpty(data)) return null;
 
   const field = (label: string, value: string) => (value.trim() ? `${label}: ${value.trim()}` : null);
+  const ihelp = composeIHelpStatement(
+    data.presenter_ihelp_audience,
+    data.presenter_ihelp_outcome,
+    data.presenter_ihelp_mechanism
+  );
 
   const lines = [
     "PRESENTER BIO — the person behind the offer, not the offer itself. Use for Credibility Bridge / Opening Story / any presenter-intro beat:",
+    ihelp
+      ? `Their "I Help" positioning statement — reuse this exact audience/outcome/mechanism framing across hooks, headlines, and intros instead of inventing a different one each time: "${ihelp}"`
+      : null,
     field("What they help people do", data.presenter_mission),
     field("Years in this industry", data.presenter_years_experience),
     field("Credentials, certifications, or degrees", data.presenter_credentials),
@@ -38,7 +46,22 @@ export async function getPresenterBioBlock(
   return lines.join("\n");
 }
 
+// Composed on read from its three parts rather than stored — see the migration's comment for why
+// (keeps the sentence from ever drifting out of sync with the parts it's built from). Returns ""
+// until all three parts are filled in, since a partial "I help ___ with ___" reads worse than
+// nothing at all.
+export function composeIHelpStatement(audience: string, outcome: string, mechanism: string): string {
+  const a = audience.trim();
+  const o = outcome.trim();
+  const m = mechanism.trim();
+  if (!a || !o || !m) return "";
+  return `I help ${a} ${o} with ${m}.`;
+}
+
 type PresenterBioFields = {
+  presenter_ihelp_audience: string;
+  presenter_ihelp_outcome: string;
+  presenter_ihelp_mechanism: string;
   presenter_mission: string;
   presenter_years_experience: string;
   presenter_credentials: string;

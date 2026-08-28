@@ -4,13 +4,17 @@ import { useActionState, useState } from "react";
 import { Sparkles, Save } from "lucide-react";
 import type { PresenterBio } from "@/types/database";
 import { updatePresenterBio } from "@/lib/actions/presenterBio";
+import { composeIHelpStatement } from "@/lib/ai/presenterBio";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import DiscoveryAssistDialog, { type AssistTarget } from "@/components/DiscoveryAssistDialog";
 
+const IHELP_FIELD_NAMES = ["presenter_ihelp_audience", "presenter_ihelp_outcome", "presenter_ihelp_mechanism"];
+
 const FIELD_NAMES = [
+  ...IHELP_FIELD_NAMES,
   "presenter_mission",
   "presenter_years_experience",
   "presenter_credentials",
@@ -76,9 +80,23 @@ export default function PresenterBioForm({ bio }: { bio: PresenterBio | null }) 
   const [state, formAction, pending] = useActionState(updatePresenterBio, undefined);
   const [assistTarget, setAssistTarget] = useState<AssistTarget | null>(null);
 
+  // The other fields below are plain uncontrolled inputs (defaultValue + reading el.value on
+  // submit/assist) — fine for them since nothing else on the page needs to react to their content
+  // as it changes. These three are controlled specifically so the composed sentence preview can
+  // update live as the member types, instead of only appearing after a save round-trip.
+  const [ihelpAudience, setIhelpAudience] = useState(bio?.presenter_ihelp_audience ?? "");
+  const [ihelpOutcome, setIhelpOutcome] = useState(bio?.presenter_ihelp_outcome ?? "");
+  const [ihelpMechanism, setIhelpMechanism] = useState(bio?.presenter_ihelp_mechanism ?? "");
+  const ihelpStatement = composeIHelpStatement(ihelpAudience, ihelpOutcome, ihelpMechanism);
+
   function collectOtherAnswers(): Record<string, string> {
-    const out: Record<string, string> = {};
+    const out: Record<string, string> = {
+      presenter_ihelp_audience: ihelpAudience,
+      presenter_ihelp_outcome: ihelpOutcome,
+      presenter_ihelp_mechanism: ihelpMechanism,
+    };
     for (const key of FIELD_NAMES) {
+      if (key in out) continue;
       const el = document.getElementById(key) as HTMLInputElement | HTMLTextAreaElement | null;
       if (el) out[key] = el.value;
     }
@@ -86,12 +104,107 @@ export default function PresenterBioForm({ bio }: { bio: PresenterBio | null }) 
   }
 
   function handleAssistAccept(key: string, text: string) {
+    if (key === "presenter_ihelp_audience") return setIhelpAudience(text);
+    if (key === "presenter_ihelp_outcome") return setIhelpOutcome(text);
+    if (key === "presenter_ihelp_mechanism") return setIhelpMechanism(text);
     const el = document.getElementById(key) as HTMLInputElement | HTMLTextAreaElement | null;
     if (el) el.value = text;
   }
 
   return (
     <form action={formAction} className="card-elevated space-y-5 rounded-2xl p-8">
+      <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
+        <Label className="text-base font-semibold">Your &quot;I Help&quot; statement</Label>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          The one-line positioning statement every generator can echo — hooks, headlines, and
+          intros stay consistent instead of reinventing your audience and promise each time.
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="presenter_ihelp_audience" className="text-xs text-muted-foreground">
+                I help...
+              </Label>
+              <AssistButton
+                onClick={() =>
+                  setAssistTarget({
+                    key: "presenter_ihelp_audience",
+                    label: "I Help Statement — audience",
+                    type: "text",
+                    placeholder: "e.g. professionals 45+",
+                  })
+                }
+              />
+            </div>
+            <Input
+              id="presenter_ihelp_audience"
+              name="presenter_ihelp_audience"
+              value={ihelpAudience}
+              onChange={(e) => setIhelpAudience(e.target.value)}
+              placeholder="professionals 45+"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="presenter_ihelp_outcome" className="text-xs text-muted-foreground">
+                ...achieve...
+              </Label>
+              <AssistButton
+                onClick={() =>
+                  setAssistTarget({
+                    key: "presenter_ihelp_outcome",
+                    label: "I Help Statement — outcome",
+                    type: "text",
+                    placeholder: "e.g. turn decades of knowledge into a profitable business",
+                  })
+                }
+              />
+            </div>
+            <Input
+              id="presenter_ihelp_outcome"
+              name="presenter_ihelp_outcome"
+              value={ihelpOutcome}
+              onChange={(e) => setIhelpOutcome(e.target.value)}
+              placeholder="turn decades of knowledge into a profitable business"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="presenter_ihelp_mechanism" className="text-xs text-muted-foreground">
+                ...with...
+              </Label>
+              <AssistButton
+                onClick={() =>
+                  setAssistTarget({
+                    key: "presenter_ihelp_mechanism",
+                    label: "I Help Statement — mechanism",
+                    type: "text",
+                    placeholder: "e.g. AI-powered webinars",
+                  })
+                }
+              />
+            </div>
+            <Input
+              id="presenter_ihelp_mechanism"
+              name="presenter_ihelp_mechanism"
+              value={ihelpMechanism}
+              onChange={(e) => setIhelpMechanism(e.target.value)}
+              placeholder="AI-powered webinars"
+              className="mt-1"
+            />
+          </div>
+        </div>
+        <p className="mt-3 rounded-lg bg-background/60 p-3 text-sm">
+          {ihelpStatement || (
+            <span className="text-muted-foreground">
+              Fill in all three above to see your full statement here.
+            </span>
+          )}
+        </p>
+      </div>
+
       <Field
         label="What do you help people do?"
         name="presenter_mission"

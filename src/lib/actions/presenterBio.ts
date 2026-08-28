@@ -17,6 +17,9 @@ export async function updatePresenterBio(_prevState: unknown, formData: FormData
 
   const fields = {
     user_id: user.id,
+    presenter_ihelp_audience: text("presenter_ihelp_audience"),
+    presenter_ihelp_outcome: text("presenter_ihelp_outcome"),
+    presenter_ihelp_mechanism: text("presenter_ihelp_mechanism"),
     presenter_mission: text("presenter_mission"),
     presenter_years_experience: text("presenter_years_experience"),
     presenter_credentials: text("presenter_credentials"),
