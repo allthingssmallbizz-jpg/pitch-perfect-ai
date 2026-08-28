@@ -110,17 +110,20 @@ export default function LoginBackdrop() {
         <AgentBadge key={spec.assetType} spec={spec} />
       ))}
 
-      {/* The hero image itself — centered directly behind the form, positioned so his face and
-          cap sit clearly above the card rather than being cropped. Hidden below `lg`, same
-          breakpoint as the agent badges: at narrower widths the card runs close to full width,
-          so there's no room for the overflow that makes this composition work. */}
+      {/* The hero image itself — centered directly behind the form, shifted up enough that his
+          face and cap clear the top of the card (verified against short-viewport heights down to
+          ~620px, not just a tall desktop window — at the previous -15%/48vw sizing his face
+          landed right behind the card top on anything shorter than a full 900px-tall window).
+          Hidden below `lg`, same breakpoint as the agent badges: at narrower widths the card runs
+          close to full width, so there's no room for the overflow that makes this composition
+          work. */}
       {/* eslint-disable-next-line @next/next/no-img-element -- decorative background art, not
           the page's LCP element; needs a raw <img> for free positioning that next/image's fill
           mode doesn't support cleanly */}
       <img
         src="/creator-hero.png"
         alt=""
-        className="absolute top-[-15%] left-1/2 hidden w-[48vw] max-w-[760px] -translate-x-1/2 opacity-25 lg:block"
+        className="absolute top-[-26%] left-1/2 hidden w-[44vw] max-w-[700px] -translate-x-1/2 opacity-[0.25] lg:block"
       />
     </div>
   );
