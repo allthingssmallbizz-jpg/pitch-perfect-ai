@@ -289,6 +289,18 @@ export default function GenerateClient({
   const [content, setContent] = useState<string | null>(initialContent);
   const [generationId, setGenerationId] = useState<string | null>(initialGenerationId);
   const [loading, setLoading] = useState(false);
+  // Longer generators (PPT Outline's 60-90 slides especially) can genuinely take a few minutes —
+  // Claude auto-continues in several sequential calls once it hits the per-call output cap. With
+  // no feedback beyond a static "Building..." message, a run that's still legitimately working
+  // looks identical to one that's silently hung, which is exactly what prompted this. Ticks once
+  // a second only while a run is in flight; the tiered copy below reassures instead of describing
+  // any real progress, since there's no per-slide progress signal to report.
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  useEffect(() => {
+    if (!loading) return;
+    const interval = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, [loading]);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -488,6 +500,7 @@ export default function GenerateClient({
 
   async function run() {
     setLoading(true);
+    setElapsedSeconds(0);
     setError(null);
     try {
       const res = await fetch("/api/generate", {
@@ -761,7 +774,14 @@ export default function GenerateClient({
 
       {loading && !content && (
         <div className="card-elevated rounded-2xl border-dashed p-10 text-center text-muted-foreground">
-          Building your asset with the Pitch Perfect Method™...
+          <p>Building your asset with the Pitch Perfect Method™...</p>
+          {elapsedSeconds >= 15 && (
+            <p className="mt-2 text-sm">
+              {elapsedSeconds >= 45
+                ? "Still working — longer assets like a full slide deck can take a few minutes. No need to refresh."
+                : "This can take a little while for longer assets. Hang tight..."}
+            </p>
+          )}
         </div>
       )}
 
