@@ -110,20 +110,29 @@ export default function LoginBackdrop() {
         <AgentBadge key={spec.assetType} spec={spec} />
       ))}
 
-      {/* The hero image itself — centered directly behind the form, shifted up enough that his
-          face and cap clear the top of the card (verified against short-viewport heights down to
-          ~620px, not just a tall desktop window — at the previous -15%/48vw sizing his face
-          landed right behind the card top on anything shorter than a full 900px-tall window).
-          Hidden below `lg`, same breakpoint as the agent badges: at narrower widths the card runs
-          close to full width, so there's no room for the overflow that makes this composition
-          work. */}
+      {/* The hero image itself — centered directly behind the form, shifted up so his face and
+          cap clear the top of the card. Always rendered, unlike the agent badges below — an
+          earlier version hid this behind `lg:block` (>=1024px), which meant it silently
+          disappeared *entirely* on any narrower browser window, not just repositioned. That's a
+          very ordinary width for a non-maximized laptop window, so it was effectively invisible
+          for a lot of real visits.
+          The `top` offset is in vw, not %: the image's own width (and therefore height, fixed
+          aspect ratio) is vw-based, so a %-of-container-*height* offset (the previous version)
+          decouples from how much of the image is actually showing once the viewport gets
+          narrower — at 800px wide the same percentage cropped his whole face off the top, even
+          though it looked right at 1440px. -16vw keeps cap-to-crop-line distance proportional to
+          the image's own rendered size instead. It's clamped to a fixed px floor for the same
+          reason once width hits its 700px cap (very wide monitors) — past that point the image
+          stops growing but a pure vw offset would keep growing, cropping the cap again from the
+          other direction. */}
       {/* eslint-disable-next-line @next/next/no-img-element -- decorative background art, not
           the page's LCP element; needs a raw <img> for free positioning that next/image's fill
           mode doesn't support cleanly */}
       <img
         src="/creator-hero.png"
         alt=""
-        className="absolute top-[-26%] left-1/2 hidden w-[44vw] max-w-[700px] -translate-x-1/2 opacity-[0.25] lg:block"
+        className="absolute left-1/2 w-[46vw] max-w-[700px] -translate-x-1/2 opacity-[0.25]"
+        style={{ top: "max(-16vw, -243px)" }}
       />
     </div>
   );
