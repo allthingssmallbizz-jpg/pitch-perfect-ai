@@ -10,8 +10,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import DiscoveryAssistDialog, { type AssistTarget } from "@/components/DiscoveryAssistDialog";
+import IHelpBuilderDialog from "@/components/IHelpBuilderDialog";
 
-const IHELP_FIELD_NAMES = ["presenter_ihelp_audience", "presenter_ihelp_outcome", "presenter_ihelp_mechanism"];
+const IHELP_FIELD_NAMES = [
+  "presenter_ihelp_audience",
+  "presenter_ihelp_outcome",
+  "presenter_ihelp_mechanism",
+  "presenter_ihelp_pain_point",
+  "presenter_ihelp_statement",
+];
 
 const FIELD_NAMES = [
   ...IHELP_FIELD_NAMES,
@@ -82,18 +89,27 @@ export default function PresenterBioForm({ bio }: { bio: PresenterBio | null }) 
 
   // The other fields below are plain uncontrolled inputs (defaultValue + reading el.value on
   // submit/assist) — fine for them since nothing else on the page needs to react to their content
-  // as it changes. These three are controlled specifically so the composed sentence preview can
-  // update live as the member types, instead of only appearing after a save round-trip.
+  // as it changes. These are controlled specifically so the generator dialog can read live values
+  // and the statement textarea can be filled programmatically when a generated option is accepted.
   const [ihelpAudience, setIhelpAudience] = useState(bio?.presenter_ihelp_audience ?? "");
   const [ihelpOutcome, setIhelpOutcome] = useState(bio?.presenter_ihelp_outcome ?? "");
   const [ihelpMechanism, setIhelpMechanism] = useState(bio?.presenter_ihelp_mechanism ?? "");
-  const ihelpStatement = composeIHelpStatement(ihelpAudience, ihelpOutcome, ihelpMechanism);
+  const [ihelpPainPoint, setIhelpPainPoint] = useState(bio?.presenter_ihelp_pain_point ?? "");
+  const [ihelpStatement, setIhelpStatement] = useState(bio?.presenter_ihelp_statement ?? "");
+  const [builderOpen, setBuilderOpen] = useState(false);
+  // Shown only as a placeholder/hint while the statement field is empty — never written to the
+  // field itself, so a member who fills in the three parts but never opens the generator doesn't
+  // end up saving a bland mechanical join as if it were a deliberately crafted statement (the same
+  // fallback is applied at read time in getPresenterBioBlock, so nothing is lost by not saving it).
+  const fallbackPreview = composeIHelpStatement(ihelpAudience, ihelpOutcome, ihelpMechanism);
 
   function collectOtherAnswers(): Record<string, string> {
     const out: Record<string, string> = {
       presenter_ihelp_audience: ihelpAudience,
       presenter_ihelp_outcome: ihelpOutcome,
       presenter_ihelp_mechanism: ihelpMechanism,
+      presenter_ihelp_pain_point: ihelpPainPoint,
+      presenter_ihelp_statement: ihelpStatement,
     };
     for (const key of FIELD_NAMES) {
       if (key in out) continue;
@@ -107,6 +123,7 @@ export default function PresenterBioForm({ bio }: { bio: PresenterBio | null }) 
     if (key === "presenter_ihelp_audience") return setIhelpAudience(text);
     if (key === "presenter_ihelp_outcome") return setIhelpOutcome(text);
     if (key === "presenter_ihelp_mechanism") return setIhelpMechanism(text);
+    if (key === "presenter_ihelp_pain_point") return setIhelpPainPoint(text);
     const el = document.getElementById(key) as HTMLInputElement | HTMLTextAreaElement | null;
     if (el) el.value = text;
   }
@@ -118,6 +135,8 @@ export default function PresenterBioForm({ bio }: { bio: PresenterBio | null }) 
         <p className="mt-0.5 text-xs text-muted-foreground">
           The one-line positioning statement every generator can echo — hooks, headlines, and
           intros stay consistent instead of reinventing your audience and promise each time.
+          Answer in plain words below; most people don&apos;t naturally know how to phrase this
+          well, so let the AI draft several sharper options instead of guessing.
         </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <div>
@@ -196,14 +215,63 @@ export default function PresenterBioForm({ bio }: { bio: PresenterBio | null }) 
             />
           </div>
         </div>
-        <p className="mt-3 rounded-lg bg-background/60 p-3 text-sm">
-          {ihelpStatement || (
-            <span className="text-muted-foreground">
-              Fill in all three above to see your full statement here.
-            </span>
-          )}
-        </p>
+
+        <div className="mt-3">
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="presenter_ihelp_pain_point" className="text-xs text-muted-foreground">
+              Their biggest struggle right now (optional, but sharpens the result)
+            </Label>
+            <AssistButton
+              onClick={() =>
+                setAssistTarget({
+                  key: "presenter_ihelp_pain_point",
+                  label: "I Help Statement — biggest struggle",
+                  type: "text",
+                  placeholder: "e.g. they know their stuff but have no idea how to package or sell it online",
+                })
+              }
+            />
+          </div>
+          <Input
+            id="presenter_ihelp_pain_point"
+            name="presenter_ihelp_pain_point"
+            value={ihelpPainPoint}
+            onChange={(e) => setIhelpPainPoint(e.target.value)}
+            placeholder="e.g. they know their stuff but have no idea how to package or sell it online"
+            className="mt-1"
+          />
+        </div>
+
+        <Button type="button" variant="secondary" className="mt-4" onClick={() => setBuilderOpen(true)}>
+          <Sparkles className="mr-2 h-4 w-4" />
+          Generate stronger statements
+        </Button>
+
+        <div className="mt-3">
+          <Label htmlFor="presenter_ihelp_statement" className="text-xs text-muted-foreground">
+            Your I Help Statement — this exact line is what every generator uses
+          </Label>
+          <Textarea
+            id="presenter_ihelp_statement"
+            name="presenter_ihelp_statement"
+            value={ihelpStatement}
+            onChange={(e) => setIhelpStatement(e.target.value)}
+            placeholder={fallbackPreview || "I help [audience] [achieve outcome] with [mechanism]."}
+            rows={2}
+            className="mt-1 bg-background/60"
+          />
+        </div>
       </div>
+
+      <IHelpBuilderDialog
+        open={builderOpen}
+        onOpenChange={setBuilderOpen}
+        audience={ihelpAudience}
+        outcome={ihelpOutcome}
+        mechanism={ihelpMechanism}
+        painPoint={ihelpPainPoint}
+        onAccept={setIhelpStatement}
+      />
 
       <Field
         label="What do you help people do?"

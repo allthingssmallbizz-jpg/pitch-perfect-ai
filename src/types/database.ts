@@ -25,7 +25,8 @@ export type AssetType =
   | "offer_builder"
   | "brand_color_surprise"
   | "thank_you_page"
-  | "challenge_outline";
+  | "challenge_outline"
+  | "ihelp_builder";
 
 export type PresentationType =
   | "webinar"
@@ -245,6 +246,11 @@ export type PresenterBio = {
   presenter_ihelp_audience: string;
   presenter_ihelp_outcome: string;
   presenter_ihelp_mechanism: string;
+  presenter_ihelp_pain_point: string;
+  // The AI-crafted statement the member picked (or their own edit of it) — this, not a mechanical
+  // join of the three parts above, is what actually gets folded into generation prompts once set.
+  // See getPresenterBioBlock.
+  presenter_ihelp_statement: string;
   presenter_mission: string;
   presenter_years_experience: string;
   presenter_credentials: string;

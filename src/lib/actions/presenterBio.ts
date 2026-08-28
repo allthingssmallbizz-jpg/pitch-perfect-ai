@@ -20,6 +20,8 @@ export async function updatePresenterBio(_prevState: unknown, formData: FormData
     presenter_ihelp_audience: text("presenter_ihelp_audience"),
     presenter_ihelp_outcome: text("presenter_ihelp_outcome"),
     presenter_ihelp_mechanism: text("presenter_ihelp_mechanism"),
+    presenter_ihelp_pain_point: text("presenter_ihelp_pain_point"),
+    presenter_ihelp_statement: text("presenter_ihelp_statement"),
     presenter_mission: text("presenter_mission"),
     presenter_years_experience: text("presenter_years_experience"),
     presenter_credentials: text("presenter_credentials"),

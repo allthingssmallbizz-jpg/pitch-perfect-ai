@@ -18,11 +18,12 @@ export { WEB_PAGE_ASSET_TYPES } from "./htmlPage";
 // src/lib/ai/assetLabels.ts. Also excludes "ad_image" — Agent Addie's Image Ads is a
 // sub-capability reached from her /agents/ad_copy landing page, not a standalone
 // long-form-markdown generator with its own registry entry; see src/lib/ai/generators/adImage.ts.
-// "website_import", "tts_narration", "discovery_assist", "offer_builder", and
-// "brand_color_surprise" are all lightweight utility calls with no dedicated generator/agent of
-// their own — see src/lib/ai/websiteImport.ts, src/lib/ai/offerBuilder.ts, and
-// src/lib/ai/brandColorPalette.ts. "social_compare" is a sub-capability of Agent Annie's
-// presentation analysis, not a discovery-driven generator — see src/lib/ai/socialCompare.ts.
+// "website_import", "tts_narration", "discovery_assist", "offer_builder", "brand_color_surprise",
+// and "ihelp_builder" are all lightweight utility calls with no dedicated generator/agent of
+// their own — see src/lib/ai/websiteImport.ts, src/lib/ai/offerBuilder.ts,
+// src/lib/ai/brandColorPalette.ts, and src/lib/ai/ihelpBuilder.ts. "social_compare" is a
+// sub-capability of Agent Annie's presentation analysis, not a discovery-driven generator — see
+// src/lib/ai/socialCompare.ts.
 export type GeneratorAssetType = Exclude<
   AssetType,
   | "presentation_analysis"
@@ -34,6 +35,7 @@ export type GeneratorAssetType = Exclude<
   | "social_compare"
   | "offer_builder"
   | "brand_color_surprise"
+  | "ihelp_builder"
 >;
 
 export interface AssetGenerator {

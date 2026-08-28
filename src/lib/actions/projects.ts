@@ -88,7 +88,7 @@ export async function createProjectFromTemplate(formData: FormData) {
   const { data: existingBio } = await supabase
     .from("presenter_bios")
     .select(
-      "presenter_ihelp_audience, presenter_ihelp_outcome, presenter_ihelp_mechanism, presenter_mission, presenter_years_experience, presenter_credentials, presenter_origin_story, presenter_signature_win, presenter_setback_story, presenter_income_goal_6mo, presenter_income_goal_12mo, presenter_mission_why, presenter_recognition, presenter_relatable_detail"
+      "presenter_ihelp_audience, presenter_ihelp_outcome, presenter_ihelp_mechanism, presenter_ihelp_pain_point, presenter_ihelp_statement, presenter_mission, presenter_years_experience, presenter_credentials, presenter_origin_story, presenter_signature_win, presenter_setback_story, presenter_income_goal_6mo, presenter_income_goal_12mo, presenter_mission_why, presenter_recognition, presenter_relatable_detail"
     )
     .eq("user_id", user.id)
     .maybeSingle();

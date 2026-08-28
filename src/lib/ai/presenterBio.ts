@@ -13,11 +13,13 @@ export async function getPresenterBioBlock(
   if (!data || isPresenterBioEmpty(data)) return null;
 
   const field = (label: string, value: string) => (value.trim() ? `${label}: ${value.trim()}` : null);
-  const ihelp = composeIHelpStatement(
-    data.presenter_ihelp_audience,
-    data.presenter_ihelp_outcome,
-    data.presenter_ihelp_mechanism
-  );
+  // The AI-crafted, member-picked statement (see the "I Help Statement" builder on /bio) takes
+  // priority — it's sharper than a mechanical join and may not even decompose cleanly back into
+  // the three raw parts (e.g. it might restructure the sentence entirely). Only falls back to the
+  // naive join when the member has filled in the raw parts but never actually run the generator.
+  const ihelp =
+    data.presenter_ihelp_statement.trim() ||
+    composeIHelpStatement(data.presenter_ihelp_audience, data.presenter_ihelp_outcome, data.presenter_ihelp_mechanism);
 
   const lines = [
     "PRESENTER BIO — the person behind the offer, not the offer itself. Use for Credibility Bridge / Opening Story / any presenter-intro beat:",
@@ -62,6 +64,8 @@ type PresenterBioFields = {
   presenter_ihelp_audience: string;
   presenter_ihelp_outcome: string;
   presenter_ihelp_mechanism: string;
+  presenter_ihelp_pain_point: string;
+  presenter_ihelp_statement: string;
   presenter_mission: string;
   presenter_years_experience: string;
   presenter_credentials: string;
