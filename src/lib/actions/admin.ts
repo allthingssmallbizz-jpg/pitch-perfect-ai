@@ -251,6 +251,26 @@ export async function adminResendCredentials(_prevState: unknown, formData: Form
   };
 }
 
+// Lets an admin choose the member's password directly instead of only ever getting a random
+// generated one — useful when the welcome/reset email can't be sent (RESEND_API_KEY missing, see
+// Environment check above) and the admin would rather hand the member a password they picked
+// themselves in person/by text than read a random string off the screen. Deliberately does NOT
+// send an email — this is the manual-handoff path, not the automated one (that's still
+// adminResendCredentials above); the member can log in with whatever the admin sets the instant
+// this returns.
+export async function adminSetPassword(_prevState: unknown, formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const userId = String(formData.get("userId") || "");
+  const password = String(formData.get("password") || "");
+  if (!userId) return { error: "Member not found." };
+  if (password.length < 8) return { error: "Password must be at least 8 characters." };
+
+  const { error } = await supabase.auth.admin.updateUserById(userId, { password });
+  if (error) return { error: error.message || "Could not update their password." };
+
+  return { success: true };
+}
+
 export async function adminSetTier(_prevState: unknown, formData: FormData) {
   const { supabase } = await requireAdmin();
   const userId = String(formData.get("userId") || "");

@@ -14,6 +14,7 @@ import MemberInviteForm from "./MemberInviteForm";
 import RevokeAccessButton from "./RevokeAccessButton";
 import DeleteMemberButton from "./DeleteMemberButton";
 import ResendCredentialsButton from "./ResendCredentialsButton";
+import SetPasswordForm from "./SetPasswordForm";
 
 export default async function AdminPage({
   searchParams,
@@ -433,6 +434,7 @@ export default async function AdminPage({
                           Unlimited
                         </Badge>
                       )}
+                      <SetPasswordForm userId={m.id} email={m.email} />
                     </td>
                     <td className="px-4 py-3">
                       <MemberRoleForm userId={m.id} currentRole={m.role} />
