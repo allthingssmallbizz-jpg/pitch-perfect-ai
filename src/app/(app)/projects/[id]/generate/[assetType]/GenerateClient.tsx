@@ -26,6 +26,14 @@ import {
   BarChart3,
   RefreshCw,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import RichTextEditor from "@/components/RichTextEditor";
 import VersionHistory from "@/components/VersionHistory";
 import TtsPlayer from "@/components/TtsPlayer";
@@ -296,11 +304,15 @@ export default function GenerateClient({
   // a second only while a run is in flight; the tiered copy below reassures instead of describing
   // any real progress, since there's no per-slide progress signal to report.
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  // Shares this timer/tiered-copy with generateWebinarNow's loading state below (the "Generate
+  // Your Webinar Now" action from a Webinar Blueprint) — that's the exact same slow, multi-call
+  // PPT Outline generation this comment already describes, just triggered from a different button.
+  const [generatingWebinarDeck, setGeneratingWebinarDeck] = useState(false);
   useEffect(() => {
-    if (!loading) return;
+    if (!loading && !generatingWebinarDeck) return;
     const interval = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
     return () => clearInterval(interval);
-  }, [loading]);
+  }, [loading, generatingWebinarDeck]);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -498,6 +510,34 @@ export default function GenerateClient({
     }
   }
 
+  // Same "generate the paired asset in this same project, then jump straight to it" pattern as
+  // generateMatchingThankYouPage above, for the other half of this app's one asymmetric-but-
+  // linked pair: a Webinar Blueprint (Sarah) isn't the presentable deck, Your Webinar (Polly) is
+  // — see the rename/pointer work this followed from. webinarPromptOpen (below) is what opens
+  // automatically right after a fresh blueprint finishes generating (the "what's next?" moment);
+  // generatingWebinarDeck lives up with `loading`/`elapsedSeconds` since it shares that timer.
+  const [webinarPromptOpen, setWebinarPromptOpen] = useState(false);
+
+  async function generateWebinarNow() {
+    setWebinarPromptOpen(false);
+    setGeneratingWebinarDeck(true);
+    setElapsedSeconds(0);
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, assetType: "ppt_outline", mode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not generate your webinar.");
+      router.push(`/projects/${projectId}/generate/ppt_outline?generationId=${data.generationId}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not generate your webinar.");
+    } finally {
+      setGeneratingWebinarDeck(false);
+    }
+  }
+
   async function run() {
     setLoading(true);
     setElapsedSeconds(0);
@@ -515,6 +555,7 @@ export default function GenerateClient({
       }
       setContent(data.content);
       setGenerationId(data.generationId);
+      if (assetType === "webinar_outline") setWebinarPromptOpen(true);
       // A fresh generation is a brand-new row — never already published under this id.
       setPublishSlug(null);
       setPublishedAt(null);
@@ -733,18 +774,50 @@ export default function GenerateClient({
 
       {/* This blueprint (7 strategic phases/beats) isn't the presentable deck itself — that's
           Your Webinar (Agent Polly), which builds the actual 60-90 slide-by-slide deck from this
-          exact blueprint. Surfaced right here, the moment someone has a finished blueprint in
-          front of them, since that's when "what's next?" is the live question — a member testing
-          this for the first time otherwise has no way to know these are two separate steps. */}
+          exact blueprint. A real button rather than a quiet text link — this is meant to read as
+          the obvious next step, not a footnote — plus the pop-up dialog above fires automatically
+          right after a fresh blueprint finishes generating, when "what's next?" is the live
+          question; this button is what stays around for anyone who dismissed that or is
+          revisiting a saved blueprint later. */}
       {assetType === "webinar_outline" && content && (
-        <p className="mb-4 -mt-2 text-xs text-muted-foreground">
-          This is your webinar&apos;s blueprint, not the finished deck yet. Next:{" "}
-          <Link href={`/projects/${projectId}/generate/ppt_outline`} className="text-primary hover:underline">
-            build Your Webinar
-          </Link>{" "}
-          — Agent Polly turns these phases into the actual 60-90 slide-by-slide presentation.
-        </p>
+        <div className="mb-4 -mt-2">
+          <Button onClick={generateWebinarNow} disabled={generatingWebinarDeck}>
+            {generatingWebinarDeck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            {generatingWebinarDeck ? "Building your webinar..." : "Generate Your Webinar Now"}
+          </Button>
+          {generatingWebinarDeck && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {elapsedSeconds >= 45
+                ? "Still working — a full 60-90 slide deck can take a few minutes. No need to refresh."
+                : elapsedSeconds >= 15
+                  ? "This can take a little while for a full-length deck. Hang tight..."
+                  : "Agent Polly is turning your blueprint into the full slide-by-slide deck..."}
+            </p>
+          )}
+        </div>
       )}
+
+      <Dialog open={webinarPromptOpen} onOpenChange={setWebinarPromptOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Your blueprint is ready!</DialogTitle>
+            <DialogDescription>
+              Now that we have your outline, it&apos;s time to generate your webinar — Agent Polly
+              turns these phases into the actual 60-90 slide-by-slide presentation, ready to
+              present.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setWebinarPromptOpen(false)}>
+              Not yet
+            </Button>
+            <Button onClick={generateWebinarNow}>
+              <Sparkles className="mr-2 h-4 w-4" />
+              Generate Your Webinar Now
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {pastGenerations.length > 0 && (
         <details className="mb-4 rounded-xl border border-border bg-card/30" open={pastGenerations.length <= 3}>
