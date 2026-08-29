@@ -67,6 +67,19 @@ export async function setDiscoveryVideoUrl(_prevState: unknown, formData: FormDa
 
 // --- Member management (owner/admin panel: search, credits, roles) ---
 
+// checkGuardrails (src/lib/credits.ts) lazily resets credits_balance back to
+// credits_monthly_allotment the moment credits_reset_at is in the past — a real, wanted feature
+// for the normal monthly refill, but it means a manual admin override that doesn't also push
+// credits_reset_at forward can get silently clobbered back down the next time that member
+// generates something after their reset date passes, with no error and no trace of what happened
+// to the balance the admin just set. Both actions below push it forward by the same interval a
+// normal reset would (see 0001_init.sql's `now() + interval '1 month'` default), same as if this
+// were a fresh reset happening right now — the whole point of an admin manually touching credits
+// is "this member's balance is right as of now," which a stale reset date would immediately undo.
+function nextMonthlyReset(): string {
+  return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+}
+
 export async function adminSetCredits(_prevState: unknown, formData: FormData) {
   const { supabase } = await requireAdmin();
   const userId = String(formData.get("userId") || "");
@@ -76,7 +89,10 @@ export async function adminSetCredits(_prevState: unknown, formData: FormData) {
     return { error: "Enter a valid, non-negative credit amount." };
   }
 
-  const { error } = await supabase.from("profiles").update({ credits_balance: Math.floor(credits) }).eq("id", userId);
+  const { error } = await supabase
+    .from("profiles")
+    .update({ credits_balance: Math.floor(credits), credits_reset_at: nextMonthlyReset() })
+    .eq("id", userId);
   if (error) return { error: "Could not update credits." };
 
   revalidatePath("/admin");
@@ -97,7 +113,10 @@ export async function adminAddCredits(_prevState: unknown, formData: FormData) {
 
   const { error } = await supabase
     .from("profiles")
-    .update({ credits_balance: Math.max(0, Math.floor(profile.credits_balance + delta)) })
+    .update({
+      credits_balance: Math.max(0, Math.floor(profile.credits_balance + delta)),
+      credits_reset_at: nextMonthlyReset(),
+    })
     .eq("id", userId);
   if (error) return { error: "Could not update credits." };
 
