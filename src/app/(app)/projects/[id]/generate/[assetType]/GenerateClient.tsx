@@ -731,6 +731,21 @@ export default function GenerateClient({
         </p>
       )}
 
+      {/* This blueprint (7 strategic phases/beats) isn't the presentable deck itself — that's
+          Your Webinar (Agent Polly), which builds the actual 60-90 slide-by-slide deck from this
+          exact blueprint. Surfaced right here, the moment someone has a finished blueprint in
+          front of them, since that's when "what's next?" is the live question — a member testing
+          this for the first time otherwise has no way to know these are two separate steps. */}
+      {assetType === "webinar_outline" && content && (
+        <p className="mb-4 -mt-2 text-xs text-muted-foreground">
+          This is your webinar&apos;s blueprint, not the finished deck yet. Next:{" "}
+          <Link href={`/projects/${projectId}/generate/ppt_outline`} className="text-primary hover:underline">
+            build Your Webinar
+          </Link>{" "}
+          — Agent Polly turns these phases into the actual 60-90 slide-by-slide presentation.
+        </p>
+      )}
+
       {pastGenerations.length > 0 && (
         <details className="mb-4 rounded-xl border border-border bg-card/30" open={pastGenerations.length <= 3}>
           <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground">

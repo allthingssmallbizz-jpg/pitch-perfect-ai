@@ -29,7 +29,7 @@ type BadgeSpec = {
 // would be busy), just enough to read as "a roster at work." shortLabel mirrors the sidebar's
 // CREATE_LABELS wording (AppSidebar.tsx) rather than the longer ASSET_GENERATORS label.
 const LEFT_BADGES: BadgeSpec[] = [
-  { assetType: "webinar_outline", shortLabel: "Webinar Outline", top: "9%", inset: "left-[6%]" },
+  { assetType: "webinar_outline", shortLabel: "Webinar Blueprint", top: "9%", inset: "left-[6%]" },
   { assetType: "landing_page", shortLabel: "Landing Page", top: "34%", inset: "left-[2%]" },
   { assetType: "offer_ladder", shortLabel: "Offer Ladder", top: "58%", inset: "left-[8%]" },
   { assetType: "challenge_outline", shortLabel: "Challenge", top: "80%", inset: "left-[3%]" },

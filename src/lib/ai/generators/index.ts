@@ -62,8 +62,8 @@ export interface AssetGenerator {
 export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
   webinar_outline: {
     assetType: "webinar_outline",
-    label: "Webinar Outline",
-    description: "Full PPWOS™ 7-phase webinar structure, ready to build slides from.",
+    label: "Webinar Blueprint",
+    description: "Full PPWOS™ 7-phase webinar strategy — the plan Your Webinar (PPT Outline) builds slides from.",
     creditCost: WEBINAR_CREDIT_COST,
     maxOutputTokens: WEBINAR_MAX_OUTPUT_TOKENS,
     buildPrompt: buildWebinarOutlinePrompt,
@@ -102,8 +102,8 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
   },
   ppt_outline: {
     assetType: "ppt_outline",
-    label: "PowerPoint Outline",
-    description: "Slide-by-slide titles + speaker notes.",
+    label: "Your Webinar",
+    description: "The finished, presentable webinar deck — slide-by-slide titles + speaker notes, built from your Webinar Blueprint.",
     creditCost: PPT_OUTLINE_CREDIT_COST,
     maxOutputTokens: PPT_OUTLINE_MAX_OUTPUT_TOKENS,
     buildPrompt: buildPptOutlinePrompt,

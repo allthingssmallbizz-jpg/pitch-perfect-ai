@@ -24,7 +24,7 @@ export const FIELD_EDUCATION: Record<string, FieldEducation> = {
   },
   awareness_level: {
     why: "This is the single biggest lever in direct-response marketing: someone who's never heard of your solution needs to be taught the problem first, while someone who's ready to buy just needs the offer. Picking the wrong level makes every headline either preachy (too basic) or confusing (too advanced) for where your audience actually is.",
-    usedIn: "Webinar Outline, VSL Script, Landing Page headline and hook.",
+    usedIn: "Webinar Blueprint, VSL Script, Landing Page headline and hook.",
   },
   pain_points: {
     why: "Copy that mirrors a prospect's own words back to them ('I've tried everything and nothing sticks') builds trust instantly — generic pain points read as sales talk. This is why direct quotes from real conversations beat textbook descriptions.",
@@ -53,7 +53,7 @@ export const FIELD_EDUCATION: Record<string, FieldEducation> = {
   },
   unique_mechanism: {
     why: "'My approach' sounds like everyone else's approach. A named method or system ('The 3-Layer Momentum System') makes your result sound repeatable and ownable — it's the difference between 'trust me' and 'here's exactly how it works.'",
-    usedIn: "Webinar Outline's core content section, VSL, and Landing Page.",
+    usedIn: "Webinar Blueprint's core content section, VSL, and Landing Page.",
   },
   core_promise: {
     why: "One sentence, one outcome — this is what every headline, subject line, and ad ultimately compresses down to. If this is vague or covers too much at once, everything built from it inherits that vagueness.",
