@@ -1,14 +1,23 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
-import { Sparkles, Globe, Wand2, UserCircle, ArrowRight } from "lucide-react";
+import { Sparkles, Globe, Wand2, UserCircle, ArrowRight, TriangleAlert } from "lucide-react";
 import type { Project } from "@/types/database";
 import { updateProjectDiscovery } from "@/lib/actions/projects";
+import { getMissingRecommendedFieldLabels } from "@/lib/projects";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import DiscoveryAssistDialog, { type AssistTarget } from "@/components/DiscoveryAssistDialog";
 import WebsiteImportDialog from "@/components/WebsiteImportDialog";
 import OfferBuilderDialog from "@/components/OfferBuilderDialog";
@@ -153,6 +162,15 @@ export default function DiscoveryForm({
   const [assistTarget, setAssistTarget] = useState<AssistTarget | null>(null);
   const [websiteImportOpen, setWebsiteImportOpen] = useState(false);
   const [offerBuilderOpen, setOfferBuilderOpen] = useState(false);
+  // Shown when Save is clicked with one of RECOMMENDED_DISCOVERY_FIELDS still blank — a member
+  // testing this for real filled in "product" but left "bonuses" and "scarcity/urgency" empty and
+  // had no idea until the generated webinar quietly read weaker for it (no error, no indication a
+  // question had gone unanswered). A dismissible warning, not a second hard gate on top of
+  // projectNeedsDiscovery's existing one — saving with real gaps left in on purpose (an honestly
+  // blank urgency mechanism) must still work, just not silently.
+  const [missingWarning, setMissingWarning] = useState<string[] | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const skipMissingCheckRef = useRef(false);
 
   function collectOtherAnswers(): Record<string, string> {
     const out: Record<string, string> = {};
@@ -161,6 +179,18 @@ export default function DiscoveryForm({
       if (el) out[key] = el.value;
     }
     return out;
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (skipMissingCheckRef.current) {
+      skipMissingCheckRef.current = false;
+      return;
+    }
+    const missing = getMissingRecommendedFieldLabels(collectOtherAnswers());
+    if (missing.length > 0) {
+      e.preventDefault();
+      setMissingWarning(missing);
+    }
   }
 
   function handleAssistAccept(key: string, text: string) {
@@ -173,7 +203,13 @@ export default function DiscoveryForm({
   }
 
   return (
-    <form id="discovery-form" action={formAction} className="card-elevated space-y-6 rounded-2xl p-6">
+    <form
+      id="discovery-form"
+      ref={formRef}
+      action={formAction}
+      onSubmit={handleSubmit}
+      className="card-elevated space-y-6 rounded-2xl p-6"
+    >
       <input type="hidden" name="projectId" value={project.id} />
       {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
 
@@ -552,6 +588,38 @@ export default function DiscoveryForm({
         currentValues={collectOtherAnswers}
         onAccept={handleWebsiteImportAccept}
       />
+
+      <Dialog open={!!missingWarning} onOpenChange={(open) => !open && setMissingWarning(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <TriangleAlert className="h-5 w-5 text-amber-400" />
+              Your questionnaire isn&apos;t fully filled out
+            </DialogTitle>
+            <DialogDescription>
+              Your webinar won&apos;t be as strong or as effective without these — you can go back
+              and fill them in now, or save and come back to them later:
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="list-disc space-y-1 pl-5 text-sm text-foreground">
+            {missingWarning?.map((label) => <li key={label}>{label}</li>)}
+          </ul>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setMissingWarning(null)}>
+              Go back and fill them in
+            </Button>
+            <Button
+              onClick={() => {
+                setMissingWarning(null);
+                skipMissingCheckRef.current = true;
+                formRef.current?.requestSubmit();
+              }}
+            >
+              Save anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }

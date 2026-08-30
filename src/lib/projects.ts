@@ -39,3 +39,23 @@ export function projectNeedsDiscovery(project: Pick<Project, RequiredFieldKey>):
 export function getMissingDiscoveryFieldLabels(fields: Record<string, string>): string[] {
   return REQUIRED_DISCOVERY_FIELDS.filter(({ key }) => !fields[key]?.trim()).map((f) => f.label);
 }
+
+// Beyond the hard-required fields above, these meaningfully weaken a generated webinar/VSL/sales
+// copy's Offer and Certainty beats when left blank — but are never added to the required list
+// above, because an authentically blank one is a legitimate answer, not a mistake (a business
+// with no real bonuses or urgency mechanism shouldn't be forced to invent one; webinarOutline.ts's
+// prompt already handles "no authentic urgency mechanism supplied" gracefully). So this list is
+// used only for a soft, dismissible warning on the Discovery form itself when a member tries to
+// save with one of these still blank — never to block reaching a generator the way
+// projectNeedsDiscovery does with REQUIRED_DISCOVERY_FIELDS.
+export const RECOMMENDED_DISCOVERY_FIELDS: { key: keyof Project; label: string }[] = [
+  ...REQUIRED_DISCOVERY_FIELDS,
+  { key: "proof", label: "Proof (case studies, testimonials, results)" },
+  { key: "guarantee", label: "Guarantee" },
+  { key: "bonuses", label: "Bonuses" },
+  { key: "scarcity_urgency", label: "Scarcity / urgency" },
+];
+
+export function getMissingRecommendedFieldLabels(fields: Record<string, string>): string[] {
+  return RECOMMENDED_DISCOVERY_FIELDS.filter(({ key }) => !fields[key]?.trim()).map((f) => f.label);
+}
