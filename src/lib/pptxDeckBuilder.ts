@@ -235,8 +235,12 @@ function addContentSlide(
   slide.addShape("rect", { x: 0.78, y: 1.5, w: 1.5, h: 0.06, fill: { color: theme.accent } });
 
   if (parsed.bullets.length > 0) {
+    // The prompt asks for "up to 3 bullets" per slide; pptxParser's looksLikeSpokenProse now
+    // keeps genuine mislabeled speaker-note paragraphs out of `.bullets` entirely, but this cap
+    // is a second, cheap layer of insurance against a content slide ever visually flooding with
+    // text again — a real slide should never actually need more than a handful of bullets.
     slide.addText(
-      parsed.bullets.map((b) => ({
+      parsed.bullets.slice(0, 6).map((b) => ({
         text: b,
         options: { bullet: { code: "25A0", indent: 18 }, color: theme.primary, breakLine: true },
       })),
@@ -340,7 +344,12 @@ function addClosingSlide(
   return slide;
 }
 
-export function buildDeck(slides: ParsedSlide[], theme: DeckTheme, brandName: string): PptxGenJS {
+export function buildDeck(
+  slides: ParsedSlide[],
+  theme: DeckTheme,
+  brandName: string,
+  scriptBySlideNumber?: Map<number, string>
+): PptxGenJS {
   const pptx = new PptxGenJS();
   pptx.defineLayout({ name: "PP_WIDESCREEN", width: SLIDE_W, height: SLIDE_H });
   pptx.layout = "PP_WIDESCREEN";
@@ -358,7 +367,13 @@ export function buildDeck(slides: ParsedSlide[], theme: DeckTheme, brandName: st
             ? addSectionSlide(pptx, parsed, theme, index, total, brandName)
             : addContentSlide(pptx, parsed, theme, index, total, brandName);
 
-    if (parsed.notes) slide.addNotes(parsed.notes);
+    // A completed Webinar Script's own per-slide talk-track is a far fuller, more usable set of
+    // presenter notes than the outline's own embedded 1-3 sentence notes — see the export route's
+    // scriptBySlideNumber query — so it wins whenever this slide number has an entry there. Either
+    // way, this only ever calls .addNotes(), which writes to PowerPoint's actual Notes pane; it
+    // never touches the visible slide body.
+    const notes = scriptBySlideNumber?.get(parsed.number) || parsed.notes;
+    if (notes) slide.addNotes(notes);
   });
 
   return pptx;

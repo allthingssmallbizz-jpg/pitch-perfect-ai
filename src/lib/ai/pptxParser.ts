@@ -18,6 +18,19 @@ const NOTES_LABEL = /^[-*]?\s*\*{0,2}\s*speaker notes\*{0,2}\s*[:.]?\s*(.*)$/i;
 const BULLET_LINE = /^\s*[-*•]\s+(.*)$/;
 const SEPARATOR_LINE = /^-{3,}$/;
 
+// A real generation came back with every "Speaker notes" paragraph rendered ON the visible
+// slide instead of in PowerPoint's actual Notes pane — traced to Claude occasionally skipping
+// the "**Speaker notes**" label entirely (common enough across 60-90 repeated slides) and just
+// writing the note as trailing prose, which the parser then had no way to distinguish from a
+// genuine on-slide bullet. Presenter notes are natural spoken prose (full sentences); on-slide
+// bullets are short phrases ("headline + up to 3 bullets" per the prompt). This shape-based guess
+// is the safety net for exactly that unlabeled case — it doesn't replace the real labels, it
+// only decides where an unlabeled line goes when the label Claude was supposed to add is missing.
+function looksLikeSpokenProse(line: string): boolean {
+  const sentenceEnders = (line.match(/[.!?](\s|$)/g) ?? []).length;
+  return line.length > 90 || sentenceEnders >= 2;
+}
+
 export function parsePptOutline(markdown: string): ParsedSlide[] {
   const slides: ParsedSlide[] = [];
   let current: ParsedSlide | null = null;
@@ -58,20 +71,44 @@ export function parsePptOutline(markdown: string): ParsedSlide[] {
     }
     const bullet = line.match(BULLET_LINE);
     if (bullet && mode !== "notes") {
-      current.bullets.push(bullet[1].trim());
+      const bulletText = bullet[1].trim();
+      // A dash doesn't guarantee it's really a bullet — a mislabeled speaker note can still pick
+      // up a leading "- " by accident. Route it by shape just like the unlabeled case below.
+      if (looksLikeSpokenProse(bulletText)) {
+        current.notes = current.notes ? `${current.notes} ${bulletText}` : bulletText;
+      } else {
+        current.bullets.push(bulletText);
+      }
       continue;
     }
     const trimmed = line.trim();
     if (!trimmed || SEPARATOR_LINE.test(trimmed)) continue;
-    if (mode === "notes") {
+    if (mode === "notes" || looksLikeSpokenProse(trimmed)) {
+      // Either already inside an explicit notes block, or an unlabeled line that reads like
+      // spoken prose rather than a slide bullet — see looksLikeSpokenProse's comment.
       current.notes = current.notes ? `${current.notes} ${trimmed}` : trimmed;
     } else {
-      // A stray line before any explicit "On-slide content"/"Speaker notes" label — most likely
-      // more on-slide copy, so keep it as a bullet rather than dropping it.
       current.bullets.push(trimmed);
     }
   }
   pushCurrent();
 
   return slides;
+}
+
+// Turns a Webinar Script generation (see generators/webinarScript.ts — "**Slide #: Title**"
+// followed by a flowing spoken-script paragraph, with no separate "On-slide content"/"Speaker
+// notes" split to worry about) into the real presenter notes for the exported .pptx, keyed by
+// slide number so the export can match each script section back to its slide in the deck. Reuses
+// parsePptOutline purely for its slide-heading detection — every line under a script's heading
+// ends up in `.bullets` (nothing in that format ever matches CONTENT_LABEL/NOTES_LABEL), so
+// rejoining them reconstructs the full script paragraph for that slide.
+export function parseWebinarScriptBySlideNumber(markdown: string): Map<number, string> {
+  const slides = parsePptOutline(markdown);
+  const map = new Map<number, string>();
+  for (const slide of slides) {
+    const text = [...slide.bullets, slide.notes].filter(Boolean).join(" ").trim();
+    if (text) map.set(slide.number, text);
+  }
+  return map;
 }
