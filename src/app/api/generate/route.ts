@@ -68,6 +68,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
+  // A Webinar Script writes the talk-track for an existing slide deck, aligned 1:1 to its exact
+  // slide numbers/titles (see buildWebinarScriptPrompt) — there's nothing to align to without one.
+  // Checked here, before the pending row is even inserted, so this reads as a normal validation
+  // error instead of a wasted Claude call that gets caught and reported as a generic "Generation
+  // failed" (the catch block below never surfaces its specific error message to the client, only
+  // to the generations row's own `error` column).
+  if (assetType === "webinar_script") {
+    const { data: deck } = await supabase
+      .from("generations")
+      .select("id")
+      .eq("project_id", projectId)
+      .eq("asset_type", "ppt_outline")
+      .eq("status", "complete")
+      .limit(1)
+      .maybeSingle();
+    if (!deck) {
+      return NextResponse.json(
+        { error: "Generate Your Webinar (the slide deck) first — the script needs your actual slides to write from." },
+        { status: 400 }
+      );
+    }
+  }
+
   const guardrail = await checkGuardrails(user.id, generator.creditCost);
   if (!guardrail.ok) {
     return NextResponse.json({ error: guardrail.message, reason: guardrail.reason }, { status: 429 });

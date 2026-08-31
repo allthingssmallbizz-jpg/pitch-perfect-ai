@@ -26,7 +26,8 @@ export type AssetType =
   | "brand_color_surprise"
   | "thank_you_page"
   | "challenge_outline"
-  | "ihelp_builder";
+  | "ihelp_builder"
+  | "webinar_script";
 
 export type PresentationType =
   | "webinar"

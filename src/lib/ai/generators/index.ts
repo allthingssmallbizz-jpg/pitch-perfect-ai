@@ -16,6 +16,13 @@ import { buildAdCopyPrompt, AD_COPY_CREDIT_COST, AD_COPY_MAX_OUTPUT_TOKENS } fro
 import { buildOfferLadderPrompt, OFFER_LADDER_CREDIT_COST, OFFER_LADDER_MAX_OUTPUT_TOKENS } from "./offerLadder";
 import { buildThankYouPagePrompt, THANK_YOU_PAGE_CREDIT_COST, THANK_YOU_PAGE_MAX_OUTPUT_TOKENS } from "./thankYouPage";
 import { buildChallengeOutlinePrompt, CHALLENGE_CREDIT_COST, CHALLENGE_MAX_OUTPUT_TOKENS } from "./challengeOutline";
+import {
+  buildWebinarScriptPrompt,
+  WEBINAR_SCRIPT_CREDIT_COST,
+  WEBINAR_SCRIPT_MAX_OUTPUT_TOKENS,
+  isWebinarScriptIncomplete,
+  WEBINAR_SCRIPT_CONTINUATION_HINT,
+} from "./webinarScript";
 export { WEB_PAGE_ASSET_TYPES } from "./htmlPage";
 
 // Excludes "presentation_analysis" and "headline_lab" — neither is driven by a project's
@@ -141,6 +148,16 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
     creditCost: CHALLENGE_CREDIT_COST,
     maxOutputTokens: CHALLENGE_MAX_OUTPUT_TOKENS,
     buildPrompt: buildChallengeOutlinePrompt,
+  },
+  webinar_script: {
+    assetType: "webinar_script",
+    label: "Webinar Script",
+    description: "The full spoken talk-track for Your Webinar's slide deck — what to say on every slide.",
+    creditCost: WEBINAR_SCRIPT_CREDIT_COST,
+    maxOutputTokens: WEBINAR_SCRIPT_MAX_OUTPUT_TOKENS,
+    buildPrompt: buildWebinarScriptPrompt,
+    isOutputIncomplete: isWebinarScriptIncomplete,
+    continuationHint: WEBINAR_SCRIPT_CONTINUATION_HINT,
   },
 };
 

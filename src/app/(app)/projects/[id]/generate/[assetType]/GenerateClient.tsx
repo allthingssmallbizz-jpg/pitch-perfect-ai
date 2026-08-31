@@ -304,15 +304,17 @@ export default function GenerateClient({
   // a second only while a run is in flight; the tiered copy below reassures instead of describing
   // any real progress, since there's no per-slide progress signal to report.
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  // Shares this timer/tiered-copy with generateWebinarNow's loading state below (the "Generate
-  // Your Webinar Now" action from a Webinar Blueprint) — that's the exact same slow, multi-call
-  // PPT Outline generation this comment already describes, just triggered from a different button.
+  // Shares this timer/tiered-copy with generateWebinarNow's and createScriptNow's loading states
+  // below (the "Generate Your Webinar Now" action from a Webinar Blueprint, and "Create Script"
+  // from Your Webinar) — same slow, multi-call generation this comment already describes, just
+  // triggered from different buttons.
   const [generatingWebinarDeck, setGeneratingWebinarDeck] = useState(false);
+  const [generatingScript, setGeneratingScript] = useState(false);
   useEffect(() => {
-    if (!loading && !generatingWebinarDeck) return;
+    if (!loading && !generatingWebinarDeck && !generatingScript) return;
     const interval = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
     return () => clearInterval(interval);
-  }, [loading, generatingWebinarDeck]);
+  }, [loading, generatingWebinarDeck, generatingScript]);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -538,6 +540,32 @@ export default function GenerateClient({
     }
   }
 
+  // Same chained-generation pattern one more time, one step further: Your Webinar (the slide
+  // deck) isn't a script either — "so what do I actually say on each slide?" is the very next
+  // question a member asks once the deck exists. scriptPromptOpen fires automatically right after
+  // a fresh deck finishes generating; generatingScript lives up with `loading`/`elapsedSeconds`.
+  const [scriptPromptOpen, setScriptPromptOpen] = useState(false);
+
+  async function createScriptNow() {
+    setScriptPromptOpen(false);
+    setGeneratingScript(true);
+    setElapsedSeconds(0);
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, assetType: "webinar_script", mode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not create your script.");
+      router.push(`/projects/${projectId}/generate/webinar_script?generationId=${data.generationId}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not create your script.");
+    } finally {
+      setGeneratingScript(false);
+    }
+  }
+
   async function run() {
     setLoading(true);
     setElapsedSeconds(0);
@@ -556,6 +584,7 @@ export default function GenerateClient({
       setContent(data.content);
       setGenerationId(data.generationId);
       if (assetType === "webinar_outline") setWebinarPromptOpen(true);
+      if (assetType === "ppt_outline") setScriptPromptOpen(true);
       // A fresh generation is a brand-new row — never already published under this id.
       setPublishSlug(null);
       setPublishedAt(null);
@@ -814,6 +843,50 @@ export default function GenerateClient({
             <Button onClick={generateWebinarNow}>
               <Sparkles className="mr-2 h-4 w-4" />
               Generate Your Webinar Now
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* One step further: Your Webinar's own speaker notes are short (1-3 sentences, meant for
+          a Notes-pane glance) — this is the fuller, standalone talk-track for "so what do I
+          actually say on each slide?", aligned 1:1 to the exact deck that already exists. Same
+          real-button-plus-auto-popup pattern as the blueprint-to-deck step above. */}
+      {assetType === "ppt_outline" && content && (
+        <div className="mb-4 -mt-2">
+          <Button onClick={createScriptNow} disabled={generatingScript}>
+            {generatingScript ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            {generatingScript ? "Writing your script..." : "Create Script"}
+          </Button>
+          {generatingScript && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {elapsedSeconds >= 45
+                ? "Still working — a full script for a 60-90 slide deck can take a few minutes. No need to refresh."
+                : elapsedSeconds >= 15
+                  ? "This can take a little while for a full-length script. Hang tight..."
+                  : "Agent Polly is writing what to say on every slide..."}
+            </p>
+          )}
+        </div>
+      )}
+
+      <Dialog open={scriptPromptOpen} onOpenChange={setScriptPromptOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Your webinar is built!</DialogTitle>
+            <DialogDescription>
+              Now that your slides are ready, let&apos;s create your script — the exact words to
+              say on every slide, aligned to the deck you just built, so you know exactly how to
+              deliver it.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setScriptPromptOpen(false)}>
+              Not yet
+            </Button>
+            <Button onClick={createScriptNow}>
+              <Sparkles className="mr-2 h-4 w-4" />
+              Create Script
             </Button>
           </DialogFooter>
         </DialogContent>

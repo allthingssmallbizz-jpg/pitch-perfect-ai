@@ -16,6 +16,7 @@ import {
   Layers,
   PartyPopper,
   Flag,
+  ScrollText,
   type LucideIcon,
 } from "lucide-react";
 import { Undo2 } from "lucide-react";
@@ -54,6 +55,7 @@ const DELIVERABLE_TYPES: GeneratorAssetType[] = [
   "challenge_outline",
   "sales_page",
   "ppt_outline",
+  "webinar_script",
   "landing_page",
   "thank_you_page",
   "email_sequence",
@@ -67,6 +69,7 @@ const DELIVERABLE_ICONS: Record<GeneratorAssetType, LucideIcon> = {
   challenge_outline: Flag,
   sales_page: FileText,
   ppt_outline: MonitorPlay,
+  webinar_script: ScrollText,
   landing_page: Layout,
   thank_you_page: PartyPopper,
   email_sequence: Mail,
