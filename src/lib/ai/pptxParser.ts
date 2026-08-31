@@ -22,13 +22,16 @@ const SEPARATOR_LINE = /^-{3,}$/;
 // slide instead of in PowerPoint's actual Notes pane — traced to Claude occasionally skipping
 // the "**Speaker notes**" label entirely (common enough across 60-90 repeated slides) and just
 // writing the note as trailing prose, which the parser then had no way to distinguish from a
-// genuine on-slide bullet. Presenter notes are natural spoken prose (full sentences); on-slide
-// bullets are short phrases ("headline + up to 3 bullets" per the prompt). This shape-based guess
-// is the safety net for exactly that unlabeled case — it doesn't replace the real labels, it
-// only decides where an unlabeled line goes when the label Claude was supposed to add is missing.
+// genuine on-slide bullet. Presenter notes are natural spoken prose (1-3 full sentences per the
+// prompt); on-slide bullets are meant to be substantive single points now — real, specific claims
+// a viewer could read on their own, not bare fragments — so they can legitimately run to a
+// sentence-length phrase too. The reliable signal is sentence COUNT, not raw length: a leaked
+// note is 2+ sentences strung together, while even a rich, detailed bullet is one. Length alone
+// only kicks in for an extreme outlier (a bullet that's basically a whole paragraph with no
+// period at all) rather than penalizing an intentionally fuller bullet for simply running long.
 function looksLikeSpokenProse(line: string): boolean {
   const sentenceEnders = (line.match(/[.!?](\s|$)/g) ?? []).length;
-  return line.length > 90 || sentenceEnders >= 2;
+  return sentenceEnders >= 2 || line.length > 220;
 }
 
 export function parsePptOutline(markdown: string): ParsedSlide[] {
