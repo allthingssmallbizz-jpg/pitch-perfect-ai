@@ -55,7 +55,7 @@ export const AGENTS: Record<AgentAssetType, Agent> = {
     emoji: "🎤",
     tagline: "Sarah builds your webinar's blueprint — hook to CTA — ready for Polly to turn into slides.",
     description:
-      "Creates, structures, and improves the strategic blueprint for a webinar designed to educate, persuade, build trust, present an offer, and drive the desired conversion. The next step after this is Agent Polly's Your Webinar, which builds the actual slide-by-slide deck from it.",
+      "Creates, structures, and improves the strategic blueprint for a webinar designed to educate, persuade, build trust, present an offer, and drive the desired conversion. The next step after this is Agent Polly's Your Signature Webinar, which builds the actual slide-by-slide deck from it.",
     primaryObjective:
       "Structure the full webinar arc — opening hook, audience/problem identification, teaching section, credibility, the transition from teaching to offer, offer presentation, objection handling, ethical urgency, and the call to action.",
     focusAreas: [
@@ -164,9 +164,9 @@ export const AGENTS: Record<AgentAssetType, Agent> = {
     name: "Agent Polly",
     title: "The Pitch Deck Pro",
     emoji: "📊",
-    tagline: "Polly turns your blueprint into your finished webinar — slide by slide, ready to present.",
+    tagline: "Polly turns your blueprint into your finished signature webinar — slide by slide, ready to present.",
     description:
-      "Builds your finished, presentable webinar deck — slide-by-slide structure, headlines, visual recommendations, and speaker notes. Works from the Webinar Blueprint (Agent Sarah) when one exists for the project, so it's the same story visualized, not a different pass at the same facts.",
+      "Builds your finished, presentable signature webinar deck — slide-by-slide structure, headlines, visual recommendations, and speaker notes. Works from the Webinar Blueprint (Agent Sarah) when one exists for the project, so it's the same story visualized, not a different pass at the same facts.",
     primaryObjective:
       "Determine the presentation's objective, structure it for narrative flow and retention, and produce a slide-by-slide outline with headlines, visual recommendations, and speaker notes — for investor pitches, sales presentations, or educational decks.",
     focusAreas: [
@@ -185,9 +185,9 @@ export const AGENTS: Record<AgentAssetType, Agent> = {
     name: "Agent Polly",
     title: "The Pitch Deck Pro",
     emoji: "📊",
-    tagline: "Polly writes the full script for Your Webinar — exactly what to say on every slide.",
+    tagline: "Polly writes the full script for Your Signature Webinar — exactly what to say on every slide.",
     description:
-      "Writes the complete spoken talk-track for Your Webinar's slide deck, aligned 1:1 to its exact slide numbers and titles — the fuller script a presenter reads or rehearses from, beyond the deck's own short Notes-pane speaker notes.",
+      "Writes the complete spoken talk-track for Your Signature Webinar's slide deck, aligned 1:1 to its exact slide numbers and titles — the fuller script a presenter reads or rehearses from, beyond the deck's own short Notes-pane speaker notes.",
     primaryObjective:
       "Turn an existing slide-by-slide deck into a natural, conversational, persuasive script a presenter can deliver with zero prep — one script section per slide, in the deck's own order.",
     focusAreas: [

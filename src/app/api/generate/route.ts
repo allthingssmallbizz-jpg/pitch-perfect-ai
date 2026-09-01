@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
     if (!deck) {
       return NextResponse.json(
-        { error: "Generate Your Webinar (the slide deck) first — the script needs your actual slides to write from." },
+        { error: "Generate Your Signature Webinar (the slide deck) first — the script needs your actual slides to write from." },
         { status: 400 }
       );
     }

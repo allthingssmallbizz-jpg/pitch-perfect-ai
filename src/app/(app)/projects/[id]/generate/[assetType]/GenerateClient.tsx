@@ -790,6 +790,15 @@ export default function GenerateClient({
         )}
       </div>
 
+      {assetType === "ppt_outline" && content && (
+        <p className="mb-4 -mt-2 text-xs text-muted-foreground">
+          Heads up: <strong>Copy</strong> grabs this raw text as-is — on-slide content and speaker
+          notes together, with no separation. Use <strong>Export .pptx (designed deck)</strong> to
+          get a real PowerPoint file with the speaker notes correctly placed in PowerPoint&apos;s
+          own Notes pane, off the visible slide.
+        </p>
+      )}
+
       {assetType === "landing_page" && content && !projectFunnelType && (
         <p className="mb-4 -mt-2 text-xs text-muted-foreground">
           Tip: set this project&apos;s{" "}
@@ -802,7 +811,7 @@ export default function GenerateClient({
       )}
 
       {/* This blueprint (7 strategic phases/beats) isn't the presentable deck itself — that's
-          Your Webinar (Agent Polly), which builds the actual 60-90 slide-by-slide deck from this
+          Your Signature Webinar (Agent Polly), which builds the actual 60-90 slide-by-slide deck from this
           exact blueprint. A real button rather than a quiet text link — this is meant to read as
           the obvious next step, not a footnote — plus the pop-up dialog above fires automatically
           right after a fresh blueprint finishes generating, when "what's next?" is the live
@@ -812,7 +821,7 @@ export default function GenerateClient({
         <div className="mb-4 -mt-2">
           <Button onClick={generateWebinarNow} disabled={generatingWebinarDeck}>
             {generatingWebinarDeck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-            {generatingWebinarDeck ? "Building your webinar..." : "Generate Your Webinar Now"}
+            {generatingWebinarDeck ? "Building your signature webinar..." : "Generate Your Signature Webinar Now"}
           </Button>
           {generatingWebinarDeck && (
             <p className="mt-2 text-xs text-muted-foreground">
@@ -831,9 +840,9 @@ export default function GenerateClient({
           <DialogHeader>
             <DialogTitle>Your blueprint is ready!</DialogTitle>
             <DialogDescription>
-              Now that we have your outline, it&apos;s time to generate your webinar — Agent Polly
-              turns these phases into the actual 60-90 slide-by-slide presentation, ready to
-              present.
+              Now that we have your outline, it&apos;s time to generate your signature webinar —
+              Agent Polly turns these phases into the actual 60-90 slide-by-slide presentation,
+              ready to present.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -842,13 +851,13 @@ export default function GenerateClient({
             </Button>
             <Button onClick={generateWebinarNow}>
               <Sparkles className="mr-2 h-4 w-4" />
-              Generate Your Webinar Now
+              Generate Your Signature Webinar Now
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* One step further: Your Webinar's own speaker notes are short (1-3 sentences, meant for
+      {/* One step further: Your Signature Webinar's own speaker notes are short (1-3 sentences, meant for
           a Notes-pane glance) — this is the fuller, standalone talk-track for "so what do I
           actually say on each slide?", aligned 1:1 to the exact deck that already exists. Same
           real-button-plus-auto-popup pattern as the blueprint-to-deck step above. */}
@@ -873,7 +882,7 @@ export default function GenerateClient({
       <Dialog open={scriptPromptOpen} onOpenChange={setScriptPromptOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Your webinar is built!</DialogTitle>
+            <DialogTitle>Your signature webinar is built!</DialogTitle>
             <DialogDescription>
               Now that your slides are ready, let&apos;s create your script — the exact words to
               say on every slide, aligned to the deck you just built, so you know exactly how to

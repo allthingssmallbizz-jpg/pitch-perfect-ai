@@ -53,7 +53,7 @@ const CREATE_ASSET_TYPES: Exclude<AgentAssetType, "presentation_analysis">[] = [
 
 // Short label per generator for the sidebar's "Create" group — matches the Lovable prototype's
 // nav wording (VSL, Sales Letter...) rather than the longer descriptions used elsewhere. Webinar
-// Blueprint/Your Webinar/Webinar Script are deliberately the same wording as
+// Blueprint/Your Signature Webinar/Webinar Script are deliberately the same wording as
 // ASSET_GENERATORS[type].label here — the three-step relationship between them (Sarah's blueprint
 // feeds Polly's finished deck, which the script aligns to) is worth keeping identical everywhere
 // a member sees it, not shortened differently in different places.
@@ -62,7 +62,7 @@ const CREATE_LABELS: Record<(typeof CREATE_ASSET_TYPES)[number], string> = {
   vsl_script: "VSL",
   challenge_outline: "Challenge",
   sales_page: "Sales Letter",
-  ppt_outline: "Your Webinar",
+  ppt_outline: "Your Signature Webinar",
   webinar_script: "Webinar Script",
   landing_page: "Landing Page",
   thank_you_page: "Thank You Page",

@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Nothing to export yet." }, { status: 400 });
   }
   if (generation.asset_type !== "ppt_outline") {
-    return NextResponse.json({ error: "Slide export is only available for Your Webinar decks." }, { status: 400 });
+    return NextResponse.json({ error: "Slide export is only available for Your Signature Webinar decks." }, { status: 400 });
   }
 
   const slides = parsePptOutline(generation.content);
