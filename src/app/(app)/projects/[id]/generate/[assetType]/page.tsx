@@ -107,13 +107,22 @@ export default async function GenerateAssetPage({
     };
   });
 
-  // The "other" web-page type in this same project (Landing Page <-> Thank You Page) — lets the
-  // toggle below jump straight to it without leaving the project or hunting through My Websites,
-  // since the two are meant to be viewed/edited as a pair. Only queried for web-page assets; null
-  // for every other generator.
-  let matchingPage: { assetType: "landing_page" | "thank_you_page"; generationId: string } | null = null;
-  if (isWebPageAsset) {
-    const otherAssetType = generator.assetType === "landing_page" ? "thank_you_page" : "landing_page";
+  // The "other half" of this generator's pair in the same project — lets the toggle below jump
+  // straight to it without backing out to the project page and hunting for it, since each pair is
+  // meant to be viewed/edited together. Landing Page <-> Thank You Page was the original pair;
+  // Your Webinar <-> Webinar Script is the same relationship for a different reason (Script is
+  // generated FROM an existing deck, then a member had no way back to that deck except
+  // regenerating it — see the chained-generation buttons in GenerateClient.tsx). null for every
+  // other generator, which has no such pair.
+  const MATCHING_ASSET_TYPE: Partial<Record<GeneratorAssetType, GeneratorAssetType>> = {
+    landing_page: "thank_you_page",
+    thank_you_page: "landing_page",
+    ppt_outline: "webinar_script",
+    webinar_script: "ppt_outline",
+  };
+  let matchingPage: { assetType: GeneratorAssetType; generationId: string } | null = null;
+  const otherAssetType = MATCHING_ASSET_TYPE[generator.assetType];
+  if (otherAssetType) {
     const { data: match } = await supabase
       .from("generations")
       .select("id")
