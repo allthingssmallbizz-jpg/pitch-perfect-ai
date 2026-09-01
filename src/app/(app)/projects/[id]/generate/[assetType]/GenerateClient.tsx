@@ -25,6 +25,7 @@ import {
   Pencil,
   BarChart3,
   RefreshCw,
+  Wand2,
 } from "lucide-react";
 import {
   Dialog,
@@ -317,6 +318,7 @@ export default function GenerateClient({
   }, [loading, generatingWebinarDeck, generatingScript]);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedForGamma, setCopiedForGamma] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [pastGenerations, setPastGenerations] = useState<PastGeneration[]>(initialPastGenerations);
@@ -671,6 +673,28 @@ export default function GenerateClient({
     setTimeout(() => setCopied(false), 1500);
   }
 
+  // For members who take this deck into Gamma (or any other AI presentation tool) instead of
+  // exporting a .pptx directly — Gamma reads whatever text it's given and has no built-in idea
+  // that "Speaker notes" here means presenter-only text, so left alone it happily designs those
+  // sentences right onto the slide. This prepends a plain-language instruction block ahead of the
+  // real content so that instruction travels along with the paste itself, telling Gamma (or any
+  // similar tool) to keep "On-slide content" on the visible slide and route "Speaker notes" into
+  // its speaker notes / presenter notes section only.
+  async function copyForGamma() {
+    if (!content) return;
+    const instructions = `INSTRUCTIONS FOR THIS PRESENTATION TOOL — PLEASE FOLLOW EXACTLY:
+This is a slide-by-slide outline. Every slide below has two labeled parts:
+- "On-slide content" — design this beautifully and display it on the visible slide.
+- "Speaker notes" — this is presenter-only. Do NOT display it anywhere on the visible slide. Place it ONLY in this presentation's speaker notes / presenter notes section for that same slide.
+
+============================================================
+
+`;
+    await navigator.clipboard.writeText(instructions + content);
+    setCopiedForGamma(true);
+    setTimeout(() => setCopiedForGamma(false), 1500);
+  }
+
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -684,6 +708,16 @@ export default function GenerateClient({
               <Copy className="mr-2 h-4 w-4" />
               {copied ? "Copied!" : "Copy"}
             </Button>
+            {assetType === "ppt_outline" && (
+              <Button
+                variant="outline"
+                onClick={copyForGamma}
+                title="Copies this deck with instructions telling Gamma (or another AI presentation tool) to keep speaker notes off the visible slide and use them as speaker notes instead"
+              >
+                <Wand2 className="mr-2 h-4 w-4" />
+                {copiedForGamma ? "Copied!" : "Copy for Gamma"}
+              </Button>
+            )}
             {generationId && (
               <>
                 <Button variant="outline" onClick={saveVersion} disabled={saving}>
@@ -793,9 +827,11 @@ export default function GenerateClient({
       {assetType === "ppt_outline" && content && (
         <p className="mb-4 -mt-2 text-xs text-muted-foreground">
           Heads up: <strong>Copy</strong> grabs this raw text as-is — on-slide content and speaker
-          notes together, with no separation. Use <strong>Export .pptx (designed deck)</strong> to
-          get a real PowerPoint file with the speaker notes correctly placed in PowerPoint&apos;s
-          own Notes pane, off the visible slide.
+          notes together, with no separation. Use <strong>Export .pptx (designed deck)</strong> for
+          a ready-to-present PowerPoint file with speaker notes correctly placed in PowerPoint&apos;s
+          own Notes pane. Pasting into Gamma or another AI design tool instead? Use{" "}
+          <strong>Copy for Gamma</strong> — it copies this deck with instructions telling the tool
+          to keep speaker notes off the visible slide and use them as speaker notes instead.
         </p>
       )}
 
