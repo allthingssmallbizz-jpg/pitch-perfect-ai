@@ -157,25 +157,25 @@ export default function PresenterBioForm({
       {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
       <p className="text-xs text-muted-foreground">
         <span className="text-red-500">*</span> Required — every agent stays locked until these are
-        filled in. The other two (Credentials and Recognition) are fine to leave blank.
+        filled in. Everything else, including the &quot;I Help&quot; statement generator below, is
+        optional.
       </p>
       <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
-        <Label className="text-base font-semibold">
-          Your &quot;I Help&quot; statement
-          <RequiredMark />
-        </Label>
+        <Label className="text-base font-semibold">Your &quot;I Help&quot; statement</Label>
         <p className="mt-0.5 text-xs text-muted-foreground">
           The one-line positioning statement every generator can echo — hooks, headlines, and
-          intros stay consistent instead of reinventing your audience and promise each time.
-          Answer in plain words below; most people don&apos;t naturally know how to phrase this
-          well, so let the AI draft several sharper options instead of guessing.
+          intros stay consistent instead of reinventing your audience and promise each time. This
+          section is a generator, not a requirement of its own: use it to find the words, then
+          drop the result into &quot;What do you help people do?&quot; below (that&apos;s the one
+          field that&apos;s actually required). Answer in plain words below; most people
+          don&apos;t naturally know how to phrase this well, so let the AI draft several sharper
+          options instead of guessing.
         </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <div>
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="presenter_ihelp_audience" className="text-xs text-muted-foreground">
                 I help...
-                <RequiredMark />
               </Label>
               <AssistButton
                 onClick={() =>
@@ -201,7 +201,6 @@ export default function PresenterBioForm({
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="presenter_ihelp_outcome" className="text-xs text-muted-foreground">
                 ...achieve...
-                <RequiredMark />
               </Label>
               <AssistButton
                 onClick={() =>
@@ -227,7 +226,6 @@ export default function PresenterBioForm({
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="presenter_ihelp_mechanism" className="text-xs text-muted-foreground">
                 ...with...
-                <RequiredMark />
               </Label>
               <AssistButton
                 onClick={() =>
@@ -312,8 +310,8 @@ export default function PresenterBioForm({
         label="What do you help people do?"
         name="presenter_mission"
         defaultValue={bio?.presenter_mission ?? ""}
-        placeholder="In one or two sentences — your core mission."
-        hint="If a stranger asked 'what do you do,' what's the one-line answer you'd actually give?"
+        placeholder="I help [audience] [achieve outcome] with [mechanism]."
+        hint="Best phrased using the I Help framework above — I help ___ achieve ___ with ___. Use the generator above to find the words, then write the result here."
         required
         onAssist={setAssistTarget}
       />

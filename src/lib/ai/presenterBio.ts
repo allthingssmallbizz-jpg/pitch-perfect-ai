@@ -93,16 +93,15 @@ export function isPresenterBioEmpty(bio: PresenterBioFields | null | undefined):
 // truth for "is this bio actually strong enough to generate from," shared by the form's own
 // post-save feedback (updatePresenterBio) and the hard gate blocking every agent
 // (isPresenterBioIncomplete) so neither can drift out of sync with what the UI actually asks for.
-// Same two fields Aaron said are fine to skip stay off this list — Credentials/certifications and
-// Media/speaking/industry recognition are real answers even when genuinely blank ("none yet"),
-// not a sign the bio was rushed. The three raw "I Help" parts stand in for the crafted statement
-// itself (composeIHelpStatement derives a usable fallback from them — see getPresenterBioBlock
-// above), so the statement box and the explicitly-optional "biggest struggle" field aren't
-// separately required here.
+// Credentials/certifications and Media/speaking/industry recognition are the two Aaron said are
+// fine to skip — real answers even when genuinely blank ("none yet"), not a sign the bio was
+// rushed. The whole "I Help" statement section (the audience/outcome/mechanism builder, the
+// "biggest struggle" field, and the crafted statement box) is also deliberately NOT required —
+// it's a generator that helps someone find the words for "What do you help people do?" below, not
+// a second, separate answer to require on top of it. That one field (presenter_mission) is the
+// real required answer; its own hint nudges toward phrasing it with the I Help framework, but
+// nobody gets blocked just for not having run the generator.
 export const REQUIRED_BIO_FIELDS: { key: keyof PresenterBioFields; label: string }[] = [
-  { key: "presenter_ihelp_audience", label: "I Help Statement — who you help" },
-  { key: "presenter_ihelp_outcome", label: "I Help Statement — the outcome" },
-  { key: "presenter_ihelp_mechanism", label: "I Help Statement — your mechanism" },
   { key: "presenter_mission", label: "What do you help people do?" },
   { key: "presenter_years_experience", label: "Years in this industry" },
   { key: "presenter_origin_story", label: "How did you get into this industry?" },
