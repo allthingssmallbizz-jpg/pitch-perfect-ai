@@ -6,7 +6,7 @@ import { checkGuardrails, decrementCredits } from "@/lib/credits";
 import { generateCompleteAsset } from "@/lib/ai/anthropic";
 import { buildSystemPrompt } from "@/lib/ai/systemPrompt";
 import { getBrandVoiceBlock } from "@/lib/ai/brandVoice";
-import { getPresenterBioBlock, isPresenterBioEmpty } from "@/lib/ai/presenterBio";
+import { getPresenterBioBlock, isPresenterBioIncomplete, getMissingBioFieldLabels } from "@/lib/ai/presenterBio";
 import { stripHtmlCodeFence, WEB_PAGE_ASSET_TYPES, injectFormAction } from "@/lib/ai/generators/htmlPage";
 import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
 import { getFormSubmitUrl } from "@/lib/publishing";
@@ -75,9 +75,10 @@ export async function POST(req: NextRequest) {
   // as the Discovery check just below: the generate page already redirects a fresh visit to /bio
   // first, but that's a UI nudge, not a lock — this is the one nothing can slip past.
   const { data: bio } = await supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle();
-  if (isPresenterBioEmpty(bio)) {
+  if (isPresenterBioIncomplete(bio)) {
+    const missing = getMissingBioFieldLabels(bio);
     return NextResponse.json(
-      { error: "Finish your presenter bio first — every agent needs it to write a strong, credible presentation." },
+      { error: `Finish your presenter bio first — still missing: ${missing.join(", ")}. Every agent needs it to write a strong, credible presentation.` },
       { status: 400 }
     );
   }

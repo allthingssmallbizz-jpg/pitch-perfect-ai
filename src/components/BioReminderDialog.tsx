@@ -12,15 +12,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-// Only rendered (and only ever opens) when the server component already determined the bio is
-// empty — currently just the agent landing page (src/app/(app)/agents/[assetType]/page.tsx, the
-// moment someone clicks into any agent). This is deliberately still dismissible here, unlike the
-// hard "finish your bio first" redirect on the actual generate/ad-image pages (see
-// isPresenterBioEmpty usage there and the matching check in /api/generate/route.ts) — this page
-// also doubles as the place to browse *past* generations, and blocking that outright over an
-// unrelated field would be the wrong call. The real requirement lives downstream: dismissing this
-// only defers finishing the bio, it doesn't skip it — the next agent they actually try to
-// generate with will redirect them to /bio regardless.
+// Only rendered (and only ever opens) when the server component already determined a required
+// field (REQUIRED_BIO_FIELDS) is still missing — currently just the agent landing page
+// (src/app/(app)/agents/[assetType]/page.tsx, the moment someone clicks into any agent). This is
+// deliberately still dismissible here, unlike the hard "finish your bio first" redirect on the
+// actual generate/ad-image pages (see isPresenterBioIncomplete usage there and the matching check
+// in /api/generate/route.ts) — this page also doubles as the place to browse *past* generations,
+// and blocking that outright over an unrelated field would be the wrong call. The real
+// requirement lives downstream: dismissing this only defers finishing the bio, it doesn't skip
+// it — the next agent they actually try to generate with will redirect them to /bio regardless.
 export default function BioReminderDialog({ returnTo }: { returnTo?: string }) {
   const [open, setOpen] = useState(true);
   const bioHref = returnTo ? `/bio?returnTo=${encodeURIComponent(returnTo)}` : "/bio";

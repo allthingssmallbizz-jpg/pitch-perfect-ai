@@ -79,10 +79,55 @@ type PresenterBioFields = {
   presenter_relatable_detail: string;
 };
 
-// True when every field is blank (or no row exists yet) — used both to decide whether to fold
-// anything into the system prompt above, and to drive the "finish your bio first?" reminder on
-// the Webinar/VSL generate pages.
+// True when every field is blank (or no row exists yet) — used only to decide whether there's
+// anything at all worth folding into the system prompt above. Deliberately NOT used for the "can
+// this member reach an agent" gate below — a bio with one field filled in isn't empty, but it's
+// still nowhere near strong enough to write a real Credibility Bridge / Opening Story, so the gate
+// needs its own, stricter definition of "done." See isPresenterBioIncomplete.
 export function isPresenterBioEmpty(bio: PresenterBioFields | null | undefined): boolean {
   if (!bio) return true;
   return Object.values(bio).every((v) => !v.trim());
+}
+
+// The fields PresenterBioForm.tsx marks with a required red asterisk — the single source of
+// truth for "is this bio actually strong enough to generate from," shared by the form's own
+// post-save feedback (updatePresenterBio) and the hard gate blocking every agent
+// (isPresenterBioIncomplete) so neither can drift out of sync with what the UI actually asks for.
+// Same two fields Aaron said are fine to skip stay off this list — Credentials/certifications and
+// Media/speaking/industry recognition are real answers even when genuinely blank ("none yet"),
+// not a sign the bio was rushed. The three raw "I Help" parts stand in for the crafted statement
+// itself (composeIHelpStatement derives a usable fallback from them — see getPresenterBioBlock
+// above), so the statement box and the explicitly-optional "biggest struggle" field aren't
+// separately required here.
+export const REQUIRED_BIO_FIELDS: { key: keyof PresenterBioFields; label: string }[] = [
+  { key: "presenter_ihelp_audience", label: "I Help Statement — who you help" },
+  { key: "presenter_ihelp_outcome", label: "I Help Statement — the outcome" },
+  { key: "presenter_ihelp_mechanism", label: "I Help Statement — your mechanism" },
+  { key: "presenter_mission", label: "What do you help people do?" },
+  { key: "presenter_years_experience", label: "Years in this industry" },
+  { key: "presenter_origin_story", label: "How did you get into this industry?" },
+  { key: "presenter_signature_win", label: "Your greatest client transformation" },
+  { key: "presenter_setback_story", label: "Your major setback — and how you turned it around" },
+  { key: "presenter_mission_why", label: "Your personal 'why'" },
+  { key: "presenter_relatable_detail", label: "A relatable, human detail about you" },
+  { key: "presenter_income_goal_6mo", label: "Income goal — next 6 months" },
+  { key: "presenter_income_goal_12mo", label: "Income goal — next 12 months" },
+];
+
+type RequiredBioFieldKey = (typeof REQUIRED_BIO_FIELDS)[number]["key"];
+
+// Works against either the typed DB row (layout.tsx, the generate/ad-image/agent-landing gates,
+// the API routes) or the raw string fields extracted from formData in updatePresenterBio — both
+// shapes have every required key as a string, which is all a Partial<Record<...>> needs.
+export function getMissingBioFieldLabels(
+  bio: Partial<Record<RequiredBioFieldKey, string>> | null | undefined
+): string[] {
+  if (!bio) return REQUIRED_BIO_FIELDS.map((f) => f.label);
+  return REQUIRED_BIO_FIELDS.filter(({ key }) => !String(bio[key] ?? "").trim()).map((f) => f.label);
+}
+
+// The real "can this member reach an agent" check — every required field filled in, not just
+// "not literally nothing" (see isPresenterBioEmpty above for that weaker check).
+export function isPresenterBioIncomplete(bio: Partial<Record<RequiredBioFieldKey, string>> | null | undefined): boolean {
+  return getMissingBioFieldLabels(bio).length > 0;
 }

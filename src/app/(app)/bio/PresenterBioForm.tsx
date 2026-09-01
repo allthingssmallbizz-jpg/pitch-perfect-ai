@@ -48,6 +48,19 @@ function AssistButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+// A plain red asterisk next to a label — every field marked with this one is required before
+// REQUIRED_BIO_FIELDS (src/lib/ai/presenterBio.ts) counts the bio as complete, which is what
+// actually unlocks every agent. Kept as one shared bit of markup so the visual meaning of "*" stays
+// identical whether it's next to a Field component's label or one of the raw I Help sub-labels.
+function RequiredMark() {
+  return (
+    <span className="text-red-500" aria-hidden>
+      {" "}
+      *
+    </span>
+  );
+}
+
 function Field({
   label,
   name,
@@ -55,6 +68,7 @@ function Field({
   textarea = true,
   placeholder,
   hint,
+  required = false,
   onAssist,
 }: {
   label: string;
@@ -63,12 +77,16 @@ function Field({
   textarea?: boolean;
   placeholder?: string;
   hint?: string;
+  required?: boolean;
   onAssist: (target: AssistTarget) => void;
 }) {
   return (
     <div>
       <div className="flex items-center justify-between gap-2">
-        <Label htmlFor={name}>{label}</Label>
+        <Label htmlFor={name}>
+          {label}
+          {required && <RequiredMark />}
+        </Label>
         <AssistButton
           onClick={() => onAssist({ key: name, label, type: textarea ? "textarea" : "text", placeholder })}
         />
@@ -137,8 +155,15 @@ export default function PresenterBioForm({
   return (
     <form action={formAction} className="card-elevated space-y-5 rounded-2xl p-8">
       {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
+      <p className="text-xs text-muted-foreground">
+        <span className="text-red-500">*</span> Required — every agent stays locked until these are
+        filled in. The other two (Credentials and Recognition) are fine to leave blank.
+      </p>
       <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
-        <Label className="text-base font-semibold">Your &quot;I Help&quot; statement</Label>
+        <Label className="text-base font-semibold">
+          Your &quot;I Help&quot; statement
+          <RequiredMark />
+        </Label>
         <p className="mt-0.5 text-xs text-muted-foreground">
           The one-line positioning statement every generator can echo — hooks, headlines, and
           intros stay consistent instead of reinventing your audience and promise each time.
@@ -150,6 +175,7 @@ export default function PresenterBioForm({
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="presenter_ihelp_audience" className="text-xs text-muted-foreground">
                 I help...
+                <RequiredMark />
               </Label>
               <AssistButton
                 onClick={() =>
@@ -175,6 +201,7 @@ export default function PresenterBioForm({
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="presenter_ihelp_outcome" className="text-xs text-muted-foreground">
                 ...achieve...
+                <RequiredMark />
               </Label>
               <AssistButton
                 onClick={() =>
@@ -200,6 +227,7 @@ export default function PresenterBioForm({
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="presenter_ihelp_mechanism" className="text-xs text-muted-foreground">
                 ...with...
+                <RequiredMark />
               </Label>
               <AssistButton
                 onClick={() =>
@@ -286,6 +314,7 @@ export default function PresenterBioForm({
         defaultValue={bio?.presenter_mission ?? ""}
         placeholder="In one or two sentences — your core mission."
         hint="If a stranger asked 'what do you do,' what's the one-line answer you'd actually give?"
+        required
         onAssist={setAssistTarget}
       />
       <div className="grid grid-cols-2 gap-4">
@@ -295,6 +324,7 @@ export default function PresenterBioForm({
           defaultValue={bio?.presenter_years_experience ?? ""}
           textarea={false}
           placeholder="e.g. 12 years"
+          required
           onAssist={setAssistTarget}
         />
         <Field
@@ -312,6 +342,7 @@ export default function PresenterBioForm({
         defaultValue={bio?.presenter_origin_story ?? ""}
         placeholder="Your origin story — what led you here?"
         hint="This is often the single most relatable thing in a whole presentation — don't polish it too much."
+        required
         onAssist={setAssistTarget}
       />
       <Field
@@ -320,6 +351,7 @@ export default function PresenterBioForm({
         defaultValue={bio?.presenter_signature_win ?? ""}
         placeholder="The single biggest impact you've had on a client — a specific result."
         hint="Pick ONE story, not a list — specific beats impressive. What did their life look like before, and after?"
+        required
         onAssist={setAssistTarget}
       />
       <Field
@@ -328,6 +360,7 @@ export default function PresenterBioForm({
         defaultValue={bio?.presenter_setback_story ?? ""}
         placeholder="Struggled, failed, or hit a wall trying to build this? Tell it honestly."
         hint="A real setback, told honestly, builds more trust than a highlight reel — it's exactly what makes an Opening Story land."
+        required
         onAssist={setAssistTarget}
       />
       <Field
@@ -336,6 +369,7 @@ export default function PresenterBioForm({
         defaultValue={bio?.presenter_mission_why ?? ""}
         placeholder="Why does this matter to YOU, personally — beyond the business?"
         hint="This is what makes an audience trust you're in it for more than the sale."
+        required
         onAssist={setAssistTarget}
       />
       <Field
@@ -351,6 +385,7 @@ export default function PresenterBioForm({
         defaultValue={bio?.presenter_relatable_detail ?? ""}
         placeholder="A hobby, your family, something ordinary about you."
         hint="Often what makes a stranger start to like and trust you, not just respect you."
+        required
         onAssist={setAssistTarget}
       />
       <div className="grid grid-cols-2 gap-4">
@@ -360,6 +395,7 @@ export default function PresenterBioForm({
           defaultValue={bio?.presenter_income_goal_6mo ?? ""}
           textarea={false}
           placeholder="e.g. $20k/month"
+          required
           onAssist={setAssistTarget}
         />
         <Field
@@ -368,6 +404,7 @@ export default function PresenterBioForm({
           defaultValue={bio?.presenter_income_goal_12mo ?? ""}
           textarea={false}
           placeholder="e.g. $50k/month"
+          required
           onAssist={setAssistTarget}
         />
       </div>
@@ -382,7 +419,15 @@ export default function PresenterBioForm({
           {pending ? "Saving…" : "Save bio"}
         </Button>
         {state && "success" in state && state.success && (
-          <span className="text-sm text-emerald-400">Saved — every project can use this now.</span>
+          <span className="text-sm">
+            {state.missing.length > 0 ? (
+              <span className="text-amber-500">
+                Saved — but agents stay locked until you fill in: {state.missing.join(", ")}.
+              </span>
+            ) : (
+              <span className="text-emerald-400">Saved — every agent is unlocked now.</span>
+            )}
+          </span>
         )}
         {state && "error" in state && state.error && <span className="text-sm text-destructive">{state.error}</span>}
       </div>

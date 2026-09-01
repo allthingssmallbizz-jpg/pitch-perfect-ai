@@ -4,7 +4,7 @@ import { Plus, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
-import { isPresenterBioEmpty } from "@/lib/ai/presenterBio";
+import { isPresenterBioIncomplete } from "@/lib/ai/presenterBio";
 import AgentBadge from "@/components/AgentBadge";
 import DeleteGenerationButton from "@/components/DeleteGenerationButton";
 import BioReminderDialog from "@/components/BioReminderDialog";
@@ -83,7 +83,7 @@ export default async function AgentLandingPage({
     // before they even pick a project, not several clicks later.
     supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle(),
   ]);
-  const showBioReminder = isPresenterBioEmpty(bio);
+  const showBioReminder = isPresenterBioIncomplete(bio);
 
   // Neither of these queries should ever actually fail for a normal request — but they used to
   // be destructured without looking at `error` at all, so a real failure (a missing column after

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { UserCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { isPresenterBioEmpty } from "@/lib/ai/presenterBio";
+import { isPresenterBioIncomplete, getMissingBioFieldLabels } from "@/lib/ai/presenterBio";
 import StartHereBadge from "@/components/StartHereBadge";
 import PresenterBioForm from "./PresenterBioForm";
 
@@ -17,6 +17,7 @@ export default async function PresenterBioPage({
   if (!user) redirect("/login");
 
   const { data: bio } = await supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle();
+  const missingFields = getMissingBioFieldLabels(bio);
 
   // Set by every hard "finish your bio first" redirect (generate/[assetType]/page.tsx,
   // ad-image/page.tsx) so Save can send them straight back instead of stranding them here — see
@@ -35,7 +36,7 @@ export default async function PresenterBioPage({
         <div>
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="font-display text-3xl font-bold text-gradient-silver">My Webinar Bio</h1>
-            {isPresenterBioEmpty(bio) && <StartHereBadge />}
+            {isPresenterBioIncomplete(bio) && <StartHereBadge />}
           </div>
           <p className="mt-1 text-muted-foreground">
             Who you are behind the offer — your mission, credentials, origin story, a real
@@ -43,11 +44,15 @@ export default async function PresenterBioPage({
             available to every project&apos;s Webinar, VSL, and every other agent — you&apos;ll
             never have to retype it.
           </p>
-          {returnTo && isPresenterBioEmpty(bio) && (
-            <p className="mt-2 text-sm font-medium text-primary">
-              Finish this first — every agent needs it to write a strong, credible presentation.
-              Save below and you&apos;ll go straight back to what you were doing.
-            </p>
+          {missingFields.length > 0 && (
+            <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+              <p className="font-medium text-primary">
+                {returnTo
+                  ? "Finish this first — every agent needs it to write a strong, credible presentation. Save below and you'll go straight back to what you were doing."
+                  : "Every field marked * below is required before any agent will generate for you."}
+              </p>
+              <p className="mt-1 text-muted-foreground">Still missing: {missingFields.join(", ")}.</p>
+            </div>
           )}
         </div>
       </div>

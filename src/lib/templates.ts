@@ -74,6 +74,9 @@ export const TEMPLATES: Template[] = [
         "Clients often say some version of 'I know what to do, I just don't do it' — the program's whole angle is cadence over content, since they don't need more information.",
     },
     presenterBio: {
+      presenter_ihelp_audience: "ambitious professionals stuck at a career plateau",
+      presenter_ihelp_outcome: "reclaim 10+ hours a week and double their income",
+      presenter_ihelp_mechanism: "the 3-Layer Momentum System",
       presenter_mission:
         "I help ambitious professionals stuck at a plateau get their time back and double their income without burning out even further.",
       presenter_years_experience: "7 years (since 2018, after 11 years in corporate operations)",
@@ -140,6 +143,9 @@ export const TEMPLATES: Template[] = [
         "Buyers are engineering managers, not individual engineers — messaging should speak to 'give your team back deep work time,' not just 'no more meetings.'",
     },
     presenterBio: {
+      presenter_ihelp_audience: "engineering managers of distributed teams",
+      presenter_ihelp_outcome: "get real team alignment without a single live meeting",
+      presenter_ihelp_mechanism: "AI-summarized async updates that surface blockers automatically",
       presenter_mission:
         "I help engineering managers of distributed teams get real alignment without a single live meeting.",
       presenter_years_experience: "5 years building Loop (previously 8 years as an engineering manager at two remote-first startups)",
@@ -206,6 +212,9 @@ export const TEMPLATES: Template[] = [
         "Buyers are burned by past 'get rich with email' hype — copy should lean into specificity/proof over big promises.",
     },
     presenterBio: {
+      presenter_ihelp_audience: "solopreneurs and course creators",
+      presenter_ihelp_outcome: "turn a list that ignores them into one that opens, clicks, and buys",
+      presenter_ihelp_mechanism: "the Curiosity Loop Framework",
       presenter_mission:
         "I help solopreneurs and course creators turn a list that ignores them into a list that opens, clicks, and buys.",
       presenter_years_experience: "6 years",
@@ -274,6 +283,9 @@ export const TEMPLATES: Template[] = [
         "Buyers are founders/CMOs, skeptical from past agency experiences — lead with named case studies and specific numbers, not adjectives.",
     },
     presenterBio: {
+      presenter_ihelp_audience: "$1M-$10M ecom founders",
+      presenter_ihelp_outcome: "find exactly where their growth stalled and fix the right lever first",
+      presenter_ihelp_mechanism: "the 7-point Growth Diagnostic",
       presenter_mission:
         "I help $1M-$10M ecom founders find exactly where their growth stalled and fix the right lever first, instead of just spending more on ads.",
       presenter_years_experience: "10 years (started running paid media in 2015, founded the agency in 2019)",
@@ -341,6 +353,9 @@ export const TEMPLATES: Template[] = [
         "This is a relationship sale — application call is the actual conversion mechanism, not the webinar itself. Webinar's job is just to get the application started.",
     },
     presenterBio: {
+      presenter_ihelp_audience: "7-figure founders who've hit a ceiling",
+      presenter_ihelp_outcome: "find the peer group and strategic clarity to break through it",
+      presenter_ihelp_mechanism: "quarterly in-person intensives plus weekly hot-seat access",
       presenter_mission:
         "I help 7-figure founders who've hit a ceiling find the peer group and strategic clarity that got them here in the first place.",
       presenter_years_experience: "14 years (built and exited one company, has run masterminds for the last 6)",
@@ -409,6 +424,9 @@ export const TEMPLATES: Template[] = [
         "Buyers have pillow fatigue from past purchases — lead with the clinical study and neurologist involvement before anything about comfort/feel.",
     },
     presenterBio: {
+      presenter_ihelp_audience: "people who've given up on good sleep",
+      presenter_ihelp_outcome: "fall asleep faster and wake up without pain",
+      presenter_ihelp_mechanism: "a dual-layer graphene cooling core built with a sleep neurologist",
       presenter_mission:
         "I help people who've given up on good sleep actually fall asleep faster and wake up without pain — not with another vague 'wellness' product, with something clinically tested.",
       presenter_years_experience: "8 years running the brand",

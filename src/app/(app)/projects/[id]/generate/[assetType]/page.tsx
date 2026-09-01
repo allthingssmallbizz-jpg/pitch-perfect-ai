@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, WEB_PAGE_ASSET_TYPES, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
 import { projectNeedsDiscovery } from "@/lib/projects";
-import { isPresenterBioEmpty } from "@/lib/ai/presenterBio";
+import { isPresenterBioIncomplete } from "@/lib/ai/presenterBio";
 import { getPageStats, type PageStats } from "@/lib/analytics";
 import AgentBadge from "@/components/AgentBadge";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +63,7 @@ export default async function GenerateAssetPage({
   // needing to hit).
   if (!generationId) {
     const { data: bio } = await supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle();
-    if (isPresenterBioEmpty(bio)) {
+    if (isPresenterBioIncomplete(bio)) {
       redirect(`/bio?returnTo=${encodeURIComponent(`/projects/${id}/generate/${assetType}`)}`);
     }
   }

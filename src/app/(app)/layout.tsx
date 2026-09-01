@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ensureProfile } from "@/lib/profile";
-import { isPresenterBioEmpty } from "@/lib/ai/presenterBio";
+import { isPresenterBioIncomplete } from "@/lib/ai/presenterBio";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSidebar";
 
@@ -20,10 +20,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   // Drives the pulsating "Start Here" badge on the sidebar's Bio link (see StartHereBadge) — a
   // member logging in with nothing filled in yet gets an unmissable answer to "where do I start?"
-  // on every single page, not just the dashboard. Fetched once here rather than per-page since
-  // every page under this layout shares the same sidebar.
+  // on every single page, not just the dashboard. Stays lit until every field marked required on
+  // the bio form (see REQUIRED_BIO_FIELDS) is actually filled in, not just "started" — a half-done
+  // bio still blocks every agent, so the badge keeping the pressure on matches that. Fetched once
+  // here rather than per-page since every page under this layout shares the same sidebar.
   const { data: bio } = await supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle();
-  const bioIncomplete = isPresenterBioEmpty(bio);
+  const bioIncomplete = isPresenterBioIncomplete(bio);
 
   return (
     <SidebarProvider>

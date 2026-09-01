@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getMissingBioFieldLabels } from "@/lib/ai/presenterBio";
 
 // Same pattern as updateBrandVoice — one row per user, upserted, filled in once on its own /bio
 // page instead of per-project.
@@ -51,10 +52,15 @@ export async function updatePresenterBio(_prevState: unknown, formData: FormData
 
   // Set by PresenterBioForm when this page was reached via the "finish your bio first" redirect
   // (?returnTo=... — see generate/[assetType]/page.tsx, ad-image/page.tsx, bio/page.tsx) —
-  // finishes that trip by sending them straight back to what they were actually trying to do,
-  // same pattern as updateProjectDiscovery's own redirectTo.
+  // finishes that trip by sending them straight back to what they were actually trying to do.
+  // Same rule as updateProjectDiscovery's own redirectTo: only actually jump once every required
+  // field (REQUIRED_BIO_FIELDS) is filled in — otherwise the generate page's own gate would just
+  // bounce them straight back here anyway, so instead stay put and show what's still missing.
+  const missing = getMissingBioFieldLabels(fields);
   const returnTo = String(formData.get("redirectTo") || "");
-  if (returnTo) redirect(returnTo);
+  if (returnTo && missing.length === 0) {
+    redirect(returnTo);
+  }
 
-  return { success: true };
+  return { success: true, missing };
 }
