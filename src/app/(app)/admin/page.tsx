@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ensureProfile } from "@/lib/profile";
 import { setKillSwitch } from "@/lib/actions/admin";
+import { TIER_NICHE_LIMITS } from "@/lib/ai/presenterBio";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,7 +50,7 @@ export default async function AdminPage({
     );
   }
 
-  const [{ data: settings }, { data: profiles }, { data: payments }] = await Promise.all([
+  const [{ data: settings }, { data: profiles }, { data: payments }, { data: nicheProfiles }] = await Promise.all([
     supabase.from("admin_settings").select("*").eq("id", true).single(),
     supabase
       .from("profiles")
@@ -61,7 +62,15 @@ export default async function AdminPage({
       .from("payments")
       .select("user_id, type, amount_usd, credits, created_at")
       .order("created_at", { ascending: false }),
+    // Just the owning column — this table can have several rows per member, and all this needs
+    // is a per-member count for the "Niches" column below.
+    supabase.from("presenter_bio_profiles").select("user_id"),
   ]);
+
+  const nicheCountByUser = new Map<string, number>();
+  for (const row of nicheProfiles ?? []) {
+    nicheCountByUser.set(row.user_id, (nicheCountByUser.get(row.user_id) ?? 0) + 1);
+  }
 
   const startOfDay = new Date();
   startOfDay.setUTCHours(0, 0, 0, 0);
@@ -412,6 +421,7 @@ export default async function AdminPage({
                 <th className="px-4 py-2">Member</th>
                 <th className="px-4 py-2">Role</th>
                 <th className="px-4 py-2">Tier</th>
+                <th className="px-4 py-2">Niches</th>
                 <th className="px-4 py-2">Membership</th>
                 <th className="px-4 py-2">Credits</th>
                 <th className="px-4 py-2">Revenue</th>
@@ -443,6 +453,13 @@ export default async function AdminPage({
                     </td>
                     <td className="px-4 py-3">
                       <MemberTierForm userId={m.id} currentTier={m.tier} currentBonusNicheLimit={m.bonus_niche_limit} />
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {(() => {
+                        const used = nicheCountByUser.get(m.id) ?? 0;
+                        const limit = TIER_NICHE_LIMITS[m.tier] + m.bonus_niche_limit;
+                        return `${used} / ${Number.isFinite(limit) ? limit : "∞"}`;
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-xs">
                       <Badge variant={isActiveMember ? "default" : "secondary"}>
