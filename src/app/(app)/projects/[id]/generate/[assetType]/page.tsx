@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeftRight } from "lucide-react";
+import { ArrowLeftRight, MonitorPlay, ScrollText, type LucideIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, WEB_PAGE_ASSET_TYPES, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
@@ -8,8 +8,18 @@ import { projectNeedsDiscovery } from "@/lib/projects";
 import { isPresenterBioEmpty } from "@/lib/ai/presenterBio";
 import { getPageStats, type PageStats } from "@/lib/analytics";
 import AgentBadge from "@/components/AgentBadge";
+import { Badge } from "@/components/ui/badge";
 import GenerateClient from "./GenerateClient";
 import BioReminderDialog from "@/components/BioReminderDialog";
+
+// Your Webinar and its Script share the same agent (Polly) — same name, same emoji, same title
+// on both pages — which was exactly the problem: a member stepping away and coming back couldn't
+// tell at a glance which one they'd landed on. This is a small, deliberately narrow icon lookup
+// (not a full map for every generator) just for that one genuinely ambiguous pair.
+const DELIVERABLE_ICON: Partial<Record<GeneratorAssetType, LucideIcon>> = {
+  ppt_outline: MonitorPlay,
+  webinar_script: ScrollText,
+};
 
 export default async function GenerateAssetPage({
   params,
@@ -162,9 +172,22 @@ export default async function GenerateAssetPage({
           </Link>
         )}
       </div>
-      <p className="mb-6 text-sm text-muted-foreground">
-        {generator.label} · {generator.creditCost} credits per generation · {project.mode} mode
-      </p>
+      {/* A bold, colored badge rather than the small muted-gray line this used to be — the plain
+          agent badge above reads identically ("Agent Polly, The Pitch Deck Pro") whether this is
+          Your Webinar or its Script, so this is the thing that actually says which one is on
+          screen at a glance, even after stepping away and coming back to it later. */}
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <Badge className="gap-1.5 px-3 py-1 text-sm">
+          {(() => {
+            const Icon = DELIVERABLE_ICON[generator.assetType];
+            return Icon ? <Icon className="h-3.5 w-3.5" /> : null;
+          })()}
+          {generator.label}
+        </Badge>
+        <span className="text-sm text-muted-foreground">
+          {generator.creditCost} credits per generation · {project.mode} mode
+        </span>
+      </div>
 
       {showBioReminder && <BioReminderDialog />}
 
