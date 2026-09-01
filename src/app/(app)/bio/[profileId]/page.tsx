@@ -20,17 +20,24 @@ export default async function PresenterBioProfilePage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: bio } = await supabase
-    .from("presenter_bio_profiles")
-    .select("*")
-    .eq("id", profileId)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const [{ data: bio }, { data: project }] = await Promise.all([
+    supabase.from("presenter_bio_profiles").select("*").eq("id", profileId).eq("user_id", user.id).maybeSingle(),
+    // One project per bio (see createProject in src/lib/actions/projects.ts) — used so the back
+    // link and the page's own framing keep saying the actual project name, not a generic "My
+    // Bio," so a member never loses track of which project they're in partway through.
+    supabase
+      .from("projects")
+      .select("id")
+      .eq("presenter_bio_profile_id", profileId)
+      .eq("user_id", user.id)
+      .is("deleted_at", null)
+      .maybeSingle(),
+  ]);
   if (!bio) notFound();
 
   const missingFields = getMissingBioFieldLabels(bio);
 
-  // Set by every hard "finish this niche first" redirect (generate/[assetType]/page.tsx,
+  // Set by every hard "finish this bio first" redirect (generate/[assetType]/page.tsx,
   // ad-image/page.tsx) so Save can send them straight back instead of stranding them here — see
   // updatePresenterBio. Only ever a same-app path we generated ourselves, but sanitized anyway
   // since it arrives as a raw query param: must start with a single "/", never "//" (which some
@@ -40,8 +47,8 @@ export default async function PresenterBioProfilePage({
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
-      <Link href="/bio" className="text-sm text-primary hover:underline">
-        ← My Niches
+      <Link href={project ? `/projects/${project.id}` : "/bio"} className="text-sm text-primary hover:underline">
+        ← {project ? bio.label : "My Bio"}
       </Link>
       <div className="mt-4 mb-8 flex items-start gap-4">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
@@ -53,17 +60,17 @@ export default async function PresenterBioProfilePage({
             {isPresenterBioIncomplete(bio) && <StartHereBadge />}
           </div>
           <p className="mt-1 text-muted-foreground">
-            Who you are behind this niche&apos;s offer — your mission, credentials, origin story, a
-            real setback, your greatest client win. Fill this in once here, and it&apos;s
-            automatically available to every project you link to this niche — you&apos;ll never
-            have to retype it.
+            Who you are behind this project&apos;s offer — your mission, credentials, origin
+            story, a real setback, your greatest client win. Fill this in once here, and
+            it&apos;s automatically available to every agent working on {bio.label} — you&apos;ll
+            never have to retype it.
           </p>
           {missingFields.length > 0 && (
             <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
               <p className="font-medium text-primary">
                 {returnTo
                   ? "Finish this first — every agent needs it to write a strong, credible presentation. Save below and you'll go straight back to what you were doing."
-                  : "Every field marked * below is required before any agent will generate for a project linked to this niche."}
+                  : `Every field marked * below is required before any agent will generate for ${bio.label}.`}
               </p>
               <p className="mt-1 text-muted-foreground">Still missing: {missingFields.join(", ")}.</p>
             </div>

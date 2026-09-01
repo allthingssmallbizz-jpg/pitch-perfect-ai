@@ -17,14 +17,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // will find one.
   const profile = await ensureProfile(user.id, user.email ?? "");
 
-  // Drives the pulsating "Start Here" badge on the sidebar's "My Niches" link (see
-  // StartHereBadge) — a member logging in with zero niches yet gets an unmissable answer to
-  // "where do I start?" on every single page, not just the dashboard. This is deliberately just
-  // "do you have any niche at all," not "is your niche complete" — that stricter, per-niche
-  // completeness check now lives at the project level (each project links to a specific niche;
-  // see isPresenterBioIncomplete usage in generate/[assetType]/page.tsx etc.), since there's no
-  // single project context to check from the sidebar. Fetched once here rather than per-page
-  // since every page under this layout shares the same sidebar.
+  // Drives the pulsating "Start Here" badge on the sidebar's "My Bio" link (see StartHereBadge) —
+  // a member logging in with zero bios yet gets an unmissable answer to "where do I start?" on
+  // every single page, not just the dashboard. This is deliberately just "do you have any bio at
+  // all," not "is a specific bio complete" — that stricter, per-project completeness check now
+  // lives at the project level (each project has its own bio, auto-created when it's created; see
+  // isPresenterBioIncomplete usage in generate/[assetType]/page.tsx etc.), since there's no single
+  // project context to check from the sidebar. Fetched once here rather than per-page since every
+  // page under this layout shares the same sidebar.
   const { count: nicheCount } = await supabase
     .from("presenter_bio_profiles")
     .select("id", { count: "exact", head: true })

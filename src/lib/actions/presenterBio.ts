@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getMissingBioFieldLabels, canCreateBioProfile } from "@/lib/ai/presenterBio";
+import { getMissingBioFieldLabels } from "@/lib/ai/presenterBio";
 
 // Updates one specific niche profile (identified by the hidden "profileId" field PresenterBioForm
 // renders) rather than upserting a single account-wide row — see 0031_niche_bio_profiles.sql for
@@ -72,71 +72,4 @@ export async function updatePresenterBio(_prevState: unknown, formData: FormData
   }
 
   return { success: true, missing };
-}
-
-// Creates a new, empty niche — checks the tier limit first (canCreateBioProfile) so a Gold member
-// can't quietly rack up unlimited niches through this action even if they never see the disabled
-// button. Returns the new profile's id on success so callers (the /bio list page's "+ New niche"
-// form, and the project-creation niche picker) can redirect straight into filling it in.
-export async function createBioProfile(_prevState: unknown, formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const label = String(formData.get("label") || "").trim();
-  if (!label) return { error: "Give this niche a name." };
-  if (label.length > 60) return { error: "Keep the name under 60 characters." };
-
-  const { data: profile } = await supabase.from("profiles").select("tier, bonus_niche_limit").eq("id", user.id).single();
-  const tier = profile?.tier ?? "Gold";
-  const bonusNicheLimit = profile?.bonus_niche_limit ?? 0;
-
-  const limitCheck = await canCreateBioProfile(supabase, user.id, tier, bonusNicheLimit);
-  if (!limitCheck.ok) return { error: limitCheck.message };
-
-  const { data, error } = await supabase
-    .from("presenter_bio_profiles")
-    .insert({ user_id: user.id, label })
-    .select("id")
-    .single();
-
-  if (error || !data) return { error: "Could not create this niche. Try again." };
-
-  revalidatePath("/bio");
-
-  // Set by the project-creation niche picker so a brand-new niche flows straight back into
-  // finishing the project it was created for, same returnTo convention used everywhere else this
-  // session (see updatePresenterBio above, updateProjectDiscovery's redirectTo).
-  const returnTo = String(formData.get("redirectTo") || "");
-  redirect(returnTo ? `/bio/${data.id}?returnTo=${encodeURIComponent(returnTo)}` : `/bio/${data.id}`);
-}
-
-// Refuses to delete a niche that's still linked to any non-deleted project — silently orphaning a
-// project's bio data (leaving presenter_bio_profile_id pointing at nothing, or worse, quietly
-// falling back to null) is worse than making someone reassign or delete those projects first.
-export async function deleteBioProfile(profileId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { count } = await supabase
-    .from("projects")
-    .select("id", { count: "exact", head: true })
-    .eq("presenter_bio_profile_id", profileId)
-    .eq("user_id", user.id)
-    .is("deleted_at", null);
-
-  if ((count ?? 0) > 0) {
-    return { error: "This niche is still used by a project — delete or move that project first." };
-  }
-
-  const { error } = await supabase.from("presenter_bio_profiles").delete().eq("id", profileId).eq("user_id", user.id);
-  if (error) return { error: "Could not delete this niche. Try again." };
-
-  revalidatePath("/bio");
-  return { success: true };
 }

@@ -22,6 +22,13 @@ function projectDestination(projectId: string, type: string | null): string {
   return isValidIntent ? `/projects/${projectId}?intent=${type}` : `/projects/${projectId}`;
 }
 
+// Every project gets exactly one niche bio, auto-created and named after the project itself — no
+// separate "name your niche" step, no picker between existing niches. A member types one name
+// once; that's both the project's name and the bio's label, and the two always travel together
+// (the bio-fill page that follows shows this same name as its own heading — see
+// bio/[profileId]/page.tsx — so there's never a moment of "wait, which project am I in?").
+// The tier limit (canCreateBioProfile) is really a project-count limit now, since every project
+// consumes exactly one niche slot — checked here, before either row is created.
 export async function createProject(_prevState: unknown, formData: FormData) {
   const supabase = await createClient();
   const {
@@ -36,63 +43,36 @@ export async function createProject(_prevState: unknown, formData: FormData) {
   }
   const type = String(formData.get("type") || "") || null;
 
-  // Which niche this project's generations draw from (see 0031_niche_bio_profiles.sql) — either
-  // an existing profile's id, or the sentinel "__new__" (NewProjectForm.tsx) meaning "create one
-  // right now," which is where the tier limit (canCreateBioProfile) actually gets enforced.
-  const nicheOption = String(formData.get("nicheOption") || "");
-  let presenterBioProfileId: string | null = null;
-  let newNicheProfileId: string | null = null;
+  const { data: profile } = await supabase.from("profiles").select("tier, bonus_niche_limit").eq("id", user.id).single();
+  const tier = profile?.tier ?? "Gold";
+  const bonusNicheLimit = profile?.bonus_niche_limit ?? 0;
+  const limitCheck = await canCreateBioProfile(supabase, user.id, tier, bonusNicheLimit);
+  if (!limitCheck.ok) return { error: limitCheck.message };
 
-  if (nicheOption === "__new__") {
-    const newNicheLabel = String(formData.get("newNicheLabel") || "").trim();
-    if (!newNicheLabel) return { error: "Give your new niche a name." };
-
-    const { data: profile } = await supabase.from("profiles").select("tier, bonus_niche_limit").eq("id", user.id).single();
-    const tier = profile?.tier ?? "Gold";
-    const bonusNicheLimit = profile?.bonus_niche_limit ?? 0;
-    const limitCheck = await canCreateBioProfile(supabase, user.id, tier, bonusNicheLimit);
-    if (!limitCheck.ok) return { error: limitCheck.message };
-
-    const { data: newProfile, error: profileError } = await supabase
-      .from("presenter_bio_profiles")
-      .insert({ user_id: user.id, label: newNicheLabel })
-      .select("id")
-      .single();
-    if (profileError || !newProfile) return { error: "Could not create this niche. Try again." };
-    presenterBioProfileId = newProfile.id;
-    newNicheProfileId = newProfile.id;
-  } else if (nicheOption) {
-    // Ownership confirmed by the explicit .eq("user_id", ...) filter, belt-and-suspenders
-    // alongside RLS — a spoofed id belonging to someone else's account just finds nothing.
-    const { data: existing } = await supabase
-      .from("presenter_bio_profiles")
-      .select("id")
-      .eq("id", nicheOption)
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (!existing) return { error: "Choose a niche for this project." };
-    presenterBioProfileId = existing.id;
-  } else {
-    return { error: "Choose a niche for this project." };
-  }
+  const { data: newProfile, error: profileError } = await supabase
+    .from("presenter_bio_profiles")
+    .insert({ user_id: user.id, label: name })
+    .select("id")
+    .single();
+  if (profileError || !newProfile) return { error: "Could not create your project. Try again." };
 
   const { data, error } = await supabase
     .from("projects")
-    .insert({ user_id: user.id, name, presenter_bio_profile_id: presenterBioProfileId })
+    .insert({ user_id: user.id, name, presenter_bio_profile_id: newProfile.id })
     .select("id")
     .single();
 
   if (error || !data) {
+    // The bio row was created but the project insert failed — clean it up rather than leaving an
+    // orphaned niche silently eating into the member's limit for a project that doesn't exist.
+    await supabase.from("presenter_bio_profiles").delete().eq("id", newProfile.id);
     return { error: "Could not create project. Try again." };
   }
 
   const destination = projectDestination(data.id, type);
-  // A brand-new niche is empty — send them to fill it in first, same returnTo convention used
-  // everywhere else this bio work touches (updatePresenterBio, the generate-page redirects).
-  if (newNicheProfileId) {
-    redirect(`/bio/${newNicheProfileId}?returnTo=${encodeURIComponent(destination)}`);
-  }
-  redirect(destination);
+  // A brand-new project's bio is empty — send them to fill it in first, same returnTo convention
+  // used everywhere else this bio work touches (updatePresenterBio, the generate-page redirects).
+  redirect(`/bio/${newProfile.id}?returnTo=${encodeURIComponent(destination)}`);
 }
 
 // Clones a swipe-file template (src/lib/templates.ts) into a new, pre-filled project — same
@@ -111,50 +91,42 @@ export async function createProjectFromTemplate(formData: FormData) {
   const template = getTemplate(templateId);
   if (!template) redirect("/templates");
 
-  // Niche bio profiles are account-level, not project-scoped (see src/lib/ai/presenterBio.ts) —
-  // only seed a brand-new niche from the template's demo bio if the account has never created a
-  // real one of its own yet. Never touch an existing niche just because someone tried a template,
-  // same non-destructive rule Website Import and Offer Builder already follow for discovery
-  // fields — this is the niche-profile equivalent of that same "only seed if genuinely empty"
-  // check, just counting profiles instead of checking one row's fields.
-  const { count: nicheCount } = await supabase
-    .from("presenter_bio_profiles")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id);
+  const projectName = `${template.name} (from template)`;
 
-  let presenterBioProfileId: string | null = null;
-  if ((nicheCount ?? 0) === 0) {
-    const { data: newProfile } = await supabase
-      .from("presenter_bio_profiles")
-      .insert({ user_id: user.id, label: "My Bio", ...template.presenterBio })
-      .select("id")
-      .single();
-    presenterBioProfileId = newProfile?.id ?? null;
-  } else {
-    // Already has real niche(s) — link the new project to whichever was created most recently
-    // rather than leaving it unset, same spirit as "use what's already there, don't overwrite it."
-    const { data: latestProfile } = await supabase
-      .from("presenter_bio_profiles")
-      .select("id")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    presenterBioProfileId = latestProfile?.id ?? null;
-  }
+  // Same "one project, one niche, named after the project" rule createProject follows — a
+  // template-cloned project is a real project and counts against the same limit. In practice this
+  // essentially never blocks: the sample-project flow only exists for brand-new accounts (zero
+  // projects yet — see SampleProjectDialog), which are under every tier's limit. Pre-filled with
+  // the template's demo bio (audience, credentials, origin story, etc.) rather than left blank, so
+  // the "generate in under 60 seconds" promise still holds without a member typing anything first.
+  const { data: profile } = await supabase.from("profiles").select("tier, bonus_niche_limit").eq("id", user.id).single();
+  const tier = profile?.tier ?? "Gold";
+  const bonusNicheLimit = profile?.bonus_niche_limit ?? 0;
+  const limitCheck = await canCreateBioProfile(supabase, user.id, tier, bonusNicheLimit);
+  if (!limitCheck.ok) redirect("/dashboard");
+
+  const { data: newProfile, error: profileError } = await supabase
+    .from("presenter_bio_profiles")
+    .insert({ user_id: user.id, label: projectName, ...template.presenterBio })
+    .select("id")
+    .single();
+  if (profileError || !newProfile) redirect("/templates");
 
   const { data, error } = await supabase
     .from("projects")
     .insert({
       user_id: user.id,
-      name: `${template.name} (from template)`,
-      presenter_bio_profile_id: presenterBioProfileId,
+      name: projectName,
+      presenter_bio_profile_id: newProfile.id,
       ...template.answers,
     })
     .select("id")
     .single();
 
-  if (error || !data) redirect("/templates");
+  if (error || !data) {
+    await supabase.from("presenter_bio_profiles").delete().eq("id", newProfile.id);
+    redirect("/templates");
+  }
 
   redirect(`/projects/${data.id}`);
 }

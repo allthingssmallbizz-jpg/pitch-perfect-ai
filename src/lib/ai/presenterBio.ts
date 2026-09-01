@@ -153,8 +153,9 @@ export type PresenterBioProfileSummary = {
   incomplete: boolean;
 };
 
-// Every niche on this account, for the /bio list page and the project-creation picker — cheapest
-// possible shape (not every presenter_* column) since neither caller needs the full bio text.
+// Every bio on this account, one per project (see createProject in src/lib/actions/projects.ts),
+// for the /bio list page — cheapest possible shape (not every presenter_* column) since it only
+// needs enough to show completeness, not the full bio text.
 export async function getPresenterBioProfiles(
   supabase: SupabaseClient<Database>,
   userId: string
@@ -173,11 +174,17 @@ export async function getPresenterBioProfiles(
   }));
 }
 
-// The tier-limit check for "+ New niche" — same {ok, message} shape checkGuardrails
-// (src/lib/credits.ts) already uses for guardrail results, though this is the first limit keyed
-// off tier rather than credits/rate/kill-switch, so there's no shared helper to actually reuse.
-// bonusNicheLimit is the admin-granted extra allowance on top of the tier baseline (see
-// Profile.bonus_niche_limit) — always additive, never a replacement for the tier's own limit.
+// The tier-limit check for creating a new project — every project gets exactly one niche bio,
+// named after the project itself (see createProject in src/lib/actions/projects.ts), so "how many
+// niches can this account create" and "how many active projects can this account have" are the
+// same number now. Counting ACTIVE projects with a linked bio (not raw presenter_bio_profiles
+// rows) means deleting a project frees its slot back up — an orphaned bio left behind by a
+// deleted project should never permanently eat into someone's limit. Same {ok, message} shape
+// checkGuardrails (src/lib/credits.ts) already uses for guardrail results, though this is the
+// first limit keyed off tier rather than credits/rate/kill-switch, so there's no shared helper to
+// actually reuse. bonusNicheLimit is the admin-granted extra allowance on top of the tier
+// baseline (see Profile.bonus_niche_limit) — always additive, never a replacement for the tier's
+// own limit.
 export async function canCreateBioProfile(
   supabase: SupabaseClient<Database>,
   userId: string,
@@ -185,9 +192,11 @@ export async function canCreateBioProfile(
   bonusNicheLimit = 0
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const { count } = await supabase
-    .from("presenter_bio_profiles")
+    .from("projects")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .not("presenter_bio_profile_id", "is", null);
   const limit = TIER_NICHE_LIMITS[tier] + bonusNicheLimit;
   if ((count ?? 0) >= limit) {
     const nextTier: Partial<Record<Tier, Tier>> = { Gold: "Silver", Silver: "Platinum" };
