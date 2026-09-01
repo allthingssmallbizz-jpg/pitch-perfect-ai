@@ -13,6 +13,7 @@ import { getFormSubmitUrl } from "@/lib/publishing";
 import type { PriorGeneration } from "@/lib/ai/generators/shared";
 import { getAgent } from "@/lib/agents/config";
 import { recordGenerationVersion } from "@/lib/generations";
+import { projectNeedsDiscovery } from "@/lib/projects";
 import type { GenerationMode } from "@/types/database";
 
 export const runtime = "nodejs";
@@ -66,6 +67,20 @@ export async function POST(req: NextRequest) {
 
   if (projectError || !project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+
+  // No agent generates without a complete Discovery brief for this project — every prompt builder
+  // reads from it (see formatDiscoveryBlock), and a member with a blank/partial brief generating
+  // anyway just gets vague, generic output with no clue why. The generate page already redirects
+  // a fresh visit to Discovery first (projectNeedsDiscovery, src/app/(app)/projects/[id]/generate/
+  // [assetType]/page.tsx), but that's a UI nudge, not a lock — this is the real one, so there's no
+  // path (a stale tab, a direct API call, a chained-generation button firing after the brief was
+  // edited back to incomplete) that can slip a generation through without it.
+  if (projectNeedsDiscovery(project)) {
+    return NextResponse.json(
+      { error: "Complete this project's Discovery brief first — every agent needs it before it can generate anything." },
+      { status: 400 }
+    );
   }
 
   // A Webinar Script writes the talk-track for an existing slide deck, aligned 1:1 to its exact

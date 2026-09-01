@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ensureProfile } from "@/lib/profile";
+import { isPresenterBioEmpty } from "@/lib/ai/presenterBio";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSidebar";
 
@@ -17,6 +18,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // will find one.
   const profile = await ensureProfile(user.id, user.email ?? "");
 
+  // Drives the pulsating "Start Here" badge on the sidebar's Bio link (see StartHereBadge) — a
+  // member logging in with nothing filled in yet gets an unmissable answer to "where do I start?"
+  // on every single page, not just the dashboard. Fetched once here rather than per-page since
+  // every page under this layout shares the same sidebar.
+  const { data: bio } = await supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle();
+  const bioIncomplete = isPresenterBioEmpty(bio);
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
@@ -25,6 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           displayName={profile?.full_name || null}
           isAdmin={profile?.role === "admin"}
           credits={profile?.credits_balance ?? null}
+          bioIncomplete={bioIncomplete}
         />
         <SidebarInset className="min-w-0 flex-1">
           <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-border/60 bg-background/70 px-4 backdrop-blur-sm">

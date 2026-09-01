@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkGuardrails } from "@/lib/credits";
 import { AD_IMAGE_CREDIT_COST } from "@/lib/ai/generators/adImage";
+import { projectNeedsDiscovery } from "@/lib/projects";
 
 export const runtime = "nodejs";
 
@@ -28,12 +29,21 @@ export async function POST(req: NextRequest) {
 
   const { data: project, error: projectError } = await supabase
     .from("projects")
-    .select("id")
+    .select("*")
     .eq("id", projectId)
     .eq("user_id", user.id)
     .single();
   if (projectError || !project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+
+  // Same rule as every other generator (see /api/generate/route.ts) — no agent runs without a
+  // complete Discovery brief for this project, enforced here rather than only as a page redirect.
+  if (projectNeedsDiscovery(project)) {
+    return NextResponse.json(
+      { error: "Complete this project's Discovery brief first — every agent needs it before it can generate anything." },
+      { status: 400 }
+    );
   }
 
   const guardrail = await checkGuardrails(user.id, AD_IMAGE_CREDIT_COST);

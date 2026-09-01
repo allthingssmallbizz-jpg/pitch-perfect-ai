@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { UserCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { isPresenterBioEmpty } from "@/lib/ai/presenterBio";
+import StartHereBadge from "@/components/StartHereBadge";
 import PresenterBioForm from "./PresenterBioForm";
 
 export default async function PresenterBioPage() {
@@ -19,7 +21,10 @@ export default async function PresenterBioPage() {
           <UserCircle className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="font-display text-3xl font-bold text-gradient-silver">My Webinar Bio</h1>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="font-display text-3xl font-bold text-gradient-silver">My Webinar Bio</h1>
+            {isPresenterBioEmpty(bio) && <StartHereBadge />}
+          </div>
           <p className="mt-1 text-muted-foreground">
             Who you are behind the offer — your mission, credentials, origin story, a real
             setback, your greatest client win. Fill this in once here, and it&apos;s automatically

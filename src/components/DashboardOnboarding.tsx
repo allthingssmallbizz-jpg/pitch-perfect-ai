@@ -7,9 +7,15 @@ import { onboardingKeys, useLocalFlag } from "@/hooks/useLocalFlag";
 
 const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
+    target: '[data-tour="sidebar-bio"]',
+    title: "Start here",
+    body: "Fill in your bio first — it's used across every webinar, VSL, and page you generate, so this is always step one.",
+    placement: "right",
+  },
+  {
     target: '[data-tour="sidebar-new-project"]',
-    title: "Start a new project",
-    body: "Every asset starts with a project — your offer's full discovery brief (audience, positioning, offer, and more).",
+    title: "Then start a new project",
+    body: "Every asset starts with a project — your offer's full discovery brief (audience, positioning, offer, and more) has to be filled in before any agent will generate.",
     placement: "right",
   },
   {

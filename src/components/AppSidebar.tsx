@@ -19,6 +19,7 @@ import {
 import { signOut } from "@/lib/actions/auth";
 import { AGENTS, type AgentAssetType } from "@/lib/agents/config";
 import { Badge } from "@/components/ui/badge";
+import StartHereBadge from "@/components/StartHereBadge";
 import {
   Sidebar,
   SidebarContent,
@@ -77,9 +78,11 @@ type Props = {
   displayName: string | null;
   isAdmin: boolean;
   credits: number | null;
+  // Drives the pulsating "Start Here" badge below — true until the bio has anything filled in.
+  bioIncomplete: boolean;
 };
 
-export default function AppSidebar({ email, displayName, isAdmin, credits }: Props) {
+export default function AppSidebar({ email, displayName, isAdmin, credits, bioIncomplete }: Props) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = usePathname();
@@ -126,12 +129,18 @@ export default function AppSidebar({ email, displayName, isAdmin, credits }: Pro
               </SidebarMenuItem>
               {/* First stop for a new member, before anything else — the bio (including the "I
                   Help" statement) feeds every generator's system prompt, so filling it in before
-                  creating anything means the very first generation already has it available. */}
+                  creating anything means the very first generation already has it available. The
+                  pulsating badge (also spotlighted by the dashboard's first onboarding-tour step,
+                  data-tour="sidebar-bio") is the direct answer to "where do I start?" — it only
+                  shows while the bio is still empty and disappears the moment it's filled in. */}
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === "/bio"} tooltip="My Webinar Bio">
-                  <Link href="/bio">
+                <SidebarMenuButton asChild isActive={pathname === "/bio"} tooltip="My Webinar Bio — start here">
+                  <Link href="/bio" data-tour="sidebar-bio">
                     <UserCircle className="h-4 w-4" />
-                    <span>My Webinar Bio</span>
+                    <span className="flex items-center gap-1.5 truncate">
+                      My Webinar Bio
+                      {bioIncomplete && !collapsed && <StartHereBadge />}
+                    </span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
