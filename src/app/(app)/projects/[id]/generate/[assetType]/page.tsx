@@ -60,11 +60,21 @@ export default async function GenerateAssetPage({
   // next one), so it's checked first: every agent needs both a strong presenter bio and a
   // complete discovery brief before it can generate anything (see the matching hard check in
   // /api/generate/route.ts, the real backstop this redirect exists to avoid most people ever
-  // needing to hit).
+  // needing to hit). Checked against THIS project's linked niche (presenter_bio_profile_id, set
+  // at project creation — see NewProjectForm.tsx), not just "does the account have a bio
+  // anywhere," since one account can hold several niches.
   if (!generationId) {
-    const { data: bio } = await supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle();
+    const returnTo = `/projects/${id}/generate/${assetType}`;
+    if (!project.presenter_bio_profile_id) {
+      redirect(`/bio?returnTo=${encodeURIComponent(returnTo)}`);
+    }
+    const { data: bio } = await supabase
+      .from("presenter_bio_profiles")
+      .select("*")
+      .eq("id", project.presenter_bio_profile_id)
+      .maybeSingle();
     if (isPresenterBioIncomplete(bio)) {
-      redirect(`/bio?returnTo=${encodeURIComponent(`/projects/${id}/generate/${assetType}`)}`);
+      redirect(`/bio/${project.presenter_bio_profile_id}?returnTo=${encodeURIComponent(returnTo)}`);
     }
   }
   if (!generationId && projectNeedsDiscovery(project)) {

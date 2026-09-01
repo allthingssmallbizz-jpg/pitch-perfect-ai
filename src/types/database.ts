@@ -54,14 +54,25 @@ export type GenerationStatus =
   | "failed";
 export type UserRole = "member" | "admin";
 
+// Was a freeform admin-typed label (Member/Pro/Premium/Founding Member), purely descriptive.
+// Now a real, enforced value — it drives TIER_NICHE_LIMITS (src/lib/ai/presenterBio.ts), the
+// first actual tier-gated feature in the app. Every account defaults to (and pre-existing
+// accounts, apart from those already labeled Founding Member, were migrated to) Gold; an admin
+// upgrades from there (see MemberTierForm.tsx). Founding Member is kept as its own real tier
+// (unlimited niches, same as Platinum), not folded into Platinum, so it stays a distinct,
+// recognizable label in the admin panel and anywhere else it's shown.
+export type Tier = "Gold" | "Silver" | "Platinum" | "Founding Member";
+
 export type Profile = {
   id: string;
   email: string;
   full_name: string | null;
   role: UserRole;
-  // Free-text label an admin assigns (e.g. "Member", "Pro", "Founding Member") — purely
-  // descriptive, not tied to a Stripe product/price. Defaults to "Member".
-  tier: string;
+  tier: Tier;
+  // Extra niche-creation allowance an admin grants on top of whatever the tier alone gives —
+  // additive, not a tier replacement, so a Gold member with bonus_niche_limit 2 gets 3 niches
+  // total without a full tier upgrade. See canCreateBioProfile (src/lib/ai/presenterBio.ts).
+  bonus_niche_limit: number;
   access_started_at: string;
   access_expires_at: string;
   credits_balance: number;
@@ -134,6 +145,11 @@ export type Project = {
   // generator's branching (see src/lib/funnelType.ts). Empty string means not yet chosen.
   funnel_type: string;
   discovery_notes: string;
+  // Which of the account's niche bio profiles (see PresenterBioProfile below) this project's
+  // generations draw from — set at project creation, not editable afterward in this pass. Null
+  // only for a legacy project from before this column existed that somehow missed its backfill;
+  // getPresenterBioBlock treats null the same as "nothing to fold into the prompt."
+  presenter_bio_profile_id: string | null;
   mode: GenerationMode;
   created_at: string;
   updated_at: string;
@@ -237,13 +253,45 @@ export type BrandVoice = {
   updated_at: string;
 };
 
-// One row per user (same pattern as BrandVoice above) — filled in once on its own /bio page,
-// folded into every generation's system prompt automatically (see getPresenterBioBlock in
-// src/lib/ai/presenterBio.ts) instead of living on each project's Discovery form. Feeds the
-// Credibility Bridge and Opening Story beats (VSL stages 5-6, webinar Phase 1/2) that "Proof"
-// alone can't cover, since that field is about the OFFER's evidence, not who's presenting it.
+// Deprecated — the old one-row-per-account shape (table presenter_bios), superseded by
+// PresenterBioProfile below (0031_niche_bio_profiles.sql). The table itself is left in place in
+// the database but the app no longer reads or writes it; this type is kept only because the
+// migration file that created it still exists. Do not use in new code.
 export type PresenterBio = {
   user_id: string;
+  presenter_ihelp_audience: string;
+  presenter_ihelp_outcome: string;
+  presenter_ihelp_mechanism: string;
+  presenter_ihelp_pain_point: string;
+  presenter_ihelp_statement: string;
+  presenter_mission: string;
+  presenter_years_experience: string;
+  presenter_credentials: string;
+  presenter_origin_story: string;
+  presenter_signature_win: string;
+  presenter_setback_story: string;
+  presenter_income_goal_6mo: string;
+  presenter_income_goal_12mo: string;
+  presenter_mission_why: string;
+  presenter_recognition: string;
+  presenter_relatable_detail: string;
+  created_at: string;
+  updated_at: string;
+};
+
+// Many rows per user (table presenter_bio_profiles, 0031_niche_bio_profiles.sql) — a member
+// running genuinely different businesses under one account (a travel agent who also coaches
+// diabetes patients, say) keeps one of these per niche instead of overwriting a single shared
+// bio. Each project points at exactly one via Project.presenter_bio_profile_id; how many an
+// account can create is gated by Profile.tier (see TIER_NICHE_LIMITS in
+// src/lib/ai/presenterBio.ts). Folded into every generation's system prompt the same way the old
+// single bio was — see getPresenterBioBlock — feeding the Credibility Bridge and Opening Story
+// beats (VSL stages 5-6, webinar Phase 1/2) that "Proof" alone can't cover, since that field is
+// about the OFFER's evidence, not who's presenting it.
+export type PresenterBioProfile = {
+  id: string;
+  user_id: string;
+  label: string;
   presenter_ihelp_audience: string;
   presenter_ihelp_outcome: string;
   presenter_ihelp_mechanism: string;
@@ -327,6 +375,7 @@ export type Database = {
       payments: Table<Payment>;
       brand_voices: Table<BrandVoice>;
       presenter_bios: Table<PresenterBio>;
+      presenter_bio_profiles: Table<PresenterBioProfile>;
       ghl_connections: Table<GhlConnection>;
       form_leads: Table<FormLead>;
       page_views: Table<PageView>;

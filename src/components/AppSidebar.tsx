@@ -154,18 +154,19 @@ export default function AppSidebar({ email, displayName, isAdmin, credits, bioIn
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {/* First stop for a new member, before anything else — the bio (including the "I
-                  Help" statement) feeds every generator's system prompt, so filling it in before
-                  creating anything means the very first generation already has it available. The
-                  pulsating badge (also spotlighted by the dashboard's first onboarding-tour step,
-                  data-tour="sidebar-bio") is the direct answer to "where do I start?" — it only
-                  shows while the bio is still empty and disappears the moment it's filled in. */}
+              {/* First stop for a new member, before anything else — a niche's bio (including the
+                  "I Help" statement) feeds every generator's system prompt for any project linked
+                  to it, so having at least one filled in before creating anything means the very
+                  first generation already has it available. The pulsating badge (also
+                  spotlighted by the dashboard's first onboarding-tour step, data-tour=
+                  "sidebar-bio") is the direct answer to "where do I start?" — it only shows while
+                  the account has zero niches at all and disappears the moment the first exists. */}
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === "/bio"} tooltip="My Webinar Bio — start here">
+                <SidebarMenuButton asChild isActive={pathname.startsWith("/bio")} tooltip="My Niches — start here">
                   <Link href="/bio" data-tour="sidebar-bio">
                     <UserCircle className="h-4 w-4" />
                     <span className="flex items-center gap-1.5 truncate">
-                      My Webinar Bio
+                      My Niches
                       {bioIncomplete && !collapsed && <StartHereBadge />}
                     </span>
                   </Link>

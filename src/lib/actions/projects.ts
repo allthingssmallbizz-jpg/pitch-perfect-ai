@@ -7,7 +7,7 @@ import type { AwarenessLevel } from "@/types/database";
 import { ASSET_TYPES } from "@/lib/ai/generators";
 import { getTemplate } from "@/lib/templates";
 import { getMissingDiscoveryFieldLabels } from "@/lib/projects";
-import { isPresenterBioEmpty } from "@/lib/ai/presenterBio";
+import { canCreateBioProfile } from "@/lib/ai/presenterBio";
 
 // Where to land after creating a project. A brand-new project has no discovery data yet, so
 // generating anything from it immediately would just come back empty ("I don't have enough
@@ -36,9 +36,49 @@ export async function createProject(_prevState: unknown, formData: FormData) {
   }
   const type = String(formData.get("type") || "") || null;
 
+  // Which niche this project's generations draw from (see 0031_niche_bio_profiles.sql) — either
+  // an existing profile's id, or the sentinel "__new__" (NewProjectForm.tsx) meaning "create one
+  // right now," which is where the tier limit (canCreateBioProfile) actually gets enforced.
+  const nicheOption = String(formData.get("nicheOption") || "");
+  let presenterBioProfileId: string | null = null;
+  let newNicheProfileId: string | null = null;
+
+  if (nicheOption === "__new__") {
+    const newNicheLabel = String(formData.get("newNicheLabel") || "").trim();
+    if (!newNicheLabel) return { error: "Give your new niche a name." };
+
+    const { data: profile } = await supabase.from("profiles").select("tier, bonus_niche_limit").eq("id", user.id).single();
+    const tier = profile?.tier ?? "Gold";
+    const bonusNicheLimit = profile?.bonus_niche_limit ?? 0;
+    const limitCheck = await canCreateBioProfile(supabase, user.id, tier, bonusNicheLimit);
+    if (!limitCheck.ok) return { error: limitCheck.message };
+
+    const { data: newProfile, error: profileError } = await supabase
+      .from("presenter_bio_profiles")
+      .insert({ user_id: user.id, label: newNicheLabel })
+      .select("id")
+      .single();
+    if (profileError || !newProfile) return { error: "Could not create this niche. Try again." };
+    presenterBioProfileId = newProfile.id;
+    newNicheProfileId = newProfile.id;
+  } else if (nicheOption) {
+    // Ownership confirmed by the explicit .eq("user_id", ...) filter, belt-and-suspenders
+    // alongside RLS — a spoofed id belonging to someone else's account just finds nothing.
+    const { data: existing } = await supabase
+      .from("presenter_bio_profiles")
+      .select("id")
+      .eq("id", nicheOption)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!existing) return { error: "Choose a niche for this project." };
+    presenterBioProfileId = existing.id;
+  } else {
+    return { error: "Choose a niche for this project." };
+  }
+
   const { data, error } = await supabase
     .from("projects")
-    .insert({ user_id: user.id, name })
+    .insert({ user_id: user.id, name, presenter_bio_profile_id: presenterBioProfileId })
     .select("id")
     .single();
 
@@ -46,7 +86,13 @@ export async function createProject(_prevState: unknown, formData: FormData) {
     return { error: "Could not create project. Try again." };
   }
 
-  redirect(projectDestination(data.id, type));
+  const destination = projectDestination(data.id, type);
+  // A brand-new niche is empty — send them to fill it in first, same returnTo convention used
+  // everywhere else this bio work touches (updatePresenterBio, the generate-page redirects).
+  if (newNicheProfileId) {
+    redirect(`/bio/${newNicheProfileId}?returnTo=${encodeURIComponent(destination)}`);
+  }
+  redirect(destination);
 }
 
 // Clones a swipe-file template (src/lib/templates.ts) into a new, pre-filled project — same
@@ -65,39 +111,50 @@ export async function createProjectFromTemplate(formData: FormData) {
   const template = getTemplate(templateId);
   if (!template) redirect("/templates");
 
+  // Niche bio profiles are account-level, not project-scoped (see src/lib/ai/presenterBio.ts) —
+  // only seed a brand-new niche from the template's demo bio if the account has never created a
+  // real one of its own yet. Never touch an existing niche just because someone tried a template,
+  // same non-destructive rule Website Import and Offer Builder already follow for discovery
+  // fields — this is the niche-profile equivalent of that same "only seed if genuinely empty"
+  // check, just counting profiles instead of checking one row's fields.
+  const { count: nicheCount } = await supabase
+    .from("presenter_bio_profiles")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
+
+  let presenterBioProfileId: string | null = null;
+  if ((nicheCount ?? 0) === 0) {
+    const { data: newProfile } = await supabase
+      .from("presenter_bio_profiles")
+      .insert({ user_id: user.id, label: "My Bio", ...template.presenterBio })
+      .select("id")
+      .single();
+    presenterBioProfileId = newProfile?.id ?? null;
+  } else {
+    // Already has real niche(s) — link the new project to whichever was created most recently
+    // rather than leaving it unset, same spirit as "use what's already there, don't overwrite it."
+    const { data: latestProfile } = await supabase
+      .from("presenter_bio_profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    presenterBioProfileId = latestProfile?.id ?? null;
+  }
+
   const { data, error } = await supabase
     .from("projects")
     .insert({
       user_id: user.id,
       name: `${template.name} (from template)`,
+      presenter_bio_profile_id: presenterBioProfileId,
       ...template.answers,
     })
     .select("id")
     .single();
 
   if (error || !data) redirect("/templates");
-
-  // Presenter Bio is account-level, not project-scoped (see src/lib/ai/presenterBio.ts) — only
-  // seed the template's demo bio if the user hasn't written their own real one yet. Never
-  // overwrite an existing bio just because someone tried a template, same non-destructive rule
-  // Website Import and Offer Builder already follow for discovery fields.
-  // Selecting only the presenter_* columns (not user_id/created_at/updated_at) matters here —
-  // isPresenterBioEmpty checks every value on the object it's given, and a row's own id/timestamp
-  // strings are never blank, which would make it look "not empty" even when every actual bio
-  // field is.
-  const { data: existingBio } = await supabase
-    .from("presenter_bios")
-    .select(
-      "presenter_ihelp_audience, presenter_ihelp_outcome, presenter_ihelp_mechanism, presenter_ihelp_pain_point, presenter_ihelp_statement, presenter_mission, presenter_years_experience, presenter_credentials, presenter_origin_story, presenter_signature_win, presenter_setback_story, presenter_income_goal_6mo, presenter_income_goal_12mo, presenter_mission_why, presenter_recognition, presenter_relatable_detail"
-    )
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (isPresenterBioEmpty(existingBio)) {
-    await supabase
-      .from("presenter_bios")
-      .upsert({ user_id: user.id, ...template.presenterBio }, { onConflict: "user_id" });
-  }
 
   redirect(`/projects/${data.id}`);
 }

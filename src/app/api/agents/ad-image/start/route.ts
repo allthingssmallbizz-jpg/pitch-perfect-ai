@@ -39,8 +39,12 @@ export async function POST(req: NextRequest) {
   }
 
   // Same rule as every other generator (see /api/generate/route.ts) — bio before Discovery,
-  // neither optional, enforced here rather than only as a page redirect.
-  const { data: bio } = await supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle();
+  // neither optional, enforced here rather than only as a page redirect. Checked against THIS
+  // project's linked niche, not just "does this account have a bio anywhere" (see
+  // 0031_niche_bio_profiles.sql).
+  const { data: bio } = project.presenter_bio_profile_id
+    ? await supabase.from("presenter_bio_profiles").select("*").eq("id", project.presenter_bio_profile_id).maybeSingle()
+    : { data: null };
   if (isPresenterBioIncomplete(bio)) {
     const missing = getMissingBioFieldLabels(bio);
     return NextResponse.json(

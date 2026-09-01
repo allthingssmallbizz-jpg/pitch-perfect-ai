@@ -20,8 +20,10 @@ const requestSchema = z.object({
   painPoint: z.string().trim().max(300).optional().default(""),
 });
 
-// Same as /api/headlines — account-level, not scoped to a project, since the I Help Statement
-// lives on presenter_bios (one per user), not per-project.
+// Same as /api/headlines — not scoped to a project. Purely stateless text-in/text-out: the
+// candidate statements are generated from whatever audience/outcome/mechanism the caller passes,
+// with no read of the account's niche bio profiles — saving the chosen one back onto a specific
+// niche happens separately, via updatePresenterBio (src/lib/actions/presenterBio.ts).
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const {

@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { Sparkles, Save } from "lucide-react";
-import type { PresenterBio } from "@/types/database";
+import type { PresenterBioProfile } from "@/types/database";
 import { updatePresenterBio } from "@/lib/actions/presenterBio";
 import { composeIHelpStatement } from "@/lib/ai/presenterBio";
 import { Button } from "@/components/ui/button";
@@ -103,9 +103,11 @@ function Field({
 
 export default function PresenterBioForm({
   bio,
+  profileId,
   redirectTo = null,
 }: {
-  bio: PresenterBio | null;
+  bio: PresenterBioProfile;
+  profileId: string;
   redirectTo?: string | null;
 }) {
   const [state, formAction, pending] = useActionState(updatePresenterBio, undefined);
@@ -154,6 +156,7 @@ export default function PresenterBioForm({
 
   return (
     <form action={formAction} className="card-elevated space-y-5 rounded-2xl p-8">
+      <input type="hidden" name="profileId" value={profileId} />
       {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
       <p className="text-xs text-muted-foreground">
         <span className="text-red-500">*</span> Required — every agent stays locked until these are

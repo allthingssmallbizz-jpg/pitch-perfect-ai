@@ -1,15 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/database";
+import type { Database, Tier } from "@/types/database";
 
-// One row per user, filled in once on its own /bio page (see src/app/(app)/bio) — folded into
+// One row per NICHE (a project picks exactly one via its presenter_bio_profile_id — see
+// PresenterBioProfile in src/types/database.ts), filled in on /bio/[profileId] — folded into
 // every generation's system prompt the same way getBrandVoiceBlock is, so a member never
 // re-answers "how did you get into this industry" per project. Feeds the Credibility Bridge and
-// Opening Story beats specifically, but is available to every generator.
+// Opening Story beats specifically, but is available to every generator. `profileId` is nullable
+// only defensively — every project should have one post-migration (0031_niche_bio_profiles.sql).
 export async function getPresenterBioBlock(
   supabase: SupabaseClient<Database>,
-  userId: string
+  profileId: string | null
 ): Promise<string | null> {
-  const { data } = await supabase.from("presenter_bios").select("*").eq("user_id", userId).maybeSingle();
+  if (!profileId) return null;
+  const { data } = await supabase.from("presenter_bio_profiles").select("*").eq("id", profileId).maybeSingle();
   if (!data || isPresenterBioEmpty(data)) return null;
 
   const field = (label: string, value: string) => (value.trim() ? `${label}: ${value.trim()}` : null);
@@ -129,4 +132,69 @@ export function getMissingBioFieldLabels(
 // "not literally nothing" (see isPresenterBioEmpty above for that weaker check).
 export function isPresenterBioIncomplete(bio: Partial<Record<RequiredBioFieldKey, string>> | null | undefined): boolean {
   return getMissingBioFieldLabels(bio).length > 0;
+}
+
+// How many niche bio profiles each membership tier can create — the first real tier-gated
+// feature in the app (profiles.tier used to be a purely cosmetic admin label; see the Tier type
+// and 0031_niche_bio_profiles.sql). Founding Member gets the same unlimited allowance as
+// Platinum — it's a legacy/loyalty label, not a lesser tier. The Infinity values are deliberate,
+// not placeholders — they're never shown as a real remaining-count, only used in the `>=` check
+// in canCreateBioProfile below (and Infinity + a finite bonus_niche_limit is still Infinity).
+export const TIER_NICHE_LIMITS: Record<Tier, number> = {
+  Gold: 1,
+  Silver: 3,
+  Platinum: Infinity,
+  "Founding Member": Infinity,
+};
+
+export type PresenterBioProfileSummary = {
+  id: string;
+  label: string;
+  incomplete: boolean;
+};
+
+// Every niche on this account, for the /bio list page and the project-creation picker — cheapest
+// possible shape (not every presenter_* column) since neither caller needs the full bio text.
+export async function getPresenterBioProfiles(
+  supabase: SupabaseClient<Database>,
+  userId: string
+): Promise<PresenterBioProfileSummary[]> {
+  const { data } = await supabase
+    .from("presenter_bio_profiles")
+    .select(
+      "id, label, presenter_mission, presenter_years_experience, presenter_origin_story, presenter_signature_win, presenter_setback_story, presenter_mission_why, presenter_relatable_detail, presenter_income_goal_6mo, presenter_income_goal_12mo"
+    )
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    label: row.label,
+    incomplete: isPresenterBioIncomplete(row),
+  }));
+}
+
+// The tier-limit check for "+ New niche" — same {ok, message} shape checkGuardrails
+// (src/lib/credits.ts) already uses for guardrail results, though this is the first limit keyed
+// off tier rather than credits/rate/kill-switch, so there's no shared helper to actually reuse.
+// bonusNicheLimit is the admin-granted extra allowance on top of the tier baseline (see
+// Profile.bonus_niche_limit) — always additive, never a replacement for the tier's own limit.
+export async function canCreateBioProfile(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  tier: Tier,
+  bonusNicheLimit = 0
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { count } = await supabase
+    .from("presenter_bio_profiles")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+  const limit = TIER_NICHE_LIMITS[tier] + bonusNicheLimit;
+  if ((count ?? 0) >= limit) {
+    const nextTier: Partial<Record<Tier, Tier>> = { Gold: "Silver", Silver: "Platinum" };
+    const upgradeHint = nextTier[tier]
+      ? ` Upgrade to ${nextTier[tier]} for ${nextTier[tier] === "Platinum" ? "unlimited" : `up to ${TIER_NICHE_LIMITS[nextTier[tier]!]}`} niches, or ask an admin for a bonus niche.`
+      : "";
+    return { ok: false, message: `${tier} members get ${limit} niche${limit === 1 ? "" : "s"}.${upgradeHint}` };
+  }
+  return { ok: true };
 }

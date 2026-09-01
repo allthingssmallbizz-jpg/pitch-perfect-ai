@@ -1,31 +1,37 @@
 import { redirect } from "next/navigation";
-import { UserCircle } from "lucide-react";
+import Link from "next/link";
+import { UserCircle, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { isPresenterBioIncomplete, getMissingBioFieldLabels } from "@/lib/ai/presenterBio";
+import { getPresenterBioProfiles, TIER_NICHE_LIMITS } from "@/lib/ai/presenterBio";
 import StartHereBadge from "@/components/StartHereBadge";
-import PresenterBioForm from "./PresenterBioForm";
+import NewNicheForm from "@/components/NewNicheForm";
+import DeleteNicheButton from "@/components/DeleteNicheButton";
 
-export default async function PresenterBioPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ returnTo?: string }>;
-}) {
+// The account-level list of "niches" — a member running genuinely different businesses under one
+// login (a travel agent who also coaches diabetes patients, say) keeps a separate bio per niche
+// instead of overwriting one shared bio every time they switch. Each project picks exactly one
+// niche at creation time (see NewProjectForm.tsx); how many an account can create is capped by
+// membership tier plus any admin-granted bonus (see TIER_NICHE_LIMITS, canCreateBioProfile).
+export default async function PresenterBioListPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: bio } = await supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle();
-  const missingFields = getMissingBioFieldLabels(bio);
+  const [{ data: profile }, niches] = await Promise.all([
+    supabase.from("profiles").select("tier, bonus_niche_limit").eq("id", user.id).single(),
+    getPresenterBioProfiles(supabase, user.id),
+  ]);
 
-  // Set by every hard "finish your bio first" redirect (generate/[assetType]/page.tsx,
-  // ad-image/page.tsx) so Save can send them straight back instead of stranding them here — see
-  // updatePresenterBio. Only ever a same-app path we generated ourselves, but sanitized anyway
-  // since it arrives as a raw query param: must start with a single "/", never "//" (which some
-  // clients resolve as a protocol-relative URL to another host).
-  const { returnTo: rawReturnTo } = await searchParams;
-  const returnTo = rawReturnTo && rawReturnTo.startsWith("/") && !rawReturnTo.startsWith("//") ? rawReturnTo : null;
+  const tier = profile?.tier ?? "Gold";
+  const bonusNicheLimit = profile?.bonus_niche_limit ?? 0;
+  const limit = TIER_NICHE_LIMITS[tier] + bonusNicheLimit;
+  const atLimit = niches.length >= limit;
+  const nextTier: Partial<Record<typeof tier, string>> = { Gold: "Silver", Silver: "Platinum" };
+  const upgradeHint = nextTier[tier]
+    ? ` Upgrade to ${nextTier[tier]} for more, or ask an admin for a bonus niche.`
+    : "";
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
@@ -35,29 +41,51 @@ export default async function PresenterBioPage({
         </div>
         <div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="font-display text-3xl font-bold text-gradient-silver">My Webinar Bio</h1>
-            {isPresenterBioIncomplete(bio) && <StartHereBadge />}
+            <h1 className="font-display text-3xl font-bold text-gradient-silver">My Niches</h1>
+            {niches.length === 0 && <StartHereBadge />}
           </div>
           <p className="mt-1 text-muted-foreground">
-            Who you are behind the offer — your mission, credentials, origin story, a real
-            setback, your greatest client win. Fill this in once here, and it&apos;s automatically
-            available to every project&apos;s Webinar, VSL, and every other agent — you&apos;ll
-            never have to retype it.
+            One bio per niche — a project picks exactly one when it&apos;s created, so switching
+            niches never means overwriting a bio a different project still relies on.{" "}
+            {Number.isFinite(limit)
+              ? `${tier} members get ${limit} niche${limit === 1 ? "" : "s"}.`
+              : `${tier} members get unlimited niches.`}
           </p>
-          {missingFields.length > 0 && (
-            <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
-              <p className="font-medium text-primary">
-                {returnTo
-                  ? "Finish this first — every agent needs it to write a strong, credible presentation. Save below and you'll go straight back to what you were doing."
-                  : "Every field marked * below is required before any agent will generate for you."}
-              </p>
-              <p className="mt-1 text-muted-foreground">Still missing: {missingFields.join(", ")}.</p>
-            </div>
-          )}
         </div>
       </div>
 
-      <PresenterBioForm bio={bio} redirectTo={returnTo} />
+      <div className="mb-6">
+        <NewNicheForm disabled={atLimit} limitMessage={`${tier} members get ${limit} niche${limit === 1 ? "" : "s"}.${upgradeHint}`} />
+      </div>
+
+      {niches.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No niches yet — create your first one above.</p>
+      ) : (
+        <div className="grid gap-3">
+          {niches.map((n) => (
+            <div
+              key={n.id}
+              className="card-elevated flex items-center gap-4 rounded-xl p-5 transition-colors hover:border-primary/40"
+            >
+              <div className="min-w-0 flex-1">
+                <Link href={`/bio/${n.id}`} className="font-display text-base font-semibold transition-colors hover:text-primary">
+                  {n.label}
+                </Link>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {n.incomplete ? "Incomplete — required fields still missing" : "Complete"}
+                </p>
+              </div>
+              <Link
+                href={`/bio/${n.id}`}
+                className="flex items-center gap-1 text-sm text-primary hover:underline"
+              >
+                Edit <ArrowRight className="h-4 w-4" />
+              </Link>
+              <DeleteNicheButton profileId={n.id} label={n.label} />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

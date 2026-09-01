@@ -71,14 +71,19 @@ export async function POST(req: NextRequest) {
 
   // Bio comes before Discovery, and neither is optional — a strong presenter bio is what turns
   // generic Credibility Bridge / Opening Story beats into the presenter's real story (see
-  // getPresenterBioBlock below), and skipping it isn't a shortcut worth allowing. Same real lock
-  // as the Discovery check just below: the generate page already redirects a fresh visit to /bio
-  // first, but that's a UI nudge, not a lock — this is the one nothing can slip past.
-  const { data: bio } = await supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle();
+  // getPresenterBioBlock below), and skipping it isn't a shortcut worth allowing. Checked against
+  // THIS project's linked niche (presenter_bio_profile_id — see 0031_niche_bio_profiles.sql), not
+  // just "does this account have any bio anywhere," since an account can hold several niches and
+  // only the one this project actually points at matters here. Same real lock as the Discovery
+  // check just below: the generate page already redirects a fresh visit to /bio first, but that's
+  // a UI nudge, not a lock — this is the one nothing can slip past.
+  const { data: bio } = project.presenter_bio_profile_id
+    ? await supabase.from("presenter_bio_profiles").select("*").eq("id", project.presenter_bio_profile_id).maybeSingle()
+    : { data: null };
   if (isPresenterBioIncomplete(bio)) {
     const missing = getMissingBioFieldLabels(bio);
     return NextResponse.json(
-      { error: `Finish your presenter bio first — still missing: ${missing.join(", ")}. Every agent needs it to write a strong, credible presentation.` },
+      { error: `Finish this project's niche bio first — still missing: ${missing.join(", ")}. Every agent needs it to write a strong, credible presentation.` },
       { status: 400 }
     );
   }
@@ -147,7 +152,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const brandVoiceBlock = await getBrandVoiceBlock(supabase, user.id);
-    const presenterBioBlock = await getPresenterBioBlock(supabase, user.id);
+    const presenterBioBlock = await getPresenterBioBlock(supabase, project.presenter_bio_profile_id);
     const agentPersona = getAgent(assetType)?.personaInstructions;
     const systemPrompt = buildSystemPrompt(mode, brandVoiceBlock, agentPersona, presenterBioBlock);
 

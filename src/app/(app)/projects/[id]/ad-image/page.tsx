@@ -32,11 +32,20 @@ export default async function AdImagePage({
     .single();
   if (!project) notFound();
 
-  // Bio before Discovery before any agent — same gate, same order, as generate/[assetType]/page.tsx.
+  // Bio before Discovery before any agent — same gate, same order, as generate/[assetType]/page.tsx,
+  // checked against THIS project's linked niche, not just "does the account have a bio anywhere."
   if (!generationId) {
-    const { data: bio } = await supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle();
+    const returnTo = `/projects/${id}/ad-image`;
+    if (!project.presenter_bio_profile_id) {
+      redirect(`/bio?returnTo=${encodeURIComponent(returnTo)}`);
+    }
+    const { data: bio } = await supabase
+      .from("presenter_bio_profiles")
+      .select("*")
+      .eq("id", project.presenter_bio_profile_id)
+      .maybeSingle();
     if (isPresenterBioIncomplete(bio)) {
-      redirect(`/bio?returnTo=${encodeURIComponent(`/projects/${id}/ad-image`)}`);
+      redirect(`/bio/${project.presenter_bio_profile_id}?returnTo=${encodeURIComponent(returnTo)}`);
     }
   }
   if (!generationId && projectNeedsDiscovery(project)) {

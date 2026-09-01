@@ -1,5 +1,8 @@
+import { redirect } from "next/navigation";
 import NewProjectForm from "./NewProjectForm";
 import { AGENTS, type AgentAssetType } from "@/lib/agents/config";
+import { getPresenterBioProfiles, TIER_NICHE_LIMITS } from "@/lib/ai/presenterBio";
+import { createClient } from "@/lib/supabase/server";
 import AgentBadge from "@/components/AgentBadge";
 
 export default async function NewProjectPage({
@@ -9,6 +12,25 @@ export default async function NewProjectPage({
 }) {
   const { type } = await searchParams;
   const agent = type && type in AGENTS ? AGENTS[type as AgentAssetType] : null;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const [{ data: profile }, niches] = await Promise.all([
+    supabase.from("profiles").select("tier, bonus_niche_limit").eq("id", user.id).single(),
+    getPresenterBioProfiles(supabase, user.id),
+  ]);
+
+  const tier = profile?.tier ?? "Gold";
+  const limit = TIER_NICHE_LIMITS[tier] + (profile?.bonus_niche_limit ?? 0);
+  const atNicheLimit = niches.length >= limit;
+  const nextTier: Partial<Record<typeof tier, string>> = { Gold: "Silver", Silver: "Platinum" };
+  const nicheLimitMessage = `${tier} members get ${Number.isFinite(limit) ? limit : "unlimited"} niche${limit === 1 ? "" : "s"}.${
+    nextTier[tier] ? ` Upgrade to ${nextTier[tier]} for more, or ask an admin for a bonus niche.` : ""
+  }`;
 
   return (
     <div className="mx-auto max-w-md px-4 py-16">
@@ -22,7 +44,7 @@ export default async function NewProjectPage({
       ) : (
         <h1 className="mb-6 font-display text-2xl font-semibold text-gradient-silver">Name your project</h1>
       )}
-      <NewProjectForm type={type ?? null} />
+      <NewProjectForm type={type ?? null} niches={niches} atNicheLimit={atNicheLimit} nicheLimitMessage={nicheLimitMessage} />
     </div>
   );
 }

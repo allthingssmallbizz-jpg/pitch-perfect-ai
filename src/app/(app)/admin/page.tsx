@@ -53,7 +53,9 @@ export default async function AdminPage({
     supabase.from("admin_settings").select("*").eq("id", true).single(),
     supabase
       .from("profiles")
-      .select("id, email, full_name, role, tier, credits_balance, credits_monthly_allotment, access_expires_at, stripe_subscription_id")
+      .select(
+        "id, email, full_name, role, tier, bonus_niche_limit, credits_balance, credits_monthly_allotment, access_expires_at, stripe_subscription_id"
+      )
       .order("email"),
     supabase
       .from("payments")
@@ -440,7 +442,7 @@ export default async function AdminPage({
                       <MemberRoleForm userId={m.id} currentRole={m.role} />
                     </td>
                     <td className="px-4 py-3">
-                      <MemberTierForm userId={m.id} currentTier={m.tier} />
+                      <MemberTierForm userId={m.id} currentTier={m.tier} currentBonusNicheLimit={m.bonus_niche_limit} />
                     </td>
                     <td className="px-4 py-3 text-xs">
                       <Badge variant={isActiveMember ? "default" : "secondary"}>

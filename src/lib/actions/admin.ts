@@ -6,6 +6,12 @@ import { randomBytes } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail, buildLoginCredentialsEmail, EmailSendError } from "@/lib/email";
+import type { Tier } from "@/types/database";
+
+const VALID_TIERS: Tier[] = ["Gold", "Silver", "Platinum", "Founding Member"];
+function isValidTier(t: string): t is Tier {
+  return (VALID_TIERS as readonly string[]).includes(t);
+}
 
 // `profiles` RLS only allows a row's own owner to UPDATE it (see profiles_update_own in
 // 0001_init.sql — there's no admin-update policy, only admin-select). So every mutation an
@@ -147,13 +153,14 @@ export async function adminInviteMember(_prevState: unknown, formData: FormData)
   const { supabase } = await requireAdmin();
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const fullName = String(formData.get("full_name") || "").trim();
-  const tier = String(formData.get("tier") || "Member").trim() || "Member";
+  const tier = String(formData.get("tier") || "Gold").trim() || "Gold";
   const role = formData.get("role") === "admin" ? "admin" : "member";
   const credits = Number(formData.get("credits"));
   const accessMonths = Number(formData.get("access_months"));
   const requestedPassword = String(formData.get("password") || "").trim();
 
   if (!email || !email.includes("@")) return { error: "Enter a valid email address." };
+  if (!isValidTier(tier)) return { error: "Not a valid tier." };
   if (!Number.isFinite(credits) || credits < 0) return { error: "Enter a valid, non-negative credit amount." };
   if (!Number.isFinite(accessMonths) || accessMonths <= 0) return { error: "Enter a valid access length in months." };
   if (requestedPassword && requestedPassword.length < 8) {
@@ -271,15 +278,24 @@ export async function adminSetPassword(_prevState: unknown, formData: FormData) 
   return { success: true };
 }
 
+// Sets both a member's tier and their bonus_niche_limit (extra niche/webinar "account" creations
+// on top of whatever their tier alone gives — see TIER_NICHE_LIMITS in src/lib/ai/presenterBio.ts)
+// in one save, the only two things an admin can grant a member: a tier upgrade, and/or an
+// individual bonus on top of it.
 export async function adminSetTier(_prevState: unknown, formData: FormData) {
   const { supabase } = await requireAdmin();
   const userId = String(formData.get("userId") || "");
   const tier = String(formData.get("tier") || "").trim();
+  const bonusNicheLimitRaw = String(formData.get("bonusNicheLimit") || "0").trim();
+  const bonusNicheLimit = Number(bonusNicheLimitRaw);
 
-  if (!userId || !tier) return { error: "Enter a tier label." };
-  if (tier.length > 40) return { error: "Keep it under 40 characters." };
+  if (!userId || !tier) return { error: "Choose a tier." };
+  if (!isValidTier(tier)) return { error: "Not a valid tier." };
+  if (!Number.isInteger(bonusNicheLimit) || bonusNicheLimit < 0) {
+    return { error: "Bonus niches must be a whole number, 0 or more." };
+  }
 
-  const { error } = await supabase.from("profiles").update({ tier }).eq("id", userId);
+  const { error } = await supabase.from("profiles").update({ tier, bonus_niche_limit: bonusNicheLimit }).eq("id", userId);
   if (error) return { error: "Could not update tier." };
 
   revalidatePath("/admin");

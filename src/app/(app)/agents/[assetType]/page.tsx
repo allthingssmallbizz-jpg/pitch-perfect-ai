@@ -4,7 +4,6 @@ import { Plus, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
-import { isPresenterBioIncomplete } from "@/lib/ai/presenterBio";
 import AgentBadge from "@/components/AgentBadge";
 import DeleteGenerationButton from "@/components/DeleteGenerationButton";
 import BioReminderDialog from "@/components/BioReminderDialog";
@@ -50,7 +49,7 @@ export default async function AgentLandingPage({
     { data: projects, error: projectsError },
     { data: generations, error: generationsError },
     { data: imageAdRows },
-    { data: bio },
+    { count: nicheCount },
   ] = await Promise.all([
     supabase
       .from("projects")
@@ -79,11 +78,13 @@ export default async function AgentLandingPage({
           .limit(24)
       : Promise.resolve({ data: null }),
     // Fetched here rather than only on the generate page — this landing page is the actual
-    // moment someone "clicks on an agent," so the nudge to finish the bio first belongs here,
-    // before they even pick a project, not several clicks later.
-    supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle(),
+    // moment someone "clicks on an agent," so the nudge belongs here, before they even pick a
+    // project, not several clicks later. Deliberately "zero niches at all," not "is a specific
+    // niche complete" — there's no project (and so no linked niche) to check yet at this point;
+    // the real per-project completeness gate lives on the generate page and the API routes.
+    supabase.from("presenter_bio_profiles").select("id", { count: "exact", head: true }).eq("user_id", user.id),
   ]);
-  const showBioReminder = isPresenterBioIncomplete(bio);
+  const showBioReminder = (nicheCount ?? 0) === 0;
 
   // Neither of these queries should ever actually fail for a normal request — but they used to
   // be destructured without looking at `error` at all, so a real failure (a missing column after

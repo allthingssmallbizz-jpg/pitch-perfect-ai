@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-const TIER_PRESETS = ["Member", "Pro", "Premium", "Founding Member"];
+const TIERS = ["Gold", "Silver", "Platinum", "Founding Member"];
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -59,18 +59,18 @@ export default function MemberInviteForm() {
         <Label htmlFor="invite-tier" className="text-xs">
           Tier
         </Label>
-        <Input
+        <select
           id="invite-tier"
           name="tier"
-          list="invite-tier-presets"
-          defaultValue="Member"
-          className="mt-1 h-8 text-sm"
-        />
-        <datalist id="invite-tier-presets">
-          {TIER_PRESETS.map((t) => (
-            <option key={t} value={t} />
+          defaultValue="Gold"
+          className="mt-1 h-8 w-full rounded-md border border-input bg-input/30 px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          {TIERS.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
           ))}
-        </datalist>
+        </select>
       </div>
       <div>
         <Label htmlFor="invite-role" className="text-xs">
