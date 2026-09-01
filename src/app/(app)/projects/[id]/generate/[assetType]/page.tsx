@@ -10,7 +10,6 @@ import { getPageStats, type PageStats } from "@/lib/analytics";
 import AgentBadge from "@/components/AgentBadge";
 import { Badge } from "@/components/ui/badge";
 import GenerateClient from "./GenerateClient";
-import BioReminderDialog from "@/components/BioReminderDialog";
 
 // Your Webinar and its Script share the same agent (Polly) — same name, same emoji, same title
 // on both pages — which was exactly the problem: a member stepping away and coming back couldn't
@@ -55,22 +54,21 @@ export default async function GenerateAssetPage({
   if (!project) notFound();
 
   // Only guard a fresh visit — if they're opening a specific past generation (?generationId=),
-  // there's already real content to show regardless of the project's current discovery state.
-  if (!generationId && projectNeedsDiscovery(project)) {
-    redirect(`/projects/${id}?intent=${assetType}`);
-  }
-
-  // A nudge, not a hard gate — the bio stays optional. Applies to every generator, not just
-  // Webinar/VSL, since getPresenterBioBlock folds the bio into every generation's system prompt
-  // (see /api/generate/route.ts) regardless of asset type. Only shows on a fresh visit (not when
-  // reopening a past generation) and reappears every time until the bio is filled in — the agent
-  // landing page (src/app/(app)/agents/[assetType]/page.tsx) shows the same reminder even
-  // earlier, the moment someone clicks into an agent at all, so this mainly covers landing here
-  // some other way (e.g. the dashboard's deliverable grid, a bookmarked URL).
-  let showBioReminder = false;
+  // there's already real content to show regardless of the project's/account's current
+  // completeness. Bio comes before Discovery in the required order (a member logging in with no
+  // idea where to start asked "what do I do?" — Bio is the answer to that, Discovery the very
+  // next one), so it's checked first: every agent needs both a strong presenter bio and a
+  // complete discovery brief before it can generate anything (see the matching hard check in
+  // /api/generate/route.ts, the real backstop this redirect exists to avoid most people ever
+  // needing to hit).
   if (!generationId) {
     const { data: bio } = await supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle();
-    showBioReminder = isPresenterBioEmpty(bio);
+    if (isPresenterBioEmpty(bio)) {
+      redirect(`/bio?returnTo=${encodeURIComponent(`/projects/${id}/generate/${assetType}`)}`);
+    }
+  }
+  if (!generationId && projectNeedsDiscovery(project)) {
+    redirect(`/projects/${id}?intent=${assetType}`);
   }
 
   let initialContent: string | null = null;
@@ -198,8 +196,6 @@ export default async function GenerateAssetPage({
           {generator.creditCost} credits per generation · {project.mode} mode
         </span>
       </div>
-
-      {showBioReminder && <BioReminderDialog />}
 
       <GenerateClient
         // Forces a full remount whenever the open generation changes (a fresh visit, opening a

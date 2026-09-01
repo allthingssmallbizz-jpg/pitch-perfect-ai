@@ -6,7 +6,7 @@ import { checkGuardrails, decrementCredits } from "@/lib/credits";
 import { generateCompleteAsset } from "@/lib/ai/anthropic";
 import { buildSystemPrompt } from "@/lib/ai/systemPrompt";
 import { getBrandVoiceBlock } from "@/lib/ai/brandVoice";
-import { getPresenterBioBlock } from "@/lib/ai/presenterBio";
+import { getPresenterBioBlock, isPresenterBioEmpty } from "@/lib/ai/presenterBio";
 import { stripHtmlCodeFence, WEB_PAGE_ASSET_TYPES, injectFormAction } from "@/lib/ai/generators/htmlPage";
 import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
 import { getFormSubmitUrl } from "@/lib/publishing";
@@ -67,6 +67,19 @@ export async function POST(req: NextRequest) {
 
   if (projectError || !project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+
+  // Bio comes before Discovery, and neither is optional — a strong presenter bio is what turns
+  // generic Credibility Bridge / Opening Story beats into the presenter's real story (see
+  // getPresenterBioBlock below), and skipping it isn't a shortcut worth allowing. Same real lock
+  // as the Discovery check just below: the generate page already redirects a fresh visit to /bio
+  // first, but that's a UI nudge, not a lock — this is the one nothing can slip past.
+  const { data: bio } = await supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle();
+  if (isPresenterBioEmpty(bio)) {
+    return NextResponse.json(
+      { error: "Finish your presenter bio first — every agent needs it to write a strong, credible presentation." },
+      { status: 400 }
+    );
   }
 
   // No agent generates without a complete Discovery brief for this project — every prompt builder

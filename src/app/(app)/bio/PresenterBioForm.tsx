@@ -83,7 +83,13 @@ function Field({
   );
 }
 
-export default function PresenterBioForm({ bio }: { bio: PresenterBio | null }) {
+export default function PresenterBioForm({
+  bio,
+  redirectTo = null,
+}: {
+  bio: PresenterBio | null;
+  redirectTo?: string | null;
+}) {
   const [state, formAction, pending] = useActionState(updatePresenterBio, undefined);
   const [assistTarget, setAssistTarget] = useState<AssistTarget | null>(null);
 
@@ -130,6 +136,7 @@ export default function PresenterBioForm({ bio }: { bio: PresenterBio | null }) 
 
   return (
     <form action={formAction} className="card-elevated space-y-5 rounded-2xl p-8">
+      {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
       <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
         <Label className="text-base font-semibold">Your &quot;I Help&quot; statement</Label>
         <p className="mt-0.5 text-xs text-muted-foreground">

@@ -5,7 +5,11 @@ import { isPresenterBioEmpty } from "@/lib/ai/presenterBio";
 import StartHereBadge from "@/components/StartHereBadge";
 import PresenterBioForm from "./PresenterBioForm";
 
-export default async function PresenterBioPage() {
+export default async function PresenterBioPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ returnTo?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -13,6 +17,14 @@ export default async function PresenterBioPage() {
   if (!user) redirect("/login");
 
   const { data: bio } = await supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle();
+
+  // Set by every hard "finish your bio first" redirect (generate/[assetType]/page.tsx,
+  // ad-image/page.tsx) so Save can send them straight back instead of stranding them here — see
+  // updatePresenterBio. Only ever a same-app path we generated ourselves, but sanitized anyway
+  // since it arrives as a raw query param: must start with a single "/", never "//" (which some
+  // clients resolve as a protocol-relative URL to another host).
+  const { returnTo: rawReturnTo } = await searchParams;
+  const returnTo = rawReturnTo && rawReturnTo.startsWith("/") && !rawReturnTo.startsWith("//") ? rawReturnTo : null;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
@@ -31,10 +43,16 @@ export default async function PresenterBioPage() {
             available to every project&apos;s Webinar, VSL, and every other agent — you&apos;ll
             never have to retype it.
           </p>
+          {returnTo && isPresenterBioEmpty(bio) && (
+            <p className="mt-2 text-sm font-medium text-primary">
+              Finish this first — every agent needs it to write a strong, credible presentation.
+              Save below and you&apos;ll go straight back to what you were doing.
+            </p>
+          )}
         </div>
       </div>
 
-      <PresenterBioForm bio={bio} />
+      <PresenterBioForm bio={bio} redirectTo={returnTo} />
     </div>
   );
 }

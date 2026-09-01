@@ -42,8 +42,19 @@ export async function updatePresenterBio(_prevState: unknown, formData: FormData
   }
 
   revalidatePath("/bio");
-  // Also revalidate the generate pages that show the "finish your bio" reminder, so it clears
-  // immediately on the next visit instead of waiting for their own cache to expire.
+  // Also revalidate the generate/agent pages that hard-redirect here until the bio is filled in
+  // (projectNeedsDiscovery's same-shaped gate — see generate/[assetType]/page.tsx and
+  // ad-image/page.tsx), so the redirect clears immediately on the next visit.
   revalidatePath("/projects/[id]/generate/[assetType]", "page");
+  revalidatePath("/projects/[id]/ad-image", "page");
+  revalidatePath("/agents/[assetType]", "page");
+
+  // Set by PresenterBioForm when this page was reached via the "finish your bio first" redirect
+  // (?returnTo=... — see generate/[assetType]/page.tsx, ad-image/page.tsx, bio/page.tsx) —
+  // finishes that trip by sending them straight back to what they were actually trying to do,
+  // same pattern as updateProjectDiscovery's own redirectTo.
+  const returnTo = String(formData.get("redirectTo") || "");
+  if (returnTo) redirect(returnTo);
+
   return { success: true };
 }

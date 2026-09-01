@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { checkGuardrails } from "@/lib/credits";
 import { AD_IMAGE_CREDIT_COST } from "@/lib/ai/generators/adImage";
 import { projectNeedsDiscovery } from "@/lib/projects";
+import { isPresenterBioEmpty } from "@/lib/ai/presenterBio";
 
 export const runtime = "nodejs";
 
@@ -37,8 +38,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  // Same rule as every other generator (see /api/generate/route.ts) — no agent runs without a
-  // complete Discovery brief for this project, enforced here rather than only as a page redirect.
+  // Same rule as every other generator (see /api/generate/route.ts) — bio before Discovery,
+  // neither optional, enforced here rather than only as a page redirect.
+  const { data: bio } = await supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle();
+  if (isPresenterBioEmpty(bio)) {
+    return NextResponse.json(
+      { error: "Finish your presenter bio first — every agent needs it to write a strong, credible presentation." },
+      { status: 400 }
+    );
+  }
   if (projectNeedsDiscovery(project)) {
     return NextResponse.json(
       { error: "Complete this project's Discovery brief first — every agent needs it before it can generate anything." },

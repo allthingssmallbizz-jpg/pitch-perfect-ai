@@ -140,7 +140,7 @@ export default async function AgentLandingPage({
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
-      {showBioReminder && <BioReminderDialog />}
+      {showBioReminder && <BioReminderDialog returnTo={`/agents/${generator.assetType}`} />}
 
       <div className="mb-1">
         <AgentBadge agent={agent} size="lg" showTagline />

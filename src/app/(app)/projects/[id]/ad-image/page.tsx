@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { AGENTS } from "@/lib/agents/config";
 import { projectNeedsDiscovery } from "@/lib/projects";
+import { isPresenterBioEmpty } from "@/lib/ai/presenterBio";
 import { AD_IMAGE_CREDIT_COST } from "@/lib/ai/generators/adImage";
 import AgentBadge from "@/components/AgentBadge";
 import AdImageClient, { type PastAdImage } from "./AdImageClient";
@@ -31,6 +32,13 @@ export default async function AdImagePage({
     .single();
   if (!project) notFound();
 
+  // Bio before Discovery before any agent — same gate, same order, as generate/[assetType]/page.tsx.
+  if (!generationId) {
+    const { data: bio } = await supabase.from("presenter_bios").select("*").eq("user_id", user.id).maybeSingle();
+    if (isPresenterBioEmpty(bio)) {
+      redirect(`/bio?returnTo=${encodeURIComponent(`/projects/${id}/ad-image`)}`);
+    }
+  }
   if (!generationId && projectNeedsDiscovery(project)) {
     redirect(`/projects/${id}?intent=ad_image`);
   }
