@@ -38,19 +38,46 @@ import {
 // carries the actual prompt-builder functions) so this client component doesn't pull the
 // Node-only knowledge-file loader (src/lib/ai/systemPrompt.ts, used by the VSL generator) into
 // the browser bundle — that reads from disk via `fs` and can't be chunked for the client.
-const CREATE_ASSET_TYPES: Exclude<AgentAssetType, "presentation_analysis">[] = [
+//
+// A member logging in with 10+ agents and no indication where to start asked "what do I do,
+// where do I start?" — Bio and Discovery (see the "Start Here" badge above and the hard
+// projectNeedsDiscovery gate in /api/generate/route.ts) already answer that for the very first
+// two steps, neither of which is a generator agent. These two lists are the numbered answer for
+// everything after: the one path every brand-new member should walk in order, split from the
+// agents that are genuinely useful but fine to use "randomly whenever" (Aaron's words) — VSL,
+// Challenge, Webinar Script, Ad Copy, Offer Ladder never block or gate on each other.
+const CORE_PATH_ASSET_TYPES = [
   "webinar_outline",
-  "vsl_script",
-  "challenge_outline",
-  "sales_page",
   "ppt_outline",
-  "webinar_script",
   "landing_page",
+  "sales_page",
   "thank_you_page",
   "email_sequence",
+] as const satisfies Exclude<AgentAssetType, "presentation_analysis">[];
+
+// Numbers pick up at 2 since Bio and Discovery are steps 0/1 and aren't generator agents. Webinar
+// Blueprint and Your Signature Webinar share "2" on purpose — they're the same phase (fill out
+// the blueprint, then the page's own "Generate Your Signature Webinar Now" button chains straight
+// into the deck), not two separate steps to hunt for in the sidebar. Landing Page/Sales
+// Letter/Thank You Page share "3" the same way — whichever a member's funnel actually needs.
+const CORE_PATH_STEP: Record<(typeof CORE_PATH_ASSET_TYPES)[number], number> = {
+  webinar_outline: 2,
+  ppt_outline: 2,
+  landing_page: 3,
+  sales_page: 3,
+  thank_you_page: 3,
+  email_sequence: 4,
+};
+
+const OTHER_ASSET_TYPES: Exclude<AgentAssetType, "presentation_analysis">[] = [
+  "vsl_script",
+  "challenge_outline",
+  "webinar_script",
   "ad_copy",
   "offer_ladder",
 ];
+
+type CreateAssetType = (typeof CORE_PATH_ASSET_TYPES)[number] | (typeof OTHER_ASSET_TYPES)[number];
 
 // Short label per generator for the sidebar's "Create" group — matches the Lovable prototype's
 // nav wording (VSL, Sales Letter...) rather than the longer descriptions used elsewhere. Webinar
@@ -58,7 +85,7 @@ const CREATE_ASSET_TYPES: Exclude<AgentAssetType, "presentation_analysis">[] = [
 // ASSET_GENERATORS[type].label here — the three-step relationship between them (Sarah's blueprint
 // feeds Polly's finished deck, which the script aligns to) is worth keeping identical everywhere
 // a member sees it, not shortened differently in different places.
-const CREATE_LABELS: Record<(typeof CREATE_ASSET_TYPES)[number], string> = {
+const CREATE_LABELS: Record<CreateAssetType, string> = {
   webinar_outline: "Webinar Blueprint",
   vsl_script: "VSL",
   challenge_outline: "Challenge",
@@ -160,7 +187,44 @@ export default function AppSidebar({ email, displayName, isAdmin, credits, bioIn
           <SidebarGroupLabel>Create</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {CREATE_ASSET_TYPES.map((type) => {
+              {CORE_PATH_ASSET_TYPES.map((type) => {
+                const agent = AGENTS[type];
+                const step = CORE_PATH_STEP[type];
+                return (
+                  <SidebarMenuItem key={type}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === `/agents/${type}` || activeCreateType === type}
+                      tooltip={`Step ${step} — ${agent.name} · ${CREATE_LABELS[type]}`}
+                    >
+                      <Link href={`/agents/${type}`}>
+                        {!collapsed && (
+                          <span
+                            aria-hidden
+                            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground"
+                          >
+                            {step}
+                          </span>
+                        )}
+                        <span aria-hidden>{agent.emoji}</span>
+                        <span className="truncate">
+                          {agent.name} <span className="text-muted-foreground">· {CREATE_LABELS[type]}</span>
+                        </span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+
+              {!collapsed && (
+                <SidebarMenuItem>
+                  <div className="px-2 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    Other agents · use anytime
+                  </div>
+                </SidebarMenuItem>
+              )}
+
+              {OTHER_ASSET_TYPES.map((type) => {
                 const agent = AGENTS[type];
                 return (
                   <SidebarMenuItem key={type}>
