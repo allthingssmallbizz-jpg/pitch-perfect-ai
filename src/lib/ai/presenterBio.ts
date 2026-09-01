@@ -96,20 +96,21 @@ export function isPresenterBioEmpty(bio: PresenterBioFields | null | undefined):
 // truth for "is this bio actually strong enough to generate from," shared by the form's own
 // post-save feedback (updatePresenterBio) and the hard gate blocking every agent
 // (isPresenterBioIncomplete) so neither can drift out of sync with what the UI actually asks for.
-// Credentials/certifications and Media/speaking/industry recognition are the two Aaron said are
-// fine to skip — real answers even when genuinely blank ("none yet"), not a sign the bio was
-// rushed. The whole "I Help" statement section (the audience/outcome/mechanism builder, the
-// "biggest struggle" field, and the crafted statement box) is also deliberately NOT required —
-// it's a generator that helps someone find the words for "What do you help people do?" below, not
-// a second, separate answer to require on top of it. That one field (presenter_mission) is the
-// real required answer; its own hint nudges toward phrasing it with the I Help framework, but
-// nobody gets blocked just for not having run the generator.
+// Credentials/certifications and Media/speaking/industry recognition are two Aaron said are fine
+// to skip — real answers even when genuinely blank ("none yet"), not a sign the bio was rushed.
+// Greatest client transformation and Major setback are the same story for someone brand new —
+// they may genuinely not have either yet for THIS business, and requiring them would slow down
+// exactly the person who most needs to get moving. The whole "I Help" statement section (the
+// audience/outcome/mechanism builder, the "biggest struggle" field, and the crafted statement
+// box) is also deliberately NOT required — it's a generator that helps someone find the words for
+// "What do you help people do?" below, not a second, separate answer to require on top of it.
+// That one field (presenter_mission) is the real required answer; its own hint nudges toward
+// phrasing it with the I Help framework, but nobody gets blocked just for not having run the
+// generator.
 export const REQUIRED_BIO_FIELDS: { key: keyof PresenterBioFields; label: string }[] = [
   { key: "presenter_mission", label: "What do you help people do?" },
   { key: "presenter_years_experience", label: "Years in this industry" },
   { key: "presenter_origin_story", label: "How did you get into this industry?" },
-  { key: "presenter_signature_win", label: "Your greatest client transformation" },
-  { key: "presenter_setback_story", label: "Your major setback — and how you turned it around" },
   { key: "presenter_mission_why", label: "Your personal 'why'" },
   { key: "presenter_relatable_detail", label: "A relatable, human detail about you" },
   { key: "presenter_income_goal_6mo", label: "Income goal — next 6 months" },

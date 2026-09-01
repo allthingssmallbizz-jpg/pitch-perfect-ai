@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { UserCircle, ArrowRight } from "lucide-react";
+import { UserCircle, ArrowRight, TriangleAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getPresenterBioProfiles, TIER_NICHE_LIMITS } from "@/lib/ai/presenterBio";
 import StartHereBadge from "@/components/StartHereBadge";
+import { Button } from "@/components/ui/button";
 
 // One bio per project, auto-created and named after the project itself the moment it's created
 // (see createProject in src/lib/actions/projects.ts) — there's no separate "create a bio" step
@@ -36,6 +37,10 @@ export default async function PresenterBioListPage() {
   const tier = profile?.tier ?? "Gold";
   const bonusNicheLimit = profile?.bonus_niche_limit ?? 0;
   const limit = TIER_NICHE_LIMITS[tier] + bonusNicheLimit;
+  // Same rule the sidebar's badge uses (see layout.tsx) — "Start Here" stays lit until every bio
+  // is actually finished, not just started. A half-done bio still blocks its project's agents, so
+  // this shouldn't go quiet just because the account has at least one bio on file.
+  const anyIncomplete = bios.length === 0 || bios.some((b) => b.incomplete);
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
@@ -46,7 +51,7 @@ export default async function PresenterBioListPage() {
         <div>
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="font-display text-3xl font-bold text-gradient-silver">My Bio</h1>
-            {bios.length === 0 && <StartHereBadge />}
+            {anyIncomplete && <StartHereBadge />}
           </div>
           <p className="mt-1 text-muted-foreground">
             Every project gets its own bio, named after the project — filling one in makes every
@@ -79,18 +84,31 @@ export default async function PresenterBioListPage() {
                   <Link href={`/bio/${b.id}`} className="font-display text-base font-semibold transition-colors hover:text-primary">
                     {b.label}
                   </Link>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {b.incomplete ? "Incomplete — required fields still missing" : "Complete"}
-                  </p>
+                  {b.incomplete ? (
+                    <p className="mt-0.5 flex items-center gap-1 text-xs font-medium text-red-500">
+                      <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
+                      Incomplete — required fields still missing
+                    </p>
+                  ) : (
+                    <p className="mt-0.5 text-xs text-muted-foreground">Complete</p>
+                  )}
                 </div>
                 {projectId && (
                   <Link href={`/projects/${projectId}`} className="text-sm text-muted-foreground hover:text-primary hover:underline">
                     View project
                   </Link>
                 )}
-                <Link href={`/bio/${b.id}`} className="flex items-center gap-1 text-sm text-primary hover:underline">
-                  Edit bio <ArrowRight className="h-4 w-4" />
-                </Link>
+                {b.incomplete ? (
+                  <Button asChild size="sm" className="shrink-0 bg-red-600 text-white hover:bg-red-500">
+                    <Link href={`/bio/${b.id}`}>
+                      Finish bio <ArrowRight className="ml-1 h-4 w-4" />
+                    </Link>
+                  </Button>
+                ) : (
+                  <Link href={`/bio/${b.id}`} className="flex items-center gap-1 text-sm text-primary hover:underline">
+                    Edit bio <ArrowRight className="h-4 w-4" />
+                  </Link>
+                )}
               </div>
             );
           })}

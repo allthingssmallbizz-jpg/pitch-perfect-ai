@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ensureProfile } from "@/lib/profile";
+import { getPresenterBioProfiles } from "@/lib/ai/presenterBio";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSidebar";
 
@@ -18,18 +19,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const profile = await ensureProfile(user.id, user.email ?? "");
 
   // Drives the pulsating "Start Here" badge on the sidebar's "My Bio" link (see StartHereBadge) —
-  // a member logging in with zero bios yet gets an unmissable answer to "where do I start?" on
-  // every single page, not just the dashboard. This is deliberately just "do you have any bio at
-  // all," not "is a specific bio complete" — that stricter, per-project completeness check now
-  // lives at the project level (each project has its own bio, auto-created when it's created; see
-  // isPresenterBioIncomplete usage in generate/[assetType]/page.tsx etc.), since there's no single
-  // project context to check from the sidebar. Fetched once here rather than per-page since every
+  // stays lit until every bio on the account is actually finished, not just started. A half-done
+  // bio still blocks its project's agents, so the badge keeps the pressure on rather than going
+  // quiet the moment a first bio merely exists. Fetched once here rather than per-page since every
   // page under this layout shares the same sidebar.
-  const { count: nicheCount } = await supabase
-    .from("presenter_bio_profiles")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id);
-  const bioIncomplete = (nicheCount ?? 0) === 0;
+  const bios = await getPresenterBioProfiles(supabase, user.id);
+  const bioIncomplete = bios.length === 0 || bios.some((b) => b.incomplete);
 
   return (
     <SidebarProvider>

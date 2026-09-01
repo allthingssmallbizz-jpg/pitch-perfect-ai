@@ -351,8 +351,7 @@ export default function PresenterBioForm({
         name="presenter_signature_win"
         defaultValue={bio?.presenter_signature_win ?? ""}
         placeholder="The single biggest impact you've had on a client — a specific result."
-        hint="Pick ONE story, not a list — specific beats impressive. What did their life look like before, and after?"
-        required
+        hint="Pick ONE story, not a list — specific beats impressive. What did their life look like before, and after? Leave blank if you're just getting started and haven't had this moment yet."
         onAssist={setAssistTarget}
       />
       <Field
@@ -360,8 +359,7 @@ export default function PresenterBioForm({
         name="presenter_setback_story"
         defaultValue={bio?.presenter_setback_story ?? ""}
         placeholder="Struggled, failed, or hit a wall trying to build this? Tell it honestly."
-        hint="A real setback, told honestly, builds more trust than a highlight reel — it's exactly what makes an Opening Story land."
-        required
+        hint="A real setback, told honestly, builds more trust than a highlight reel — it's exactly what makes an Opening Story land. Leave blank if this hasn't happened for this business yet."
         onAssist={setAssistTarget}
       />
       <Field
