@@ -4,6 +4,7 @@ import { UserCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { isPresenterBioIncomplete, getMissingBioFieldLabels } from "@/lib/ai/presenterBio";
 import StartHereBadge from "@/components/StartHereBadge";
+import DeleteProjectButton from "@/components/DeleteProjectButton";
 import PresenterBioForm from "../PresenterBioForm";
 
 export default async function PresenterBioProfilePage({
@@ -24,10 +25,11 @@ export default async function PresenterBioProfilePage({
     supabase.from("presenter_bio_profiles").select("*").eq("id", profileId).eq("user_id", user.id).maybeSingle(),
     // One project per bio (see createProject in src/lib/actions/projects.ts) — used so the back
     // link and the page's own framing keep saying the actual project name, not a generic "My
-    // Bio," so a member never loses track of which project they're in partway through.
+    // Bio," so a member never loses track of which project they're in partway through. `name` is
+    // also needed for the delete-project confirmation below (it requires typing the exact name).
     supabase
       .from("projects")
-      .select("id")
+      .select("id, name")
       .eq("presenter_bio_profile_id", profileId)
       .eq("user_id", user.id)
       .is("deleted_at", null)
@@ -88,6 +90,24 @@ export default async function PresenterBioProfilePage({
       </div>
 
       <PresenterBioForm bio={bio} profileId={bio.id} redirectTo={returnTo} />
+
+      {/* Landing here (right after creating a project, or bounced back by a "finish your bio
+          first" gate) used to be a dead end for a project a member decided they didn't actually
+          want — the account-level bio gate on /projects/[id] now redirects an incomplete bio
+          straight back here before the project page (and its own "Delete project" disclosure,
+          see DiscoveryForm.tsx) is ever reachable. This is the same DeleteProjectButton used
+          there — a sibling of the form above, not nested inside it, for the same reason
+          DiscoveryForm's own delete control had to move outside its <form> (see that file's
+          comment): a nested <form> submit event bubbles into the nearest ancestor form's
+          handler instead of running the delete action. */}
+      {project && (
+        <details className="mt-6">
+          <summary className="cursor-pointer text-xs text-muted-foreground">Delete this project</summary>
+          <div className="mt-2">
+            <DeleteProjectButton projectId={project.id} projectName={project.name} redirectTo="/bio" trigger="text" />
+          </div>
+        </details>
+      )}
     </div>
   );
 }
