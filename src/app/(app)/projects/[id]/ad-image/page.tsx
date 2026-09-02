@@ -2,10 +2,11 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { AGENTS } from "@/lib/agents/config";
-import { projectNeedsDiscovery } from "@/lib/projects";
+import { projectNeedsDiscovery, REQUIRED_DISCOVERY_FIELDS } from "@/lib/projects";
 import { isPresenterBioIncomplete } from "@/lib/ai/presenterBio";
 import { AD_IMAGE_CREDIT_COST } from "@/lib/ai/generators/adImage";
 import AgentBadge from "@/components/AgentBadge";
+import DiscoveryBlockedDialog from "@/components/DiscoveryBlockedDialog";
 import AdImageClient, { type PastAdImage } from "./AdImageClient";
 
 export default async function AdImagePage({
@@ -48,9 +49,12 @@ export default async function AdImagePage({
       redirect(`/bio/${project.presenter_bio_profile_id}?returnTo=${encodeURIComponent(returnTo)}`);
     }
   }
-  if (!generationId && projectNeedsDiscovery(project)) {
-    redirect(`/projects/${id}?intent=ad_image`);
-  }
+  // Used to be a silent redirect straight back to the project page — now a blocking popup
+  // rendered below, right on this page (see generate/[assetType]/page.tsx for the same change).
+  const missingDiscoveryFields =
+    !generationId && projectNeedsDiscovery(project)
+      ? REQUIRED_DISCOVERY_FIELDS.filter(({ key }) => !String(project[key] ?? "").trim()).map((f) => f.label)
+      : [];
 
   const { data: rows } = await supabase
     .from("generations")
@@ -88,6 +92,14 @@ export default async function AdImagePage({
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
+      {missingDiscoveryFields.length > 0 && (
+        <DiscoveryBlockedDialog
+          projectId={id}
+          projectName={project.name}
+          intent="ad_image"
+          missingFields={missingDiscoveryFields}
+        />
+      )}
       <Link href={`/projects/${id}`} className="text-sm text-primary hover:underline">
         ← {project.name}
       </Link>

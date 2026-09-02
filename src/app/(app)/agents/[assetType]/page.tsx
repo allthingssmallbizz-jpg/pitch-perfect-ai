@@ -4,6 +4,7 @@ import { Plus, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
+import { getPresenterBioProfiles } from "@/lib/ai/presenterBio";
 import AgentBadge from "@/components/AgentBadge";
 import DeleteGenerationButton from "@/components/DeleteGenerationButton";
 import BioReminderDialog from "@/components/BioReminderDialog";
@@ -49,7 +50,7 @@ export default async function AgentLandingPage({
     { data: projects, error: projectsError },
     { data: generations, error: generationsError },
     { data: imageAdRows },
-    { count: nicheCount },
+    bios,
   ] = await Promise.all([
     supabase
       .from("projects")
@@ -78,13 +79,15 @@ export default async function AgentLandingPage({
           .limit(24)
       : Promise.resolve({ data: null }),
     // Fetched here rather than only on the generate page — this landing page is the actual
-    // moment someone "clicks on an agent," so the nudge belongs here, before they even pick a
-    // project, not several clicks later. Deliberately "zero niches at all," not "is a specific
-    // niche complete" — there's no project (and so no linked niche) to check yet at this point;
-    // the real per-project completeness gate lives on the generate page and the API routes.
-    supabase.from("presenter_bio_profiles").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+    // moment someone "clicks on an agent," so the block belongs here, before they even pick a
+    // project, not several clicks later. Account-level ("does ANY bio on this account have a
+    // required field missing," same rule the sidebar's Start Here badge uses in layout.tsx) since
+    // there's no project (and so no one specific linked bio) to check yet at this point — the
+    // per-project completeness gate still lives separately on the generate page and the API
+    // routes, this just stops the click before it even gets there.
+    getPresenterBioProfiles(supabase, user.id),
   ]);
-  const showBioReminder = (nicheCount ?? 0) === 0;
+  const showBioReminder = bios.length === 0 || bios.some((b) => b.incomplete);
 
   // Neither of these queries should ever actually fail for a normal request — but they used to
   // be destructured without looking at `error` at all, so a real failure (a missing column after

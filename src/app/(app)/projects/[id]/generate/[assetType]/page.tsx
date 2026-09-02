@@ -4,10 +4,11 @@ import { ArrowLeftRight, MonitorPlay, ScrollText, type LucideIcon } from "lucide
 import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, WEB_PAGE_ASSET_TYPES, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
-import { projectNeedsDiscovery } from "@/lib/projects";
+import { projectNeedsDiscovery, REQUIRED_DISCOVERY_FIELDS } from "@/lib/projects";
 import { isPresenterBioIncomplete } from "@/lib/ai/presenterBio";
 import { getPageStats, type PageStats } from "@/lib/analytics";
 import AgentBadge from "@/components/AgentBadge";
+import DiscoveryBlockedDialog from "@/components/DiscoveryBlockedDialog";
 import { Badge } from "@/components/ui/badge";
 import GenerateClient from "./GenerateClient";
 
@@ -77,9 +78,13 @@ export default async function GenerateAssetPage({
       redirect(`/bio/${project.presenter_bio_profile_id}?returnTo=${encodeURIComponent(returnTo)}`);
     }
   }
-  if (!generationId && projectNeedsDiscovery(project)) {
-    redirect(`/projects/${id}?intent=${assetType}`);
-  }
+  // Used to be a silent redirect straight back to the project page — now a blocking popup
+  // rendered below, right on this page, so it's clear exactly why the agent didn't open instead
+  // of landing back on the project with no explanation beyond an easy-to-miss banner.
+  const missingDiscoveryFields =
+    !generationId && projectNeedsDiscovery(project)
+      ? REQUIRED_DISCOVERY_FIELDS.filter(({ key }) => !String(project[key] ?? "").trim()).map((f) => f.label)
+      : [];
 
   let initialContent: string | null = null;
   let initialGenerationId: string | null = null;
@@ -165,6 +170,14 @@ export default async function GenerateAssetPage({
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
+      {missingDiscoveryFields.length > 0 && (
+        <DiscoveryBlockedDialog
+          projectId={id}
+          projectName={project.name}
+          intent={assetType}
+          missingFields={missingDiscoveryFields}
+        />
+      )}
       <Link href={isWebPageAsset ? "/websites" : `/projects/${id}`} className="text-sm text-primary hover:underline">
         ← {isWebPageAsset ? "My Websites" : project.name}
       </Link>

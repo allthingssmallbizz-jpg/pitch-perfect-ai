@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import {
   Dialog,
@@ -12,35 +11,30 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-// Only rendered (and only ever opens) when the server component already determined a required
-// field (REQUIRED_BIO_FIELDS) is still missing — currently just the agent landing page
-// (src/app/(app)/agents/[assetType]/page.tsx, the moment someone clicks into any agent). This is
-// deliberately still dismissible here, unlike the hard "finish your bio first" redirect on the
-// actual generate/ad-image pages (see isPresenterBioIncomplete usage there and the matching check
-// in /api/generate/route.ts) — this page also doubles as the place to browse *past* generations,
-// and blocking that outright over an unrelated field would be the wrong call. The real
-// requirement lives downstream: dismissing this only defers finishing the bio, it doesn't skip
-// it — the next agent they actually try to generate with will redirect them to /bio regardless.
+// Only rendered when the server component already determined a bio somewhere on this account is
+// incomplete (see the agent landing page, src/app/(app)/agents/[assetType]/page.tsx — "somewhere
+// on this account" because that page has no project context yet to check one specific bio
+// against, mirroring the sidebar's own account-wide Start Here badge in layout.tsx). Deliberately
+// NOT dismissible: no "Not now," no corner X (hideClose), Escape and click-outside both
+// suppressed below — an agent genuinely shouldn't open while any bio on the account is unfinished,
+// so unlike the old soft nudge this is the actual gate, not just a reminder that the real gate
+// lives downstream.
 export default function BioReminderDialog({ returnTo }: { returnTo?: string }) {
-  const [open, setOpen] = useState(true);
   const bioHref = returnTo ? `/bio?returnTo=${encodeURIComponent(returnTo)}` : "/bio";
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent>
+    <Dialog open>
+      <DialogContent hideClose onEscapeKeyDown={(e) => e.preventDefault()} onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Finish your presenter bio first</DialogTitle>
+          <DialogTitle>Finish your bio before this agent will open</DialogTitle>
           <DialogDescription>
-            Every agent needs your presenter bio — your &quot;I Help&quot; statement, your story, a
-            client transformation, a setback you turned around — to write real credibility and
-            Opening Story beats instead of something generic. You haven&apos;t filled it in yet,
-            and generating with this agent will send you here to finish it first.
+            A bio on your account isn&apos;t finished yet — every agent needs your &quot;I
+            Help&quot; statement, your story, and the rest of your presenter bio to write real
+            credibility and Opening Story beats instead of something generic. You can&apos;t
+            proceed to this agent until it&apos;s complete.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Not now
-          </Button>
+        <DialogFooter>
           <Button asChild>
             <Link href={bioHref}>Finish my bio</Link>
           </Button>
