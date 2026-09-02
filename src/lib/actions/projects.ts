@@ -69,6 +69,13 @@ export async function createProject(_prevState: unknown, formData: FormData) {
     return { error: "Could not create project. Try again." };
   }
 
+  // The sidebar's project switcher (AppSidebar's "Your projects" list) is fetched in the shared
+  // (app) layout, not this page — a plain redirect() doesn't refresh it, since layout data is
+  // outside the router cache's default revalidation for a same-layout navigation. Every place
+  // that adds, removes, or restores a project needs this same call (see deleteProject/
+  // restoreProject below) or the sidebar list silently drifts from what's actually in the
+  // database until an unrelated full reload happens to clear it.
+  revalidatePath("/", "layout");
   const destination = projectDestination(data.id, type);
   // A brand-new project's bio is empty — send them to fill it in first, same returnTo convention
   // used everywhere else this bio work touches (updatePresenterBio, the generate-page redirects).
@@ -128,6 +135,7 @@ export async function createProjectFromTemplate(formData: FormData) {
     redirect("/templates");
   }
 
+  revalidatePath("/", "layout");
   redirect(`/projects/${data.id}`);
 }
 
@@ -232,6 +240,11 @@ export async function deleteProject(formData: FormData) {
     .eq("id", projectId)
     .eq("user_id", user.id);
 
+  // Same reason createProject/createProjectFromTemplate call this — without it, a deleted
+  // project kept showing in the sidebar's "Your projects" list (and the tier limit it frees up
+  // wouldn't visibly reflect either) until an unrelated full reload happened to clear the layout
+  // out of the router cache.
+  revalidatePath("/", "layout");
   // Defaults to /dashboard (the original behavior); pages that list+delete projects
   // in place (e.g. /analyze's "previous projects" list) pass their own path to stay put
   // instead of bouncing away after a delete.
@@ -250,4 +263,5 @@ export async function restoreProject(formData: FormData) {
   await supabase.from("projects").update({ deleted_at: null }).eq("id", projectId).eq("user_id", user.id);
 
   revalidatePath("/dashboard");
+  revalidatePath("/", "layout");
 }
