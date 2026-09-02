@@ -4,6 +4,8 @@ import { UserCircle, ArrowRight, TriangleAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getPresenterBioProfiles, TIER_NICHE_LIMITS } from "@/lib/ai/presenterBio";
 import StartHereBadge from "@/components/StartHereBadge";
+import DeleteProjectButton from "@/components/DeleteProjectButton";
+import DeleteBioProfileButton from "@/components/DeleteBioProfileButton";
 import { Button } from "@/components/ui/button";
 
 // One bio per project, auto-created and named after the project itself the moment it's created
@@ -112,6 +114,18 @@ export default async function PresenterBioListPage() {
                   <Link href={`/bio/${b.id}`} className="flex items-center gap-1 text-sm text-primary hover:underline">
                     Edit bio <ArrowRight className="h-4 w-4" />
                   </Link>
+                )}
+                {/* projectId is the same 1:1 relationship "View project" above uses — when it's
+                    missing, this bio's project was deleted elsewhere (deleteProject only marks
+                    the project itself deleted, never touches the bio row — see that action's
+                    comment) and this row is a leftover with nothing left to open. Either way,
+                    something needs to be here to actually get rid of it — b.label doubles as the
+                    project name for DeleteProjectButton's confirm dialog since the two are always
+                    kept in sync (see createProject). */}
+                {projectId ? (
+                  <DeleteProjectButton projectId={projectId} projectName={b.label} redirectTo="/bio" />
+                ) : (
+                  <DeleteBioProfileButton profileId={b.id} label={b.label} />
                 )}
               </div>
             );

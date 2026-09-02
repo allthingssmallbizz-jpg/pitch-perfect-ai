@@ -87,3 +87,37 @@ export async function updatePresenterBio(_prevState: unknown, formData: FormData
 
   return { success: true, missing };
 }
+
+// A bio's linked project going away (deleteProject only sets deleted_at on the project itself —
+// see src/lib/actions/projects.ts — never touches the bio row, so a deleted project's tier slot
+// frees up without losing that bio's content in case the project is ever restored) leaves this
+// row an orphan: getPresenterBioProfiles has no way to know it's no longer reachable through any
+// project, so it just keeps showing up on the /bio list with nothing to open it into. Reported by
+// Aaron: he deleted a project, and its bio kept appearing there anyway with no way to remove it.
+// Only lets an orphan be deleted — a bio still linked to a live project must go through
+// deleteProject instead (deleting the bio out from under an active project would leave that
+// project pointing at nothing, silently exempting it from the tier limit without actually being
+// gone), enforced here rather than trusted to whichever button rendered this action.
+export async function deleteBioProfile(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const profileId = String(formData.get("profileId") || "");
+  if (!profileId) return;
+
+  const { data: linkedProject } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("presenter_bio_profile_id", profileId)
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (linkedProject) return;
+
+  await supabase.from("presenter_bio_profiles").delete().eq("id", profileId).eq("user_id", user.id);
+
+  revalidatePath("/bio");
+}
