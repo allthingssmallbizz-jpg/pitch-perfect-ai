@@ -203,12 +203,20 @@ export default function DiscoveryForm({
   }
 
   return (
+    // The card wraps both the discovery <form> and the delete disclosure below, but the <form>
+    // itself now stops before that disclosure — DeleteProjectButton renders its own hidden
+    // <form>, and nesting it inside this one meant its submit event bubbled straight into this
+    // form's onSubmit={handleSubmit}, which saw the recommended-fields gap and blocked the
+    // delete with the "isn't fully filled out" warning instead of ever running deleteProject.
+    // Wanting to delete a project you no longer plan to finish is exactly the case that gate was
+    // never meant to catch.
+    <div className="card-elevated space-y-6 rounded-2xl p-6">
     <form
       id="discovery-form"
       ref={formRef}
       action={formAction}
       onSubmit={handleSubmit}
-      className="card-elevated space-y-6 rounded-2xl p-6"
+      className="space-y-6"
     >
       <input type="hidden" name="projectId" value={project.id} />
       {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
@@ -557,8 +565,9 @@ export default function DiscoveryForm({
         )}
         {state && "error" in state && state.error && <span className="text-sm text-destructive">{state.error}</span>}
       </div>
+    </form>
 
-      <details className="pt-2">
+      <details className="border-t border-border pt-5">
         <summary className="cursor-pointer text-xs text-muted-foreground">Delete project</summary>
         <div className="mt-2">
           <DeleteProjectButton projectId={project.id} projectName={project.name} trigger="text" />
@@ -620,6 +629,6 @@ export default function DiscoveryForm({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </form>
+    </div>
   );
 }
