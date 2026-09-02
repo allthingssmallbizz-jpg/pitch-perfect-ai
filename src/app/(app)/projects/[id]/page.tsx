@@ -7,6 +7,7 @@ import { getAssetLabel, getAssetHref } from "@/lib/ai/assetLabels";
 import { ANALYZER_CREDIT_COST } from "@/lib/ai/analyzer";
 import { AD_IMAGE_CREDIT_COST } from "@/lib/ai/generators/adImage";
 import { AGENTS, getAgent } from "@/lib/agents/config";
+import { isPresenterBioIncomplete } from "@/lib/ai/presenterBio";
 import { projectNeedsDiscovery, REQUIRED_DISCOVERY_FIELDS } from "@/lib/projects";
 import { Badge } from "@/components/ui/badge";
 import AgentBadge from "@/components/AgentBadge";
@@ -40,6 +41,27 @@ export default async function ProjectPage({
     .single();
 
   if (!project) notFound();
+
+  // Bio before Discovery, every time this project is opened — not just when reaching a
+  // generator (see the identical check in generate/[assetType]/page.tsx and ad-image/page.tsx).
+  // This page IS the discovery step; landing here with an unfinished bio used to show the
+  // discovery brief with no warning at all, so it was possible to fill in and save an entire
+  // brief — even generate from it via the API's own separate bio check failing later — without
+  // ever being told the bio a strong webinar depends on was still missing. Reverting straight to
+  // the bio page (with returnTo back here) closes that gap the same way it's already closed
+  // everywhere else in the app.
+  const returnToProject = `/projects/${id}`;
+  if (!project.presenter_bio_profile_id) {
+    redirect(`/bio?returnTo=${encodeURIComponent(returnToProject)}`);
+  }
+  const { data: projectBio } = await supabase
+    .from("presenter_bio_profiles")
+    .select("*")
+    .eq("id", project.presenter_bio_profile_id)
+    .maybeSingle();
+  if (isPresenterBioIncomplete(projectBio)) {
+    redirect(`/bio/${project.presenter_bio_profile_id}?returnTo=${encodeURIComponent(returnToProject)}`);
+  }
 
   // Set when this project was just created from a specific agent (sidebar/dashboard "Create"
   // links land on ?intent=webinar_outline instead of skipping straight to the generator — see
