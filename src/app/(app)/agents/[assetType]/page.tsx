@@ -5,9 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
 import { getPresenterBioProfiles } from "@/lib/ai/presenterBio";
+import { projectNeedsDiscovery, REQUIRED_DISCOVERY_FIELDS } from "@/lib/projects";
 import AgentBadge from "@/components/AgentBadge";
 import DeleteGenerationButton from "@/components/DeleteGenerationButton";
 import BioReminderDialog from "@/components/BioReminderDialog";
+import DiscoveryBlockedDialog from "@/components/DiscoveryBlockedDialog";
 import { Button } from "@/components/ui/button";
 
 function formatRelativeTime(iso: string): string {
@@ -52,9 +54,13 @@ export default async function AgentLandingPage({
     { data: imageAdRows },
     bios,
   ] = await Promise.all([
+    // Discovery fields included (not just id/name) so the discovery gate below can run
+    // projectNeedsDiscovery per project without a second query.
     supabase
       .from("projects")
-      .select("id, name")
+      .select(
+        "id, name, business_name, industry, product, audience, awareness_level, pain_points, desired_transformation, category, differentiator, unique_mechanism, core_promise, outcomes, price, cta"
+      )
       .eq("user_id", user.id)
       .is("deleted_at", null)
       .order("updated_at", { ascending: false }),
@@ -88,6 +94,22 @@ export default async function AgentLandingPage({
     getPresenterBioProfiles(supabase, user.id),
   ]);
   const showBioReminder = bios.length === 0 || bios.some((b) => b.incomplete);
+
+  // Discovery is the next required step right after bio — same "before any agent will be
+  // available" rule, checked account-wide the same way (not just the project someone happens to
+  // be about to use). Only evaluated once bio is already clear so the two blocking popups never
+  // fight over which one shows — bio first, then discovery, matching the order every other gate
+  // in the app already checks them in (see generate/[assetType]/page.tsx). `projects` is already
+  // ordered by updated_at desc, so the first incomplete one is whichever this member touched most
+  // recently — the one they're most likely mid-way through.
+  const firstIncompleteDiscoveryProject = showBioReminder
+    ? undefined
+    : (projects ?? []).find((p) => projectNeedsDiscovery(p));
+  const missingDiscoveryFields = firstIncompleteDiscoveryProject
+    ? REQUIRED_DISCOVERY_FIELDS.filter(({ key }) => !String(firstIncompleteDiscoveryProject[key] ?? "").trim()).map(
+        (f) => f.label
+      )
+    : [];
 
   // Neither of these queries should ever actually fail for a normal request — but they used to
   // be destructured without looking at `error` at all, so a real failure (a missing column after
@@ -145,6 +167,14 @@ export default async function AgentLandingPage({
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       {showBioReminder && <BioReminderDialog returnTo={`/agents/${generator.assetType}`} />}
+      {firstIncompleteDiscoveryProject && (
+        <DiscoveryBlockedDialog
+          projectId={firstIncompleteDiscoveryProject.id}
+          projectName={firstIncompleteDiscoveryProject.name}
+          intent={generator.assetType}
+          missingFields={missingDiscoveryFields}
+        />
+      )}
 
       <div className="mb-1">
         <AgentBadge agent={agent} size="lg" showTagline />

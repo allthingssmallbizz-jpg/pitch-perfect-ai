@@ -4,7 +4,12 @@ import type { Project } from "@/types/database";
 // of truth for "is this project's brief actually complete," shared by the form's own
 // server-side validation (updateProjectDiscovery) and the generate-page gate
 // (projectNeedsDiscovery) so neither can drift out of sync with what the UI actually asks for.
-export const REQUIRED_DISCOVERY_FIELDS: { key: keyof Project; label: string }[] = [
+// `as const satisfies` (not a plain `{ key: keyof Project; label: string }[]` annotation) so
+// RequiredFieldKey below narrows to just these 14 literal keys instead of widening to every key
+// on Project — that's what lets projectNeedsDiscovery accept a lean `.select("business_name,
+// industry, ...")` (see the agent landing page's account-wide discovery gate) instead of forcing
+// every caller to fetch the full row.
+export const REQUIRED_DISCOVERY_FIELDS = [
   { key: "business_name", label: "Business or brand name" },
   { key: "industry", label: "Industry / niche" },
   { key: "product", label: "Product or service" },
@@ -19,7 +24,7 @@ export const REQUIRED_DISCOVERY_FIELDS: { key: keyof Project; label: string }[] 
   { key: "outcomes", label: "Top outcomes / benefits" },
   { key: "price", label: "Price point" },
   { key: "cta", label: "Primary call to action" },
-];
+] as const satisfies { key: keyof Project; label: string }[];
 
 type RequiredFieldKey = (typeof REQUIRED_DISCOVERY_FIELDS)[number]["key"];
 
