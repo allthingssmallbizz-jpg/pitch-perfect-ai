@@ -15,6 +15,7 @@ import {
   GitCompareArrows,
   UserCircle,
   Globe,
+  FolderOpen,
 } from "lucide-react";
 import { signOut } from "@/lib/actions/auth";
 import { AGENTS, type AgentAssetType } from "@/lib/agents/config";
@@ -107,9 +108,15 @@ type Props = {
   credits: number | null;
   // Drives the pulsating "Start Here" badge below — true until the bio has anything filled in.
   bioIncomplete: boolean;
+  // The account's active projects, for the "Your projects" switcher right below "New project" —
+  // null when the account's tier (+ any admin bonus) caps it at a single project (see layout.tsx),
+  // since a one-item list there would just duplicate "New project" itself. Only ever fetched
+  // server-side when it's actually going to render, so a Gold account pays no extra query for a
+  // list it'll never show.
+  projects: { id: string; name: string }[] | null;
 };
 
-export default function AppSidebar({ email, displayName, isAdmin, credits, bioIncomplete }: Props) {
+export default function AppSidebar({ email, displayName, isAdmin, credits, bioIncomplete, projects }: Props) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = usePathname();
@@ -185,6 +192,47 @@ export default function AppSidebar({ email, displayName, isAdmin, credits, bioIn
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {/* Only rendered for a tier that can actually hold more than one project at once
+                  (Silver, Platinum, Founding Member — see the projectLimit check in layout.tsx) —
+                  a Gold member capped at 1 project would just see this duplicate the "New
+                  project" link right above it. Selecting a project always lands on its overview
+                  (/projects/[id]), which shows the Discovery brief and the agent grid together —
+                  from there a member picks up right where they left off, whether that's still
+                  filling in Discovery or choosing the next agent to run. Capped at 8 (most
+                  recently updated first, same order the query already fetches) with the rest one
+                  click away on the dashboard — a `max-h`/`overflow-y-auto` wrapper would be
+                  simpler but can't wrap <li> items without breaking list semantics, since
+                  SidebarMenu renders a real <ul>. */}
+              {projects && projects.length > 0 && !collapsed && (
+                <SidebarMenuItem>
+                  <div className="px-2 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    Your projects
+                  </div>
+                </SidebarMenuItem>
+              )}
+              {projects?.slice(0, 8).map((project) => (
+                <SidebarMenuItem key={project.id}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith(`/projects/${project.id}`)}
+                    tooltip={project.name}
+                  >
+                    <Link href={`/projects/${project.id}`}>
+                      <FolderOpen className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{project.name}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+              {projects && projects.length > 8 && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname === "/dashboard"} tooltip="View all projects">
+                    <Link href="/dashboard" className="text-muted-foreground">
+                      <span className="pl-6 text-xs">+{projects.length - 8} more on dashboard</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

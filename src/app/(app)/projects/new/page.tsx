@@ -19,21 +19,24 @@ export default async function NewProjectPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { count: activeProjectCount }] = await Promise.all([
+  const [{ data: profile }, { data: activeProjects }] = await Promise.all([
     supabase.from("profiles").select("tier, bonus_niche_limit").eq("id", user.id).single(),
-    // Same count canCreateBioProfile uses — active projects with a linked niche bio, so this
-    // page's own "you're at your limit" message never drifts out of sync with the actual gate.
+    // Same set canCreateBioProfile counts — active projects with a linked niche bio — fetched as
+    // full rows (not just a count) so the blocked-state screen below can also offer deleting one
+    // of them right here, instead of sending someone at their limit off to the dashboard just to
+    // free up a slot.
     supabase
       .from("projects")
-      .select("id", { count: "exact", head: true })
+      .select("id, name")
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .not("presenter_bio_profile_id", "is", null),
+      .not("presenter_bio_profile_id", "is", null)
+      .order("updated_at", { ascending: false }),
   ]);
 
   const tier = profile?.tier ?? "Gold";
   const limit = TIER_NICHE_LIMITS[tier] + (profile?.bonus_niche_limit ?? 0);
-  const atNicheLimit = (activeProjectCount ?? 0) >= limit;
+  const atNicheLimit = (activeProjects?.length ?? 0) >= limit;
   const nextTier: Partial<Record<typeof tier, string>> = { Gold: "Silver", Silver: "Platinum" };
   const nicheLimitMessage = `${tier} members get ${Number.isFinite(limit) ? limit : "unlimited"} project${limit === 1 ? "" : "s"}.${
     nextTier[tier] ? ` Upgrade to ${nextTier[tier]} for more, or ask an admin for a bonus project.` : ""
@@ -51,7 +54,12 @@ export default async function NewProjectPage({
       ) : (
         <h1 className="mb-6 font-display text-2xl font-semibold text-gradient-silver">Name your project</h1>
       )}
-      <NewProjectForm type={type ?? null} atNicheLimit={atNicheLimit} nicheLimitMessage={nicheLimitMessage} />
+      <NewProjectForm
+        type={type ?? null}
+        atNicheLimit={atNicheLimit}
+        nicheLimitMessage={nicheLimitMessage}
+        activeProjects={atNicheLimit ? (activeProjects ?? []) : []}
+      />
     </div>
   );
 }

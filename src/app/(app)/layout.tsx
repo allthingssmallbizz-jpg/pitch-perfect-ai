@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ensureProfile } from "@/lib/profile";
-import { getPresenterBioProfiles } from "@/lib/ai/presenterBio";
+import { getPresenterBioProfiles, TIER_NICHE_LIMITS } from "@/lib/ai/presenterBio";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSidebar";
 
@@ -26,6 +26,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const bios = await getPresenterBioProfiles(supabase, user.id);
   const bioIncomplete = bios.length === 0 || bios.some((b) => b.incomplete);
 
+  // The sidebar's project switcher (see AppSidebar's "Your projects" group) only earns its
+  // place for an account that can actually hold more than one project at once — a Gold member
+  // capped at 1 would just see a single-item list duplicating the "New project" link right above
+  // it. Keyed off the real effective limit (tier + any admin-granted bonus), not a hardcoded
+  // tier name, so a Gold account an admin bumped past 1 project gets the switcher too.
+  const tier = profile?.tier ?? "Gold";
+  const projectLimit = TIER_NICHE_LIMITS[tier] + (profile?.bonus_niche_limit ?? 0);
+  const showProjectTabs = projectLimit > 1;
+  const { data: sidebarProjects } = showProjectTabs
+    ? await supabase
+        .from("projects")
+        .select("id, name")
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .order("updated_at", { ascending: false })
+    : { data: null };
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
@@ -35,6 +52,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           isAdmin={profile?.role === "admin"}
           credits={profile?.credits_balance ?? null}
           bioIncomplete={bioIncomplete}
+          projects={showProjectTabs ? (sidebarProjects ?? []) : null}
         />
         <SidebarInset className="min-w-0 flex-1">
           <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-border/60 bg-background/70 px-4 backdrop-blur-sm">
