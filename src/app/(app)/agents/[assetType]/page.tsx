@@ -10,6 +10,7 @@ import AgentBadge from "@/components/AgentBadge";
 import DeleteGenerationButton from "@/components/DeleteGenerationButton";
 import BioReminderDialog from "@/components/BioReminderDialog";
 import DiscoveryBlockedDialog from "@/components/DiscoveryBlockedDialog";
+import ProjectPickerDialog from "@/components/ProjectPickerDialog";
 import { Button } from "@/components/ui/button";
 
 function formatRelativeTime(iso: string): string {
@@ -173,6 +174,17 @@ export default async function AgentLandingPage({
           projectName={firstIncompleteDiscoveryProject.name}
           intent={generator.assetType}
           missingFields={missingDiscoveryFields}
+        />
+      )}
+      {/* Only once both account-wide gates above are clear — every project listed here already
+          has a complete bio and a complete discovery brief, so picking one goes straight to using
+          this agent on it (with its own per-project gate as a defensive backstop — see
+          projects/[id]/page.tsx — in case that changes between page load and click). */}
+      {!showBioReminder && !firstIncompleteDiscoveryProject && (projects ?? []).length > 0 && (
+        <ProjectPickerDialog
+          projects={(projects ?? []).map((p) => ({ id: p.id, name: p.name }))}
+          assetType={generator.assetType}
+          agentName={agent.name}
         />
       )}
 
