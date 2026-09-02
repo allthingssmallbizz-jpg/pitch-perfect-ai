@@ -47,6 +47,15 @@ export default async function PresenterBioProfilePage({
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
+      {/* The marquee — the very first thing on the page, above even the back link, so a member
+          who's just been dropped in here (from project creation, a blocked agent, or a "finish
+          this first" redirect) sees which project's bio this is before anything else. */}
+      <div className="mb-4 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-center">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          You&apos;re working in
+        </p>
+        <p className="font-display text-lg font-bold text-gradient-silver">{bio.label}</p>
+      </div>
       <Link href={project ? `/projects/${project.id}` : "/bio"} className="text-sm text-primary hover:underline">
         ← {project ? bio.label : "My Bio"}
       </Link>

@@ -93,7 +93,11 @@ export default async function PresenterBioListPage() {
                     <p className="mt-0.5 text-xs text-muted-foreground">Complete</p>
                   )}
                 </div>
-                {projectId && (
+                {/* Only shown once the bio is actually complete — while it's still incomplete,
+                    this was a way to click straight past the bio into the project/discovery
+                    without ever finishing it, which is exactly the loophole the bio gate exists
+                    to close. */}
+                {projectId && !b.incomplete && (
                   <Link href={`/projects/${projectId}`} className="text-sm text-muted-foreground hover:text-primary hover:underline">
                     View project
                   </Link>
