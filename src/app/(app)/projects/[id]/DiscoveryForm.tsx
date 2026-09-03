@@ -308,6 +308,7 @@ export default function DiscoveryForm({
           textarea={false}
           placeholder="What your audience will actually see — a title, not a description."
           hint="Don't have one yet? Use the Offer Builder button above — it'll suggest a few."
+          required
           onAssist={setAssistTarget}
         />
         <Field
@@ -324,6 +325,8 @@ export default function DiscoveryForm({
           name="existing_assets"
           defaultValue={project.existing_assets}
           placeholder="Website, email list, ads, testimonials, case studies — anything you already have."
+          hint={`Nothing yet? Answer "None yet" — that's a real answer, not a skipped question.`}
+          required
           onAssist={setAssistTarget}
         />
       </Section>
@@ -378,6 +381,7 @@ export default function DiscoveryForm({
           name="false_beliefs"
           defaultValue={project.false_beliefs}
           placeholder="What do they wrongly believe about the problem or solution?"
+          required
           onAssist={setAssistTarget}
         />
         <Field
@@ -407,6 +411,7 @@ export default function DiscoveryForm({
           name="enemy"
           defaultValue={project.enemy}
           placeholder="What common industry idea, method, or 'guru' are you against?"
+          required
           onAssist={setAssistTarget}
         />
         <Field
@@ -423,6 +428,7 @@ export default function DiscoveryForm({
           name="competitive_alternatives"
           defaultValue={project.competitive_alternatives}
           placeholder="What are they doing today instead of buying from you?"
+          required
           onAssist={setAssistTarget}
         />
       </Section>
@@ -460,6 +466,8 @@ export default function DiscoveryForm({
           name="proof"
           defaultValue={project.proof}
           placeholder="Testimonials, case studies, credentials, data, media — used verbatim, never invented."
+          hint={`Nothing formal yet? Answer "None yet" — that's a real answer, not a skipped question.`}
+          required
           onAssist={setAssistTarget}
         />
       </Section>
@@ -494,6 +502,8 @@ export default function DiscoveryForm({
           name="guarantee"
           defaultValue={project.guarantee}
           placeholder="Money-back? Results-based? Describe it."
+          hint={`No guarantee? Answer "None" — that's a real answer, not a skipped question.`}
+          required
           onAssist={setAssistTarget}
         />
         <Field
@@ -501,6 +511,8 @@ export default function DiscoveryForm({
           name="bonuses"
           defaultValue={project.bonuses}
           placeholder="List each bonus and its perceived value."
+          hint={`No bonuses? Answer "None" — that's a real answer, not a skipped question.`}
+          required
           onAssist={setAssistTarget}
         />
         <Field
@@ -508,6 +520,8 @@ export default function DiscoveryForm({
           name="scarcity_urgency"
           defaultValue={project.scarcity_urgency}
           placeholder="Deadlines, seat limits, price increases, cohort dates."
+          hint={`No real urgency mechanism? Answer "None" — that's a real answer, not a skipped question.`}
+          required
           onAssist={setAssistTarget}
         />
         <Field
@@ -521,7 +535,9 @@ export default function DiscoveryForm({
           onAssist={setAssistTarget}
         />
         <div>
-          <Label htmlFor="funnel_type">Funnel type</Label>
+          <Label htmlFor="funnel_type">
+            Funnel type<span className="text-primary"> *</span>
+          </Label>
           <p className="mt-0.5 text-xs text-muted-foreground">
             What does that CTA actually lead to? This determines the right copy for your Thank
             You Page — a booked call, a purchase, and a webinar registration each need a

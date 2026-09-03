@@ -56,11 +56,12 @@ export default async function AgentLandingPage({
     bios,
   ] = await Promise.all([
     // Discovery fields included (not just id/name) so the discovery gate below can run
-    // projectNeedsDiscovery per project without a second query.
+    // projectNeedsDiscovery per project without a second query — kept in sync with
+    // REQUIRED_DISCOVERY_FIELDS in src/lib/projects.ts.
     supabase
       .from("projects")
       .select(
-        "id, name, business_name, industry, product, audience, awareness_level, pain_points, desired_transformation, category, differentiator, unique_mechanism, core_promise, outcomes, price, cta"
+        "id, name, business_name, industry, product, offer_name, audience, existing_assets, awareness_level, pain_points, false_beliefs, desired_transformation, category, enemy, differentiator, competitive_alternatives, unique_mechanism, core_promise, outcomes, proof, price, guarantee, bonuses, scarcity_urgency, cta, funnel_type"
       )
       .eq("user_id", user.id)
       .is("deleted_at", null)
