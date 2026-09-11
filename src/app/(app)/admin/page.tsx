@@ -356,7 +356,7 @@ export default async function AdminPage({
         </p>
         <form action={setAdminRestrictionsDisabled} className="mt-3">
           <input type="hidden" name="disabled" value={settings?.admin_restrictions_disabled ? "false" : "true"} />
-          <Button type="submit" variant={settings?.admin_restrictions_disabled ? "default" : "outline"}>
+          <Button type="submit" variant={settings?.admin_restrictions_disabled ? "default" : "destructive"}>
             {settings?.admin_restrictions_disabled ? "Apply Restrictions Back" : "Remove Restrictions"}
           </Button>
         </form>
