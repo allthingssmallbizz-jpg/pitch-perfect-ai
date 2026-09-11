@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { signOut } from "@/lib/actions/auth";
 import { AGENTS, type AgentAssetType } from "@/lib/agents/config";
+import { getAgentAvatarDataUri } from "@/lib/agents/avatar";
 import { Badge } from "@/components/ui/badge";
 import StartHereBadge from "@/components/StartHereBadge";
 import {
@@ -99,6 +100,16 @@ const CREATE_LABELS: Record<CreateAssetType, string> = {
   ad_copy: "Ad Copy",
   offer_ladder: "Offer Ladder",
 };
+
+// The same robot-mascot avatar AgentBadge uses elsewhere (see getAgentAvatarDataUri), just at
+// icon scale — tested down to 20px and the bots (bold shapes, few fine details) stay readable
+// where the earlier human-illustrated style wouldn't have. A plain <img>, not the Avatar/
+// AvatarImage/AvatarFallback trio AgentBadge uses, since these rows render 11+ of them inline
+// next to text and don't need Radix's fallback machinery for that.
+function AgentIcon({ agent }: { agent: { name: string } }) {
+  // eslint-disable-next-line @next/next/no-img-element -- an inline SVG data URI, not a remote image next/image's loader is built for
+  return <img src={getAgentAvatarDataUri(agent)} alt="" aria-hidden className="h-4 w-4 shrink-0 rounded" />;
+}
 
 type Props = {
   email: string;
@@ -260,7 +271,7 @@ export default function AppSidebar({ email, displayName, isAdmin, credits, bioIn
                             {step}
                           </span>
                         )}
-                        <span aria-hidden>{agent.emoji}</span>
+                        <AgentIcon agent={agent} />
                         <span className="truncate">
                           {agent.name} <span className="text-muted-foreground">· {CREATE_LABELS[type]}</span>
                         </span>
@@ -288,7 +299,7 @@ export default function AppSidebar({ email, displayName, isAdmin, credits, bioIn
                       tooltip={`${agent.name} — ${CREATE_LABELS[type]}`}
                     >
                       <Link href={`/agents/${type}`}>
-                        <span aria-hidden>{agent.emoji}</span>
+                        <AgentIcon agent={agent} />
                         <span className="truncate">
                           {agent.name} <span className="text-muted-foreground">· {CREATE_LABELS[type]}</span>
                         </span>
@@ -320,7 +331,7 @@ export default function AppSidebar({ email, displayName, isAdmin, credits, bioIn
                   tooltip="Agent Annie — Analyzer"
                 >
                   <Link href="/analyze" data-tour="sidebar-analyzer">
-                    <span aria-hidden>{AGENTS.presentation_analysis.emoji}</span>
+                    <AgentIcon agent={AGENTS.presentation_analysis} />
                     <span className="truncate">
                       {AGENTS.presentation_analysis.name} <span className="text-muted-foreground">· Analyzer</span>
                     </span>
