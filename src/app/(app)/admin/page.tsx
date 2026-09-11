@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ensureProfile } from "@/lib/profile";
-import { setKillSwitch } from "@/lib/actions/admin";
+import { setKillSwitch, setAdminRestrictionsDisabled } from "@/lib/actions/admin";
 import { TIER_NICHE_LIMITS } from "@/lib/ai/presenterBio";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -343,6 +343,21 @@ export default async function AdminPage({
           )}
           <Button type="submit" variant={settings?.kill_switch_enabled ? "default" : "destructive"}>
             {settings?.kill_switch_enabled ? "Resume generations" : "Pause all generations"}
+          </Button>
+        </form>
+      </div>
+
+      <div className="card-elevated mb-8 rounded-2xl p-5">
+        <h2 className="font-display font-semibold">Admin demo mode</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {settings?.admin_restrictions_disabled
+            ? "Restrictions are OFF for admins — the bio/discovery \"finish this first\" pop-ups and redirects still show, but admins can close them and keep moving. Members are never affected."
+            : "For live demos/webinars — lets an admin move through the platform without being blocked by the bio/discovery completeness gates every member hits. The pop-ups still appear as a reminder; an admin can just dismiss them and continue instead of being forced to finish first. Only ever applies to admin accounts — a regular member's experience never changes."}
+        </p>
+        <form action={setAdminRestrictionsDisabled} className="mt-3">
+          <input type="hidden" name="disabled" value={settings?.admin_restrictions_disabled ? "false" : "true"} />
+          <Button type="submit" variant={settings?.admin_restrictions_disabled ? "default" : "outline"}>
+            {settings?.admin_restrictions_disabled ? "Apply Restrictions Back" : "Remove Restrictions"}
           </Button>
         </form>
       </div>

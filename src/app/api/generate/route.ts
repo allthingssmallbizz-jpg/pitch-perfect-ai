@@ -7,6 +7,7 @@ import { generateCompleteAsset } from "@/lib/ai/anthropic";
 import { buildSystemPrompt } from "@/lib/ai/systemPrompt";
 import { getBrandVoiceBlock } from "@/lib/ai/brandVoice";
 import { getPresenterBioBlock, isPresenterBioIncomplete, getMissingBioFieldLabels } from "@/lib/ai/presenterBio";
+import { isRestrictionBypassActive } from "@/lib/adminBypass";
 import { stripHtmlCodeFence, WEB_PAGE_ASSET_TYPES, injectFormAction } from "@/lib/ai/generators/htmlPage";
 import { ASSET_GENERATORS, ASSET_TYPES } from "@/lib/ai/generators";
 import { getFormSubmitUrl } from "@/lib/publishing";
@@ -69,6 +70,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
+  // An admin who's flipped "Remove Restrictions" in /admin (see isRestrictionBypassActive) skips
+  // both hard blocks below entirely — every UI-level reminder is dismissible for them already,
+  // but without this, clicking Generate would still fail here regardless, since this is the real
+  // lock those reminders point at. Never true for a regular member.
+  const bypassActive = await isRestrictionBypassActive(user.id);
+
   // Bio comes before Discovery, and neither is optional — a strong presenter bio is what turns
   // generic Credibility Bridge / Opening Story beats into the presenter's real story (see
   // getPresenterBioBlock below), and skipping it isn't a shortcut worth allowing. Checked against
@@ -80,7 +87,7 @@ export async function POST(req: NextRequest) {
   const { data: bio } = project.presenter_bio_profile_id
     ? await supabase.from("presenter_bio_profiles").select("*").eq("id", project.presenter_bio_profile_id).maybeSingle()
     : { data: null };
-  if (isPresenterBioIncomplete(bio)) {
+  if (isPresenterBioIncomplete(bio) && !bypassActive) {
     const missing = getMissingBioFieldLabels(bio);
     return NextResponse.json(
       { error: `Finish this project's niche bio first — still missing: ${missing.join(", ")}. Every agent needs it to write a strong, credible presentation.` },
@@ -95,7 +102,7 @@ export async function POST(req: NextRequest) {
   // [assetType]/page.tsx), but that's a UI nudge, not a lock — this is the real one, so there's no
   // path (a stale tab, a direct API call, a chained-generation button firing after the brief was
   // edited back to incomplete) that can slip a generation through without it.
-  if (projectNeedsDiscovery(project)) {
+  if (projectNeedsDiscovery(project) && !bypassActive) {
     return NextResponse.json(
       { error: "Complete this project's Discovery brief first — every agent needs it before it can generate anything." },
       { status: 400 }

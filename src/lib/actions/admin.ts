@@ -44,6 +44,24 @@ export async function setKillSwitch(formData: FormData) {
   revalidatePath("/admin");
 }
 
+// Lets an admin move through the platform during a live demo/webinar without the bio/discovery
+// completeness gates every member hits — see admin_restrictions_disabled's own comment on the
+// admin_settings type. Checked by isRestrictionBypassActive (src/lib/adminBypass.ts) everywhere
+// those gates currently block: the project page, the generate/ad-image pages, and the
+// /api/generate + /api/agents/ad-image/start hard blocks. Never affects a regular member — the
+// bypass is scoped to role === "admin" there, this action just flips the stored switch.
+export async function setAdminRestrictionsDisabled(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const disabled = formData.get("disabled") === "true";
+
+  await supabase.from("admin_settings").update({ admin_restrictions_disabled: disabled }).eq("id", true);
+
+  revalidatePath("/admin");
+  // Every page these gates live on, all at once — an admin flipping this mid-demo shouldn't
+  // have to reload each project/generate tab individually for it to take effect.
+  revalidatePath("/", "layout");
+}
+
 export async function setDailyCap(_prevState: unknown, formData: FormData) {
   const { supabase } = await requireAdmin();
   const cap = Number(formData.get("daily_spend_cap_usd"));

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
 import { getPresenterBioProfiles } from "@/lib/ai/presenterBio";
+import { isRestrictionBypassActive } from "@/lib/adminBypass";
 import { projectNeedsDiscovery, REQUIRED_DISCOVERY_FIELDS } from "@/lib/projects";
 import AgentBadge from "@/components/AgentBadge";
 import DeleteGenerationButton from "@/components/DeleteGenerationButton";
@@ -97,6 +98,12 @@ export default async function AgentLandingPage({
   ]);
   const showBioReminder = bios.length === 0 || bios.some((b) => b.incomplete);
 
+  // An admin who's flipped "Remove Restrictions" in /admin still sees the discovery reminder
+  // below, just dismissible instead of a hard block — built for live demos/webinars. Never true
+  // for a regular member. (BioReminderDialog needs no equivalent check — it's already dismissible
+  // for everyone.)
+  const bypassActive = await isRestrictionBypassActive(user.id);
+
   // Discovery is the next required step right after bio — same "before any agent will be
   // available" rule, checked account-wide the same way (not just the project someone happens to
   // be about to use). Only evaluated once bio is already clear so the two blocking popups never
@@ -175,6 +182,7 @@ export default async function AgentLandingPage({
           projectName={firstIncompleteDiscoveryProject.name}
           intent={generator.assetType}
           missingFields={missingDiscoveryFields}
+          dismissible={bypassActive}
         />
       )}
       {/* Only once both account-wide gates above are clear — every project listed here already

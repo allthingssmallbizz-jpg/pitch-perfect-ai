@@ -6,6 +6,7 @@ import { checkGuardrails } from "@/lib/credits";
 import { AD_IMAGE_CREDIT_COST } from "@/lib/ai/generators/adImage";
 import { projectNeedsDiscovery } from "@/lib/projects";
 import { isPresenterBioIncomplete, getMissingBioFieldLabels } from "@/lib/ai/presenterBio";
+import { isRestrictionBypassActive } from "@/lib/adminBypass";
 
 export const runtime = "nodejs";
 
@@ -38,6 +39,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
+  // An admin who's flipped "Remove Restrictions" in /admin skips both hard blocks below — see
+  // isRestrictionBypassActive and the identical check in /api/generate/route.ts. Never true for
+  // a regular member.
+  const bypassActive = await isRestrictionBypassActive(user.id);
+
   // Same rule as every other generator (see /api/generate/route.ts) — bio before Discovery,
   // neither optional, enforced here rather than only as a page redirect. Checked against THIS
   // project's linked niche, not just "does this account have a bio anywhere" (see
@@ -45,14 +51,14 @@ export async function POST(req: NextRequest) {
   const { data: bio } = project.presenter_bio_profile_id
     ? await supabase.from("presenter_bio_profiles").select("*").eq("id", project.presenter_bio_profile_id).maybeSingle()
     : { data: null };
-  if (isPresenterBioIncomplete(bio)) {
+  if (isPresenterBioIncomplete(bio) && !bypassActive) {
     const missing = getMissingBioFieldLabels(bio);
     return NextResponse.json(
       { error: `Finish your presenter bio first — still missing: ${missing.join(", ")}. Every agent needs it to write a strong, credible presentation.` },
       { status: 400 }
     );
   }
-  if (projectNeedsDiscovery(project)) {
+  if (projectNeedsDiscovery(project) && !bypassActive) {
     return NextResponse.json(
       { error: "Complete this project's Discovery brief first — every agent needs it before it can generate anything." },
       { status: 400 }

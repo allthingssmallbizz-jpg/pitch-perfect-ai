@@ -4,8 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { AGENTS } from "@/lib/agents/config";
 import { projectNeedsDiscovery, REQUIRED_DISCOVERY_FIELDS } from "@/lib/projects";
 import { isPresenterBioIncomplete } from "@/lib/ai/presenterBio";
+import { isRestrictionBypassActive } from "@/lib/adminBypass";
 import { AD_IMAGE_CREDIT_COST } from "@/lib/ai/generators/adImage";
 import AgentBadge from "@/components/AgentBadge";
+import BioBlockedDialog from "@/components/BioBlockedDialog";
 import DiscoveryBlockedDialog from "@/components/DiscoveryBlockedDialog";
 import AdImageClient, { type PastAdImage } from "./AdImageClient";
 
@@ -33,6 +35,12 @@ export default async function AdImagePage({
     .single();
   if (!project) notFound();
 
+  // An admin who's flipped "Remove Restrictions" in /admin (see isRestrictionBypassActive) still
+  // gets the same reminders below, just dismissible instead of a hard block — built for live
+  // demos/webinars. Never true for a regular member.
+  const bypassActive = await isRestrictionBypassActive(user.id);
+  let bioBlockedButBypassed = false;
+
   // Bio before Discovery before any agent — same gate, same order, as generate/[assetType]/page.tsx,
   // checked against THIS project's linked niche, not just "does the account have a bio anywhere."
   if (!generationId) {
@@ -46,7 +54,11 @@ export default async function AdImagePage({
       .eq("id", project.presenter_bio_profile_id)
       .maybeSingle();
     if (isPresenterBioIncomplete(bio)) {
-      redirect(`/bio/${project.presenter_bio_profile_id}?returnTo=${encodeURIComponent(returnTo)}`);
+      if (bypassActive) {
+        bioBlockedButBypassed = true;
+      } else {
+        redirect(`/bio/${project.presenter_bio_profile_id}?returnTo=${encodeURIComponent(returnTo)}`);
+      }
     }
   }
   // Used to be a silent redirect straight back to the project page — now a blocking popup
@@ -92,12 +104,16 @@ export default async function AdImagePage({
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
+      {bioBlockedButBypassed && project.presenter_bio_profile_id && (
+        <BioBlockedDialog profileId={project.presenter_bio_profile_id} projectName={project.name} />
+      )}
       {missingDiscoveryFields.length > 0 && (
         <DiscoveryBlockedDialog
           projectId={id}
           projectName={project.name}
           intent="ad_image"
           missingFields={missingDiscoveryFields}
+          dismissible={bypassActive}
         />
       )}
       <Link href={`/projects/${id}`} className="text-sm text-primary hover:underline">

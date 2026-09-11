@@ -9,8 +9,10 @@ import { AD_IMAGE_CREDIT_COST } from "@/lib/ai/generators/adImage";
 import { AGENTS, getAgent } from "@/lib/agents/config";
 import { isPresenterBioIncomplete } from "@/lib/ai/presenterBio";
 import { projectNeedsDiscovery, REQUIRED_DISCOVERY_FIELDS } from "@/lib/projects";
+import { isRestrictionBypassActive } from "@/lib/adminBypass";
 import { Badge } from "@/components/ui/badge";
 import AgentBadge from "@/components/AgentBadge";
+import BioBlockedDialog from "@/components/BioBlockedDialog";
 import DiscoveryWalkthroughVideo from "@/components/DiscoveryWalkthroughVideo";
 import ToolLink from "./ToolLink";
 import RoadmapSection from "./RoadmapSection";
@@ -59,7 +61,12 @@ export default async function ProjectPage({
     .select("*")
     .eq("id", project.presenter_bio_profile_id)
     .maybeSingle();
-  if (isPresenterBioIncomplete(projectBio)) {
+  // An admin who's flipped "Remove Restrictions" in /admin (see isRestrictionBypassActive) sees
+  // this page render normally with a dismissible reminder instead of being redirected away —
+  // built for live demos/webinars where stopping to finish a bio isn't an option. Never true for
+  // a regular member, so their experience is untouched.
+  const bioBlockedButBypassed = isPresenterBioIncomplete(projectBio) && (await isRestrictionBypassActive(user.id));
+  if (isPresenterBioIncomplete(projectBio) && !bioBlockedButBypassed) {
     redirect(`/bio/${project.presenter_bio_profile_id}?returnTo=${encodeURIComponent(returnToProject)}`);
   }
 
@@ -113,6 +120,9 @@ export default async function ProjectPage({
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
+      {bioBlockedButBypassed && project.presenter_bio_profile_id && (
+        <BioBlockedDialog profileId={project.presenter_bio_profile_id} projectName={project.name} />
+      )}
       <Link href="/dashboard" className="text-sm text-primary hover:underline">
         ← All projects
       </Link>

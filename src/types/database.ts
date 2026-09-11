@@ -221,6 +221,10 @@ export type AdminSettings = {
   // Optional YouTube/Vimeo URL for the "how to fill this out" walkthrough video shown at the
   // top of every project's Discovery form. Null hides that section entirely.
   discovery_video_url: string | null;
+  // Lets an admin (only ever an admin — see src/lib/adminBypass.ts) move through the platform
+  // during a live demo without the bio/discovery completeness gates every member hits blocking
+  // them mid-webinar. A regular member's experience never changes based on this flag.
+  admin_restrictions_disabled: boolean;
   updated_at: string;
 };
 

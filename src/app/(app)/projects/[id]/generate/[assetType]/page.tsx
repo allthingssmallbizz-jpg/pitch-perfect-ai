@@ -6,8 +6,10 @@ import { ASSET_GENERATORS, WEB_PAGE_ASSET_TYPES, type GeneratorAssetType } from 
 import { AGENTS } from "@/lib/agents/config";
 import { projectNeedsDiscovery, REQUIRED_DISCOVERY_FIELDS } from "@/lib/projects";
 import { isPresenterBioIncomplete } from "@/lib/ai/presenterBio";
+import { isRestrictionBypassActive } from "@/lib/adminBypass";
 import { getPageStats, type PageStats } from "@/lib/analytics";
 import AgentBadge from "@/components/AgentBadge";
+import BioBlockedDialog from "@/components/BioBlockedDialog";
 import DiscoveryBlockedDialog from "@/components/DiscoveryBlockedDialog";
 import { Badge } from "@/components/ui/badge";
 import GenerateClient from "./GenerateClient";
@@ -64,6 +66,13 @@ export default async function GenerateAssetPage({
   // needing to hit). Checked against THIS project's linked niche (presenter_bio_profile_id, set
   // at project creation — see NewProjectForm.tsx), not just "does the account have a bio
   // anywhere," since one account can hold several niches.
+  // An admin who's flipped "Remove Restrictions" in /admin (see isRestrictionBypassActive) still
+  // gets the same reminders below, just dismissible instead of a hard block — built for live
+  // demos/webinars. Computed once and reused for both the bio and discovery gates below; never
+  // true for a regular member.
+  const bypassActive = await isRestrictionBypassActive(user.id);
+  let bioBlockedButBypassed = false;
+
   if (!generationId) {
     const returnTo = `/projects/${id}/generate/${assetType}`;
     if (!project.presenter_bio_profile_id) {
@@ -75,7 +84,11 @@ export default async function GenerateAssetPage({
       .eq("id", project.presenter_bio_profile_id)
       .maybeSingle();
     if (isPresenterBioIncomplete(bio)) {
-      redirect(`/bio/${project.presenter_bio_profile_id}?returnTo=${encodeURIComponent(returnTo)}`);
+      if (bypassActive) {
+        bioBlockedButBypassed = true;
+      } else {
+        redirect(`/bio/${project.presenter_bio_profile_id}?returnTo=${encodeURIComponent(returnTo)}`);
+      }
     }
   }
   // Used to be a silent redirect straight back to the project page — now a blocking popup
@@ -170,12 +183,16 @@ export default async function GenerateAssetPage({
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
+      {bioBlockedButBypassed && project.presenter_bio_profile_id && (
+        <BioBlockedDialog profileId={project.presenter_bio_profile_id} projectName={project.name} />
+      )}
       {missingDiscoveryFields.length > 0 && (
         <DiscoveryBlockedDialog
           projectId={id}
           projectName={project.name}
           intent={assetType}
           missingFields={missingDiscoveryFields}
+          dismissible={bypassActive}
         />
       )}
       <Link href={isWebPageAsset ? "/websites" : `/projects/${id}`} className="text-sm text-primary hover:underline">
