@@ -1,10 +1,12 @@
 import type { Agent } from "@/lib/agents/config";
+import { getAgentAvatarDataUri } from "@/lib/agents/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 // Single reusable presentation of an agent's identity — used on the project page's
 // generator grid, each generate/analyze page header, and the landing page's team teaser.
 // Keeps the "who is this" branding consistent in one place instead of hand-rolling the
-// emoji/name/title markup on every page that shows an agent.
+// avatar/name/title markup on every page that shows an agent.
 export default function AgentBadge({
   agent,
   size = "md",
@@ -16,14 +18,21 @@ export default function AgentBadge({
   showTagline?: boolean;
   className?: string;
 }) {
-  const emojiSize = size === "lg" ? "text-3xl" : size === "md" ? "text-2xl" : "text-lg";
+  const avatarSize = size === "lg" ? "h-14 w-14" : size === "md" ? "h-11 w-11" : "h-8 w-8";
   const nameSize = size === "lg" ? "text-xl" : size === "md" ? "text-base" : "text-sm";
 
   return (
     <div className={cn("flex items-start gap-3", className)}>
-      <span className={emojiSize} aria-hidden>
-        {agent.emoji}
-      </span>
+      {/* A generated cartoon face (see getAgentAvatarDataUri) rather than the agent's own
+          emoji — a clapperboard or a microphone icon says what the agent DOES, not who she
+          IS, and Aaron wanted every agent to actually have a face. Computed inline (an SVG
+          data URI, no network request) so it renders identically on first paint with no
+          loading flash; AvatarFallback still covers the split-second before hydration/the
+          rare case the data URI fails to decode. */}
+      <Avatar className={cn(avatarSize, "shrink-0 border border-primary/20 bg-primary/10")}>
+        <AvatarImage src={getAgentAvatarDataUri(agent)} alt={agent.name} />
+        <AvatarFallback aria-hidden>{agent.emoji}</AvatarFallback>
+      </Avatar>
       <div className="min-w-0">
         <div className={cn("font-display font-semibold text-gradient-silver", nameSize)}>{agent.name}</div>
         <div className="text-xs uppercase tracking-wide text-primary">{agent.title}</div>
@@ -32,3 +41,4 @@ export default function AgentBadge({
     </div>
   );
 }
+
