@@ -23,13 +23,16 @@ export default function AgentBadge({
 
   return (
     <div className={cn("flex items-start gap-3", className)}>
-      {/* A generated cartoon face (see getAgentAvatarDataUri) rather than the agent's own
-          emoji — a clapperboard or a microphone icon says what the agent DOES, not who she
-          IS, and Aaron wanted every agent to actually have a face. Computed inline (an SVG
+      {/* A generated robot-mascot face (see getAgentAvatarDataUri) rather than the agent's
+          own emoji — a clapperboard or a microphone icon says what the agent DOES, not who
+          it IS, and Aaron wanted every agent to actually have a face. Computed inline (an SVG
           data URI, no network request) so it renders identically on first paint with no
           loading flash; AvatarFallback still covers the split-second before hydration/the
           rare case the data URI fails to decode. */}
-      <Avatar className={cn(avatarSize, "shrink-0 border border-primary/20 bg-primary/10")}>
+      {/* rounded-xl, not the Avatar default rounded-full — bottts' robots each fill their own
+          square tile, with antennae and side details that sometimes cross the square's edge;
+          a circular crop would slice into those, where a soft-rounded square doesn't. */}
+      <Avatar className={cn(avatarSize, "shrink-0 rounded-xl border border-primary/20 bg-primary/10")}>
         <AvatarImage src={getAgentAvatarDataUri(agent)} alt={agent.name} />
         <AvatarFallback aria-hidden>{agent.emoji}</AvatarFallback>
       </Avatar>
