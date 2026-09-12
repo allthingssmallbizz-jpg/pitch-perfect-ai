@@ -1,4 +1,5 @@
 import { AGENTS, type AgentAssetType } from "@/lib/agents/config";
+import { getAgentAvatarDataUri } from "@/lib/agents/avatar";
 
 // Ambient hero background for /login — Aaron Bowe, "The AI Outlaw" and creator of Pitch Perfect
 // AI, centered directly behind the auth form at low opacity, flanked on both sides by small
@@ -47,7 +48,7 @@ function AgentBadge({ spec }: { spec: BadgeSpec }) {
   return (
     <div className={`absolute hidden flex-col items-center gap-1.5 lg:flex ${spec.inset}`} style={{ top: spec.top }}>
       <div
-        className="flex h-16 w-16 items-center justify-center rounded-full text-2xl"
+        className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full p-2"
         style={{
           background: "linear-gradient(160deg, oklch(0.16 0.04 258 / 92%), oklch(0.08 0.02 258 / 92%))",
           border: "1px solid oklch(0.6 0.22 255 / 50%)",
@@ -55,7 +56,10 @@ function AgentBadge({ spec }: { spec: BadgeSpec }) {
             "0 0 0 1px oklch(1 0 0 / 4%) inset, 0 0 18px oklch(0.55 0.24 255 / 45%), 0 0 40px oklch(0.55 0.24 255 / 20%)",
         }}
       >
-        {agent.emoji}
+        {/* eslint-disable-next-line @next/next/no-img-element -- an inline SVG data URI, not a
+            remote image next/image's loader is built for (same reasoning as AgentBadge.tsx and
+            AppSidebar.tsx's own AgentIcon) */}
+        <img src={getAgentAvatarDataUri(agent)} alt="" className="h-full w-full rounded-full" />
       </div>
       <div className="text-center text-[10px] font-medium tracking-wide text-foreground/70 uppercase">
         {agent.name.replace(/^Agent\s+/, "")}
