@@ -448,6 +448,81 @@ export const TEMPLATES: Template[] = [
         "I'm a genuinely terrible sleeper myself even with the product — my wife jokes that I'm the brand's most stubborn customer.",
     },
   },
+  {
+    id: "real-estate-seller-webinar",
+    name: "Real estate agent → seller webinar",
+    category: "Real Estate",
+    description:
+      "Listing agent using a webinar to turn homeowners thinking about selling into booked strategy calls with THAT agent specifically.",
+    assetType: "webinar_outline",
+    answers: {
+      business_name: "The Top Dollar Listing System",
+      industry: "Residential real estate — home seller representation",
+      product:
+        "The Top Dollar Listing System — a done-for-you listing process that gets homeowners more money, in less time, with less stress than a traditional agent",
+      offer_name: "The Top Dollar Listing System: Sell For More, Without the Stress",
+      audience:
+        "Homeowners actively thinking about selling in the next 3-6 months — relocating for work, upsizing/downsizing, or just tired of wondering if 'now' is the right time — who are nervous about leaving money on the table or picking the wrong agent.",
+      existing_assets:
+        "Database of 380 past clients and leads; 4.9-star average across 140+ Google/Zillow reviews; closed 62 transactions in the last 24 months; referral relationships with 2 local lenders and a real estate attorney; YouTube channel with local market update videos (3,200 subscribers).",
+      awareness_level: "Problem-Aware",
+      pain_points:
+        "Worried they'll leave real money on the table by pricing wrong or negotiating badly. Not sure if now is actually the right time to sell or if they should wait. Dreads the disruption — showings, repairs, keeping the house 'show ready' for weeks. Had a bad experience before with an agent who put a sign in the yard, listed it on the MLS, then went quiet. Anxious about timing the sale of this home against buying the next one.",
+      false_beliefs: "\"Every agent says they'll get me top dollar — they're all the same, they just want the listing.\"",
+      desired_transformation:
+        "From anxious and unsure whether to sell, to confident they're getting the most money possible, on their own timeline, with someone handling every detail.",
+      category: "Residential real estate — seller representation",
+      enemy:
+        "The 'stick a sign in the yard and wait' approach most agents still use — listing a home and hoping the right buyer finds it, instead of actively creating competition for it before it ever hits the market.",
+      differentiator:
+        "Unlike agents who list and wait, the Top Dollar Listing System builds buyer demand BEFORE the home ever hits the MLS — a pre-market push to a real buyer database, professional staging and photography included as standard, and a documented pricing strategy, not a sign in the yard and a prayer.",
+      competitive_alternatives:
+        "A big-name agent who hands the file to a junior team member; selling For Sale By Owner and handling negotiations alone; an instant cash offer from an iBuyer at a lowball price; staying put and not selling at all out of uncertainty.",
+      unique_mechanism:
+        "The 3-Phase Top Dollar Listing Process — Pre-Market Positioning, Strategic Launch, and Multiple-Offer Negotiation.",
+      core_promise:
+        "Sell your home for top dollar in 30 days or less, without the stress of guessing on price or waiting months for the right buyer.",
+      outcomes:
+        "- Homes sell for an average of 4% over asking price\n- Average 11 days on market vs. the area's average of 38\n- Multiple competing offers instead of one lowball offer\n- A clear day-by-day timeline, so nothing feels like a surprise\n- Professional staging, photography, and marketing included at no extra cost",
+      proof:
+        "Sold 62 homes in the last 24 months at an average of 4% over asking; average 11 days on market vs. the area average of 38; named case studies on file (the Marshall family, the Reyes listing).",
+      price: "Standard commission, paid at closing — no upfront cost to list or market the home.",
+      guarantee:
+        "Easy Exit Listing Guarantee — cancel the listing agreement at any time, no penalty, if you're not happy with the results.",
+      bonuses:
+        "- Free professional staging consultation — $400 value\n- Professional photography and video walkthrough included — $500 value\n- Free pre-listing home inspection so there are no surprises for buyers — $350 value\n- Moving day concierge (vetted mover discount + packing checklist)",
+      scarcity_urgency:
+        "Local inventory is currently well below the historical average, meaning less competition from other sellers right now — that usually shifts once more listings hit the market in spring, so sellers who list into today's lower inventory tend to see stronger offers.",
+      cta: "Book your free Home Value & Selling Strategy Call",
+      funnel_type: "book_call",
+      discovery_notes:
+        "Attendees have usually already been burned by a 'just trust me' agent pitch before — lead with the specific numbers (days on market, % over asking) and the named process, not just confidence and enthusiasm. The webinar's whole job is to make THIS agent the obvious choice by the time the strategy call is offered, not just to teach selling concepts in the abstract.",
+    },
+    presenterBio: {
+      presenter_ihelp_audience: "homeowners ready to sell",
+      presenter_ihelp_outcome: "sell for top dollar, fast, without the stress of guessing",
+      presenter_ihelp_mechanism: "the 3-Phase Top Dollar Listing Process",
+      presenter_mission:
+        "I help homeowners sell for top dollar, fast, without the stress of guessing on price or waiting months for the right buyer.",
+      presenter_years_experience: "9 years (licensed since 2016)",
+      presenter_credentials:
+        "Certified Residential Specialist (CRS); Accredited Buyer's Representative (ABR); state-licensed Realtor®",
+      presenter_origin_story:
+        "My own parents sold their home with an agent who put a sign in the yard and disappeared for three months — they left almost $20k on the table because nobody built any urgency or competition for the house. I got my license six months later so no other family would go through that.",
+      presenter_signature_win:
+        "The Marshall family had their home sitting unsold for 4 months with another agent before switching to me. Using the Pre-Market Positioning phase, we had 3 competing offers within 9 days and closed $31,000 over their original asking price.",
+      presenter_setback_story:
+        "In my second year, I listed a home the same way every other agent in town did — MLS and a sign — and it sat for 97 days before selling under asking. I was mortified calling the sellers with updates that were really just 'still nothing.' That's the listing that made me rebuild my entire process around creating demand before a home ever goes live, instead of waiting for a buyer to find it.",
+      presenter_income_goal_6mo: "$45,000/month in gross commission income",
+      presenter_income_goal_12mo: "$90,000/month in gross commission income, with a licensed buyer's agent added to the team",
+      presenter_mission_why:
+        "I watched my own parents leave money on the table because their agent didn't fight for them. I don't let that happen to another family if I can help it.",
+      presenter_recognition:
+        "Top 1% producer in the local MLS for 2 consecutive years; featured in a local 'Top Agents Under 40' roundup.",
+      presenter_relatable_detail:
+        "I've personally moved 6 times in 9 years chasing 'just one more' fixer-upper project with my spouse — I promise I understand exactly how stressful moving actually is.",
+    },
+  },
 ];
 
 export function getTemplate(id: string): Template | undefined {
