@@ -526,17 +526,26 @@ export default function GenerateClient({
     setWebinarPromptOpen(false);
     setGeneratingWebinarDeck(true);
     setElapsedSeconds(0);
+    setError(null);
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId, assetType: "ppt_outline", mode }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Could not generate your webinar.");
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) throw new Error(data?.error || "Could not generate your webinar.");
       router.push(`/projects/${projectId}/generate/ppt_outline?generationId=${data.generationId}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not generate your webinar.");
+      // A toast alone isn't enough here — a 60-90 slide deck can take a few minutes, and if a
+      // member looks away during that wait (or the toast auto-dismisses), a toast-only error
+      // reads as total silence: the button just stops spinning with no visible reason, which is
+      // exactly what got reported as "it finished but never took me to the webinar." The banner
+      // below (shared with `run()`/save — see `{error && ...}` further down this page) stays on
+      // screen until they act, so a failed/timed-out request can never look identical to success.
+      const message = e instanceof Error ? e.message : "Could not generate your webinar.";
+      toast.error(message);
+      setError(`Your signature webinar didn't finish generating: ${message} You were not charged credits — use the button above to try again.`);
     } finally {
       setGeneratingWebinarDeck(false);
     }
@@ -552,17 +561,23 @@ export default function GenerateClient({
     setScriptPromptOpen(false);
     setGeneratingScript(true);
     setElapsedSeconds(0);
+    setError(null);
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId, assetType: "webinar_script", mode }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Could not create your script.");
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) throw new Error(data?.error || "Could not create your script.");
       router.push(`/projects/${projectId}/generate/webinar_script?generationId=${data.generationId}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not create your script.");
+      // Same reasoning as generateWebinarNow above — a script for a 60-90 slide deck is another
+      // multi-minute generation, so a persistent banner (not just a toast) is what keeps a
+      // failed/timed-out request from looking identical to a completed one that simply didn't navigate.
+      const message = e instanceof Error ? e.message : "Could not create your script.";
+      toast.error(message);
+      setError(`Your script didn't finish generating: ${message} You were not charged credits — use the button above to try again.`);
     } finally {
       setGeneratingScript(false);
     }
