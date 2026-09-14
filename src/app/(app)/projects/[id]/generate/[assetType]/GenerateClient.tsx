@@ -534,7 +534,18 @@ export default function GenerateClient({
         body: JSON.stringify({ projectId, assetType: "ppt_outline", mode }),
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok || !data) throw new Error(data?.error || "Could not generate your webinar.");
+      // A response that isn't even valid JSON (data === null here) isn't a normal validation
+      // error — the route always returns JSON, success or failure. It means the platform cut the
+      // request off before the server could respond at all (most commonly a hosting-plan function
+      // time limit — a 60-90 slide deck can run past it — see the maxDuration comment in
+      // src/app/api/generate/route.ts), so say that plainly instead of a generic fallback that
+      // gives no clue what actually happened.
+      if (!data) {
+        throw new Error(
+          `The server didn't respond (HTTP ${res.status}) — this usually means the generation ran past your hosting plan's time limit for a single request.`
+        );
+      }
+      if (!res.ok) throw new Error(data.error || "Could not generate your webinar.");
       router.push(`/projects/${projectId}/generate/ppt_outline?generationId=${data.generationId}`);
     } catch (e) {
       // A toast alone isn't enough here — a 60-90 slide deck can take a few minutes, and if a
@@ -569,7 +580,14 @@ export default function GenerateClient({
         body: JSON.stringify({ projectId, assetType: "webinar_script", mode }),
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok || !data) throw new Error(data?.error || "Could not create your script.");
+      // See generateWebinarNow above: a non-JSON response means the platform cut the request off
+      // before the server could reply at all, most commonly a hosting-plan function time limit.
+      if (!data) {
+        throw new Error(
+          `The server didn't respond (HTTP ${res.status}) — this usually means the generation ran past your hosting plan's time limit for a single request.`
+        );
+      }
+      if (!res.ok) throw new Error(data.error || "Could not create your script.");
       router.push(`/projects/${projectId}/generate/webinar_script?generationId=${data.generationId}`);
     } catch (e) {
       // Same reasoning as generateWebinarNow above — a script for a 60-90 slide deck is another
