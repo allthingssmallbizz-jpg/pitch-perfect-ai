@@ -1,4 +1,4 @@
-// Plain-English, one-question-at-a-time rewrite of the 14-point discovery brief — the same
+// Plain-English, one-question-at-a-time rewrite of the 24-point discovery brief — the same
 // underlying fields DiscoveryForm.tsx collects (and the same server action saves them to), just
 // asked as a conversation instead of a jargon-heavy form with 25 boxes visible at once. This is
 // the front door for someone who's never heard of "the enemy," "unique mechanism," or "awareness
@@ -24,8 +24,13 @@ export interface GuidedQuestion {
   choices?: GuidedChoice[];
 }
 
-// Mirrors REQUIRED_DISCOVERY_FIELDS (src/lib/projects.ts) plus the project name itself — walking
-// through all of these is what makes a project ready to generate from.
+// Mirrors REQUIRED_DISCOVERY_FIELDS (src/lib/projects.ts) exactly, plus the project name itself —
+// walking through all of these is what makes a project ready to generate from. Every one of these
+// must match REQUIRED_DISCOVERY_FIELDS 1:1 — a question left out here (or left in
+// GUIDED_OPTIONAL_QUESTIONS below) means someone can walk this entire wizard, be told "that's
+// everything needed to start generating" at the interstitial screen, and then hit
+// projectNeedsDiscovery's real gate later with no idea why a field they were never asked about is
+// still blank.
 export const GUIDED_REQUIRED_QUESTIONS: GuidedQuestion[] = [
   {
     key: "name",
@@ -64,12 +69,28 @@ export const GUIDED_REQUIRED_QUESTIONS: GuidedQuestion[] = [
     required: true,
   },
   {
+    key: "offer_name",
+    section: "About you",
+    question: "Does your webinar or offer have a name yet?",
+    helper: "Not sure? Give it your best working title for now — you can refine it later with the Offer Builder on the full form.",
+    type: "text",
+    required: true,
+  },
+  {
     key: "audience",
     section: "Who you help",
     question: "Who is this for?",
     helper: "The more specific, the better every headline lands — age, situation, what they've already tried.",
     type: "textarea",
     placeholder: "Describe your ideal customer.",
+    required: true,
+  },
+  {
+    key: "existing_assets",
+    section: "Who you help",
+    question: "Do you already have an email list, social following, or past testimonials?",
+    helper: `Nothing yet? Answer "None yet" — that's a real answer, not a skipped question.`,
+    type: "textarea",
     required: true,
   },
   {
@@ -96,6 +117,13 @@ export const GUIDED_REQUIRED_QUESTIONS: GuidedQuestion[] = [
     required: true,
   },
   {
+    key: "false_beliefs",
+    section: "Who you help",
+    question: "Any objections or false beliefs that hold people back?",
+    type: "textarea",
+    required: true,
+  },
+  {
     key: "desired_transformation",
     section: "Who you help",
     question: "If this works perfectly for them, what does life look like afterward?",
@@ -112,9 +140,24 @@ export const GUIDED_REQUIRED_QUESTIONS: GuidedQuestion[] = [
     required: true,
   },
   {
+    key: "enemy",
+    section: "What makes you different",
+    question: "Is there a common enemy or villain your message pushes against?",
+    helper: 'e.g. "hustle culture," "one-size-fits-all diets."',
+    type: "textarea",
+    required: true,
+  },
+  {
     key: "differentiator",
     section: "What makes you different",
     question: "What makes you different from everyone else doing something similar?",
+    type: "textarea",
+    required: true,
+  },
+  {
+    key: "competitive_alternatives",
+    section: "What makes you different",
+    question: "What do people do instead of buying from you today?",
     type: "textarea",
     required: true,
   },
@@ -142,12 +185,44 @@ export const GUIDED_REQUIRED_QUESTIONS: GuidedQuestion[] = [
     required: true,
   },
   {
+    key: "proof",
+    section: "The big promise",
+    question: "Any proof you can point to — results, testimonials, numbers?",
+    helper: `Nothing formal yet? Answer "None yet" — that's a real answer, not a skipped question.`,
+    type: "textarea",
+    required: true,
+  },
+  {
     key: "price",
     section: "Your offer",
     question: "What does it cost?",
     helper: "Even a rough number helps — without it, the AI has to guess.",
     type: "text",
     placeholder: "e.g. $1,997 one-time or $297/month",
+    required: true,
+  },
+  {
+    key: "guarantee",
+    section: "Your offer",
+    question: "Do you offer any kind of guarantee?",
+    helper: `No guarantee? Answer "None" — that's a real answer, not a skipped question.`,
+    type: "textarea",
+    required: true,
+  },
+  {
+    key: "bonuses",
+    section: "Your offer",
+    question: "Any bonuses included with the offer?",
+    helper: `No bonuses? Answer "None" — that's a real answer, not a skipped question.`,
+    type: "textarea",
+    required: true,
+  },
+  {
+    key: "scarcity_urgency",
+    section: "Your offer",
+    question: "Any real deadline, limited spots, or price increase?",
+    helper: `No real urgency mechanism? Answer "None" — that's a real answer, not a skipped question.`,
+    type: "textarea",
     required: true,
   },
   {
@@ -158,76 +233,26 @@ export const GUIDED_REQUIRED_QUESTIONS: GuidedQuestion[] = [
     placeholder: "e.g. Book a call, Buy now, Apply today",
     required: true,
   },
+  {
+    key: "funnel_type",
+    section: "Your offer",
+    question: "What does that call-to-action actually lead to?",
+    helper: "This determines the right copy for your Thank You Page — a booked call, a purchase, and a webinar registration each need a genuinely different confirmation page.",
+    type: "choice",
+    required: true,
+    choices: [
+      { value: "book_call", label: "Book a call", hint: "They schedule a call with you or your team." },
+      { value: "checkout", label: "Checkout / direct purchase", hint: "They pay right away for the offer." },
+      { value: "tripwire", label: "Tripwire + upsell", hint: "A low-cost first purchase that leads into an upsell." },
+      { value: "webinar_registration", label: "Webinar / challenge registration", hint: "They register for a date/time, not a purchase." },
+    ],
+  },
 ];
 
-// Shown after the required walk, all skippable — extra detail that sharpens the copy but isn't
-// needed to start generating.
+// Shown after the required walk — the one field with nothing to mark "complete" against
+// (REQUIRED_DISCOVERY_FIELDS deliberately excludes it, see src/lib/projects.ts), so it's the only
+// genuinely optional stop left: a freeform catch-all, not a specific question with a right answer.
 export const GUIDED_OPTIONAL_QUESTIONS: GuidedQuestion[] = [
-  {
-    key: "offer_name",
-    section: "A bit more detail (optional)",
-    question: "Does your webinar or offer have a name yet?",
-    helper: "Not sure? Skip this — the Offer Builder can suggest one later.",
-    type: "text",
-    required: false,
-  },
-  {
-    key: "proof",
-    section: "A bit more detail (optional)",
-    question: "Any proof you can point to — results, testimonials, numbers?",
-    type: "textarea",
-    required: false,
-  },
-  {
-    key: "guarantee",
-    section: "A bit more detail (optional)",
-    question: "Do you offer any kind of guarantee?",
-    type: "textarea",
-    required: false,
-  },
-  {
-    key: "bonuses",
-    section: "A bit more detail (optional)",
-    question: "Any bonuses included with the offer?",
-    type: "textarea",
-    required: false,
-  },
-  {
-    key: "scarcity_urgency",
-    section: "A bit more detail (optional)",
-    question: "Any real deadline, limited spots, or price increase?",
-    type: "textarea",
-    required: false,
-  },
-  {
-    key: "false_beliefs",
-    section: "A bit more detail (optional)",
-    question: "Any objections or false beliefs that hold people back?",
-    type: "textarea",
-    required: false,
-  },
-  {
-    key: "enemy",
-    section: "A bit more detail (optional)",
-    question: "Is there a common enemy or villain your message pushes against?",
-    helper: 'e.g. "hustle culture," "one-size-fits-all diets."',
-    type: "textarea",
-    required: false,
-  },
-  {
-    key: "competitive_alternatives",
-    section: "A bit more detail (optional)",
-    question: "What do people do instead of buying from you today?",
-    type: "textarea",
-    required: false,
-  },
-  {
-    key: "existing_assets",
-    section: "A bit more detail (optional)",
-    question: "Do you already have an email list, social following, or past testimonials?",
-    type: "textarea",
-    required: false,
-  },
   {
     key: "discovery_notes",
     section: "A bit more detail (optional)",

@@ -169,7 +169,6 @@ export default function GuidedIntake({
       <input type="hidden" name="projectId" value={project.id} />
       {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
       <input type="hidden" name="mode" value={project.mode} />
-      <input type="hidden" name="funnel_type" value={project.funnel_type} />
       {ALL_QUESTIONS.map((q) => (
         <input key={q.key} type="hidden" name={q.key} value={answers[q.key] ?? ""} />
       ))}
