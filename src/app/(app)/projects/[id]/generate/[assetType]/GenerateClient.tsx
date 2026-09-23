@@ -611,7 +611,20 @@ export default function GenerateClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId, assetType, mode }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
+      // A non-JSON response (data === null) means the platform cut the request off before the
+      // server could reply at all — /api/generate always returns JSON, success or failure — most
+      // commonly a hosting-plan function time limit (see the maxDuration comment in
+      // src/app/api/generate/route.ts). Previously this fell into the catch block below and
+      // showed a generic "Network error — try again," which repeats verbatim on every retry with
+      // no clue anything is actually wrong, let alone why — this used to be reported as the agent
+      // just refusing to generate anything.
+      if (!data) {
+        setError(
+          `The server didn't respond (HTTP ${res.status}) — this usually means the generation ran past your hosting plan's time limit for a single request. Retrying won't help until that's raised.`
+        );
+        return;
+      }
       if (!res.ok) {
         setError(data.error || "Generation failed.");
         return;
