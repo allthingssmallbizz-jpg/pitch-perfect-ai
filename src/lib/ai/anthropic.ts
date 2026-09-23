@@ -35,6 +35,33 @@ export interface GenerateResult {
 
 export type ImageInput = { base64: string; mediaType: "image/jpeg" | "image/png" | "image/webp" | "image/gif" };
 
+// Every generator's system prompt (buildSystemPrompt: brand voice + persona + presenter bio +
+// the knowledge library) is the same stable, repeated-verbatim prefix across every call for a
+// given member/project/mode — exactly what prompt caching is for. Marking it cacheable means a
+// PPT Outline's continuation calls (see generateCompleteAsset below) re-process that block from
+// cache instead of paying full input-token cost and latency on every one of up to 4 extra
+// round-trips, and a member generating several agents back-to-back during a demo gets the same
+// speedup across DIFFERENT generations within the ~5-minute cache window. Pure infrastructure —
+// changes nothing about what gets written.
+function systemParam(systemPrompt: string): Anthropic.MessageCreateParams["system"] {
+  return [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }];
+}
+
+// Streaming rather than a single buffered response — not for a live typing effect (the caller
+// still just wants the finished text), but because a long generation (a 90-slide PPT outline can
+// run several minutes) risks the SDK's own client-side timeout and, worse, a platform-level
+// response timeout on a buffered call that produces nothing until the very end. Streaming keeps
+// the connection actively delivering data the whole time, which is what both the SDK and hosting
+// platforms expect for a response this size. finalMessage() collects the complete message for
+// callers that don't need individual chunks — same return shape as a plain create() call.
+async function createMessage(
+  anthropic: Anthropic,
+  params: Anthropic.MessageStreamParams
+): Promise<Anthropic.Message> {
+  const stream = anthropic.messages.stream(params);
+  return stream.finalMessage();
+}
+
 // Single call site for every generator. Output length is always capped server-side
 // (maxOutputTokens) — this is one of the margin-protection guardrails from the build spec:
 // no single generation can produce an unbounded (and unboundedly expensive) response.
@@ -61,10 +88,10 @@ export async function generateAsset(
       ]
     : userPrompt;
 
-  const message = await anthropic.messages.create({
+  const message = await createMessage(anthropic, {
     model: DEFAULT_MODEL,
     max_tokens: maxOutputTokens,
-    system: systemPrompt,
+    system: systemParam(systemPrompt),
     messages: [{ role: "user", content: messageContent }],
   });
 
@@ -143,10 +170,10 @@ export async function generateCompleteAsset(
   let continuations = 0;
   while (needsMore() && continuations < maxContinuations) {
     continuations++;
-    const message = await anthropic.messages.create({
+    const message = await createMessage(anthropic, {
       model: DEFAULT_MODEL,
       max_tokens: maxOutputTokens,
-      system: systemPrompt,
+      system: systemParam(systemPrompt),
       messages: [
         { role: "user", content: messageContent },
         // The API rejects an assistant-prefill message that ends in whitespace. A response cut

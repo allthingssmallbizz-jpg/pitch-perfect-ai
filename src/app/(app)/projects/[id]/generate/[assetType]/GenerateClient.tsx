@@ -546,7 +546,23 @@ export default function GenerateClient({
         );
       }
       if (!res.ok) throw new Error(data.error || "Could not generate your webinar.");
-      router.push(`/projects/${projectId}/generate/ppt_outline?generationId=${data.generationId}`);
+      // No longer an automatic router.push() the moment this resolves — a 60-90 slide deck can
+      // take a few minutes, and a member demoing live needs to keep moving through the platform
+      // during that wait, not get silently yanked to a different page later wherever they
+      // happen to be at that moment (see the "it finished but never took me to the webinar" bug
+      // this replaced, and the opposite failure mode a forced navigate-away would reintroduce).
+      // SPA navigation doesn't cancel this fetch — it keeps running server-side and finishes
+      // right on schedule even if this component has since unmounted — so a toast (reachable
+      // from wherever they've navigated to since, since sonner's <Toaster/> lives in the root
+      // layout, not this page) is what actually delivers "click out, come back when it's ready."
+      toast.success("Your signature webinar is ready!", {
+        description: "Keep going with your demo — pick it up whenever you're ready.",
+        action: {
+          label: "View it",
+          onClick: () => router.push(`/projects/${projectId}/generate/ppt_outline?generationId=${data.generationId}`),
+        },
+        duration: 45000,
+      });
     } catch (e) {
       // A toast alone isn't enough here — a 60-90 slide deck can take a few minutes, and if a
       // member looks away during that wait (or the toast auto-dismisses), a toast-only error
@@ -588,7 +604,16 @@ export default function GenerateClient({
         );
       }
       if (!res.ok) throw new Error(data.error || "Could not create your script.");
-      router.push(`/projects/${projectId}/generate/webinar_script?generationId=${data.generationId}`);
+      // See generateWebinarNow above — no forced navigate-away, just a toast reachable from
+      // wherever the demo has since moved on to.
+      toast.success("Your script is ready!", {
+        description: "Keep going with your demo — pick it up whenever you're ready.",
+        action: {
+          label: "View it",
+          onClick: () => router.push(`/projects/${projectId}/generate/webinar_script?generationId=${data.generationId}`),
+        },
+        duration: 45000,
+      });
     } catch (e) {
       // Same reasoning as generateWebinarNow above — a script for a 60-90 slide deck is another
       // multi-minute generation, so a persistent banner (not just a toast) is what keeps a
@@ -908,9 +933,9 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           {generatingWebinarDeck && (
             <p className="mt-2 text-xs text-muted-foreground">
               {elapsedSeconds >= 45
-                ? "Still working — a full 60-90 slide deck can take a few minutes. No need to refresh."
+                ? "Still working — a full 60-90 slide deck can take a few minutes. Feel free to click into another agent or project — we'll notify you the moment it's ready, wherever you are."
                 : elapsedSeconds >= 15
-                  ? "This can take a little while for a full-length deck. Hang tight..."
+                  ? "This can take a little while for a full-length deck. Feel free to keep going elsewhere — we'll notify you when it's done."
                   : "Agent Polly is turning your blueprint into the full slide-by-slide deck..."}
             </p>
           )}
@@ -952,9 +977,9 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           {generatingScript && (
             <p className="mt-2 text-xs text-muted-foreground">
               {elapsedSeconds >= 45
-                ? "Still working — a full script for a 60-90 slide deck can take a few minutes. No need to refresh."
+                ? "Still working — a full script for a 60-90 slide deck can take a few minutes. Feel free to click into another agent or project — we'll notify you the moment it's ready, wherever you are."
                 : elapsedSeconds >= 15
-                  ? "This can take a little while for a full-length script. Hang tight..."
+                  ? "This can take a little while for a full-length script. Feel free to keep going elsewhere — we'll notify you when it's done."
                   : "Agent Polly is writing what to say on every slide..."}
             </p>
           )}

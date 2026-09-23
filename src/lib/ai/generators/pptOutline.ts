@@ -6,12 +6,17 @@ import { parsePptOutline } from "../pptxParser";
 // per generation (see PPT_OUTLINE_MAX_OUTPUT_TOKENS), so the credit price members pay was
 // bumped to match and keep this in line with the margin math.
 export const PPT_OUTLINE_CREDIT_COST = 10;
-// Raised from 3500, then from 8000 — a real test run at 8000 tokens still cut off mid-slide
-// around slide 40 of the required 60-90 (roughly 200 tokens/slide in practice, so 90 slides
-// needs ~18,000). 16000 gives headroom for the great majority of decks in one shot; if a
-// generation is still cut off beyond that, generateCompleteAsset (src/lib/ai/anthropic.ts)
-// automatically continues rather than silently truncating.
-export const PPT_OUTLINE_MAX_OUTPUT_TOKENS = 16000;
+// Raised from 3500, then 8000, then 16000 — a real test run at 8000 tokens still cut off
+// mid-slide around slide 40 of the required 60-90 (roughly 200 tokens/slide in practice, so 90
+// slides needs ~18,000), and 16000 itself still left many full-length decks needing at least one
+// continuation call. Each continuation is a full extra request round-trip on top of an already
+// multi-minute generation — real wall-clock time a member waits through live during a demo — so
+// now that anthropic.ts streams every call (removing the response-timeout ceiling that kept this
+// conservative), 24000 gives the great majority of decks enough room to finish in one shot
+// instead of needing a second call at all. Still not unlimited: generateCompleteAsset
+// automatically continues past this if a deck genuinely needs more room, exactly as before —
+// this only shrinks how often that happens, never what a deck is allowed to contain.
+export const PPT_OUTLINE_MAX_OUTPUT_TOKENS = 24000;
 
 // A real generation came back with only 7-8 slides instead of the required 60-90 — Claude had
 // stopped on its own (stop_reason "end_turn", not "max_tokens"), having compressed each phase of

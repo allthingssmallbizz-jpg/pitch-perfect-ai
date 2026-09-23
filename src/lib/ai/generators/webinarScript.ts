@@ -13,8 +13,8 @@ import { PPT_OUTLINE_MIN_ACCEPTABLE_SLIDES } from "./pptOutline";
 export const WEBINAR_SCRIPT_CREDIT_COST = 10;
 // Matches PPT_OUTLINE_MAX_OUTPUT_TOKENS — same 60-90 item count to cover, and natural spoken
 // script per slide runs denser than a deck's own short bullets/notes, so this needs at least as
-// much headroom, not less.
-export const WEBINAR_SCRIPT_MAX_OUTPUT_TOKENS = 16000;
+// much headroom, not less. See that constant's own comment for why this was raised from 16000.
+export const WEBINAR_SCRIPT_MAX_OUTPUT_TOKENS = 24000;
 
 // Every project's deck ranges 60-90 slides by its own prompt's requirement (see
 // PPT_OUTLINE_MIN_ACCEPTABLE_SLIDES's comment for the real failure this threshold catches:
