@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { ClipboardList } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AGENTS } from "@/lib/agents/config";
 import { projectNeedsDiscovery, REQUIRED_DISCOVERY_FIELDS } from "@/lib/projects";
@@ -119,8 +120,18 @@ export default async function AdImagePage({
       <Link href={`/projects/${id}`} className="text-sm text-primary hover:underline">
         ← {project.name}
       </Link>
-      <div className="mt-4 mb-1">
+      <div className="mt-4 mb-1 flex flex-wrap items-center justify-between gap-3">
         <AgentBadge agent={agent} size="lg" showTagline />
+        {/* Same reasoning as the discovery-form generate page's own "Back to Discovery" link —
+            a complete brief no longer forces a detour through it before this agent opens, so
+            this is the way back in to tweak an answer without starting over from the dashboard. */}
+        <Link
+          href={`/projects/${id}?intent=ad_image#discovery-form`}
+          className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+        >
+          <ClipboardList className="h-3.5 w-3.5" />
+          Back to Discovery
+        </Link>
       </div>
       <p className="mb-6 text-sm text-muted-foreground">
         Image Ads · upload a photo, get a finished ad with headline, subheadline, and CTA

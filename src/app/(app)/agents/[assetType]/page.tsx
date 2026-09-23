@@ -5,12 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
 import { getPresenterBioProfiles } from "@/lib/ai/presenterBio";
-import { isRestrictionBypassActive } from "@/lib/adminBypass";
-import { projectNeedsDiscovery, REQUIRED_DISCOVERY_FIELDS } from "@/lib/projects";
 import AgentBadge from "@/components/AgentBadge";
 import DeleteGenerationButton from "@/components/DeleteGenerationButton";
 import BioReminderDialog from "@/components/BioReminderDialog";
-import DiscoveryBlockedDialog from "@/components/DiscoveryBlockedDialog";
 import ProjectPickerDialog from "@/components/ProjectPickerDialog";
 import { Button } from "@/components/ui/button";
 
@@ -56,14 +53,9 @@ export default async function AgentLandingPage({
     { data: imageAdRows },
     bios,
   ] = await Promise.all([
-    // Discovery fields included (not just id/name) so the discovery gate below can run
-    // projectNeedsDiscovery per project without a second query — kept in sync with
-    // REQUIRED_DISCOVERY_FIELDS in src/lib/projects.ts.
     supabase
       .from("projects")
-      .select(
-        "id, name, business_name, industry, product, offer_name, audience, existing_assets, awareness_level, pain_points, false_beliefs, desired_transformation, category, enemy, differentiator, competitive_alternatives, unique_mechanism, core_promise, outcomes, proof, price, guarantee, bonuses, scarcity_urgency, cta, funnel_type"
-      )
+      .select("id, name")
       .eq("user_id", user.id)
       .is("deleted_at", null)
       .order("updated_at", { ascending: false }),
@@ -98,28 +90,18 @@ export default async function AgentLandingPage({
   ]);
   const showBioReminder = bios.length === 0 || bios.some((b) => b.incomplete);
 
-  // An admin who's flipped "Remove Restrictions" in /admin still sees the discovery reminder
-  // below, just dismissible instead of a hard block — built for live demos/webinars. Never true
-  // for a regular member. (BioReminderDialog needs no equivalent check — it's already dismissible
-  // for everyone.)
-  const bypassActive = await isRestrictionBypassActive(user.id);
-
-  // Discovery is the next required step right after bio — same "before any agent will be
-  // available" rule, checked account-wide the same way (not just the project someone happens to
-  // be about to use). Only evaluated once bio is already clear so the two blocking popups never
-  // fight over which one shows — bio first, then discovery, matching the order every other gate
-  // in the app already checks them in (see generate/[assetType]/page.tsx). `projects` is already
-  // ordered by updated_at desc, so the first incomplete one is whichever this member touched most
-  // recently — the one they're most likely mid-way through.
-  const firstIncompleteDiscoveryProject = showBioReminder
-    ? undefined
-    : (projects ?? []).find((p) => projectNeedsDiscovery(p));
-  const missingDiscoveryFields = firstIncompleteDiscoveryProject
-    ? REQUIRED_DISCOVERY_FIELDS.filter(({ key }) => !String(firstIncompleteDiscoveryProject[key] ?? "").trim()).map(
-        (f) => f.label
-      )
-    : [];
-
+  // Discovery is deliberately NOT checked account-wide here the way bio is — bio is a single
+  // shared resource per niche, so "any bio incomplete" genuinely means "this account isn't ready
+  // yet." Discovery is per-project: one abandoned or half-finished project must never block every
+  // OTHER already-complete project's agents from opening. This used to walk every active project
+  // looking for the first incomplete one and hard-block on THAT — so a member with one stray
+  // unfinished project (an old test, an abandoned idea) got stuck being told to go finish a
+  // completely different project's brief every time they clicked any agent, no matter which
+  // project they actually meant to use. The real per-project gate already lives on the project
+  // page and the generate page (projectNeedsDiscovery) — picking a project below routes there
+  // and is blocked or not entirely on ITS OWN completeness, which is the only thing that should
+  // matter at this point.
+  //
   // Neither of these queries should ever actually fail for a normal request — but they used to
   // be destructured without looking at `error` at all, so a real failure (a missing column after
   // a migration hasn't been run yet, a transient RLS/auth hiccup) silently produced the exact
@@ -176,20 +158,11 @@ export default async function AgentLandingPage({
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       {showBioReminder && <BioReminderDialog returnTo={`/agents/${generator.assetType}`} />}
-      {firstIncompleteDiscoveryProject && (
-        <DiscoveryBlockedDialog
-          projectId={firstIncompleteDiscoveryProject.id}
-          projectName={firstIncompleteDiscoveryProject.name}
-          intent={generator.assetType}
-          missingFields={missingDiscoveryFields}
-          dismissible={bypassActive}
-        />
-      )}
-      {/* Only once both account-wide gates above are clear — every project listed here already
-          has a complete bio and a complete discovery brief, so picking one goes straight to using
-          this agent on it (with its own per-project gate as a defensive backstop — see
-          projects/[id]/page.tsx — in case that changes between page load and click). */}
-      {!showBioReminder && !firstIncompleteDiscoveryProject && (projects ?? []).length > 0 && (
+      {/* Only once the account-wide bio gate above is clear — picking a project below routes to
+          it directly; that project's OWN discovery completeness (not any other project's) is
+          what decides whether it opens straight into this agent or detours to finish its brief
+          first (see projects/[id]/page.tsx). */}
+      {!showBioReminder && (projects ?? []).length > 0 && (
         <ProjectPickerDialog
           projects={(projects ?? []).map((p) => ({ id: p.id, name: p.name }))}
           assetType={generator.assetType}

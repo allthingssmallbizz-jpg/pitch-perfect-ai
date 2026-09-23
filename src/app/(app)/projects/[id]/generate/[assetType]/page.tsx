@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeftRight, MonitorPlay, ScrollText, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, ClipboardList, MonitorPlay, ScrollText, type LucideIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, WEB_PAGE_ASSET_TYPES, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
@@ -200,25 +200,41 @@ export default async function GenerateAssetPage({
       </Link>
       <div className="mt-4 mb-1 flex flex-wrap items-center justify-between gap-3">
         <AgentBadge agent={agent} size="lg" showTagline />
-        {matchingPage && (
+        <div className="flex flex-wrap items-center gap-2">
+          {/* A complete discovery brief no longer forces a detour back through it before an
+              agent opens (see agents/[assetType]/page.tsx and projects/[id]/page.tsx) — but
+              someone mid-generation who wants to tweak an answer (a price, a guarantee, the
+              audience description) still needs a way back to it that isn't "start over from the
+              dashboard." Anchored straight to the form (#discovery-form, same target
+              DiscoveryBlockedDialog's own link below uses) rather than just the project page, so
+              it doesn't land above the fold with the brief itself scrolled out of view. */}
           <Link
-            href={`/projects/${id}/generate/${matchingPage.assetType}?generationId=${matchingPage.generationId}`}
-            className={
-              // Deliberately red-on-white for the Your Webinar <-> Webinar Script toggle
-              // specifically — the request was "I had to go looking for it," and this pair shares
-              // one agent identity across both pages (see the icon-badge comment above), so this
-              // is the one toggle that most needs to visually shout instead of blend in. Landing
-              // Page <-> Thank You Page reuses the same matchingPage mechanism but wasn't part of
-              // that complaint, so it keeps its original quieter neutral styling.
-              generator.assetType === "ppt_outline" || generator.assetType === "webinar_script"
-                ? "flex items-center gap-1.5 rounded-full bg-red-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-500"
-                : "flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-            }
+            href={`/projects/${id}?intent=${assetType}#discovery-form`}
+            className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
           >
-            <ArrowLeftRight className="h-3.5 w-3.5" />
-            View {AGENTS[matchingPage.assetType].name}&apos;s {ASSET_GENERATORS[matchingPage.assetType].label}
+            <ClipboardList className="h-3.5 w-3.5" />
+            Back to Discovery
           </Link>
-        )}
+          {matchingPage && (
+            <Link
+              href={`/projects/${id}/generate/${matchingPage.assetType}?generationId=${matchingPage.generationId}`}
+              className={
+                // Deliberately red-on-white for the Your Webinar <-> Webinar Script toggle
+                // specifically — the request was "I had to go looking for it," and this pair shares
+                // one agent identity across both pages (see the icon-badge comment above), so this
+                // is the one toggle that most needs to visually shout instead of blend in. Landing
+                // Page <-> Thank You Page reuses the same matchingPage mechanism but wasn't part of
+                // that complaint, so it keeps its original quieter neutral styling.
+                generator.assetType === "ppt_outline" || generator.assetType === "webinar_script"
+                  ? "flex items-center gap-1.5 rounded-full bg-red-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-500"
+                  : "flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              }
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+              View {AGENTS[matchingPage.assetType].name}&apos;s {ASSET_GENERATORS[matchingPage.assetType].label}
+            </Link>
+          )}
+        </div>
       </div>
       {/* A bold, colored badge rather than the small muted-gray line this used to be — the plain
           agent badge above reads identically ("Agent Polly, The Pitch Deck Pro") whether this is
