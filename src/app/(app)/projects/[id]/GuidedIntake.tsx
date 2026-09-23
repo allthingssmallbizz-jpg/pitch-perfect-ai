@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { updateProjectDiscovery } from "@/lib/actions/projects";
 import { GUIDED_REQUIRED_QUESTIONS, GUIDED_OPTIONAL_QUESTIONS, type GuidedQuestion } from "@/lib/guidedIntake";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,6 +47,24 @@ export default function GuidedIntake({
   const [requiredIndex, setRequiredIndex] = useState(0);
   const [optionalIndex, setOptionalIndex] = useState(0);
   const [showValidation, setShowValidation] = useState(false);
+
+  // Same local-only backup as DiscoveryForm.tsx, sharing its exact storage key — every question
+  // key here matches a DiscoveryForm field name 1:1, so switching between the guided wizard and
+  // "Switch to the full form instead" mid-way carries whatever's been typed either way, and a
+  // crash or dropped connection here loses just as little as it would there.
+  const { persist: persistDraft, clearDraft, restoredAt } = useFormDraft({
+    storageKey: `pp-discovery-draft:${project.id}`,
+    collect: () => answers,
+    restore: (draft) => setAnswers((prev) => ({ ...prev, ...draft })),
+  });
+
+  useEffect(() => {
+    persistDraft();
+  }, [answers, persistDraft]);
+
+  useEffect(() => {
+    if (state && "success" in state && state.success) clearDraft();
+  }, [state, clearDraft]);
 
   function setAnswer(key: string, value: string) {
     setAnswers((prev) => ({ ...prev, [key]: value }));
@@ -172,6 +191,13 @@ export default function GuidedIntake({
       {ALL_QUESTIONS.map((q) => (
         <input key={q.key} type="hidden" name={q.key} value={answers[q.key] ?? ""} />
       ))}
+
+      {restoredAt && (
+        <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-500">
+          Restored unsaved answers you typed earlier but hadn&apos;t saved yet — keep going, or
+          finish setup to keep them for good.
+        </p>
+      )}
 
       <div>
         <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">

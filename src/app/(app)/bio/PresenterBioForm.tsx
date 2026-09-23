@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Sparkles, Save } from "lucide-react";
 import type { PresenterBioProfile } from "@/types/database";
 import { updatePresenterBio } from "@/lib/actions/presenterBio";
 import { composeIHelpStatement } from "@/lib/ai/presenterBio";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -154,10 +155,39 @@ export default function PresenterBioForm({
     if (el) el.value = text;
   }
 
+  // Same local-only, crash-safety backup as Discovery — a one-time setup form with this many
+  // fields (and often the very first thing a member fills out) is just as bad to lose mid-way
+  // through as a discovery brief is. Reuses handleAssistAccept's own "ihelp state vs. plain DOM
+  // field" routing so a restored draft lands in exactly the right place either way. See
+  // useFormDraft.
+  const { persist: persistDraft, clearDraft, restoredAt } = useFormDraft({
+    storageKey: `pp-bio-draft:${profileId}`,
+    collect: collectOtherAnswers,
+    restore: (draft) => {
+      for (const [key, value] of Object.entries(draft)) {
+        if (value) handleAssistAccept(key, value);
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (state && "success" in state && state.success) clearDraft();
+  }, [state, clearDraft]);
+
   return (
-    <form action={formAction} className="card-elevated space-y-5 rounded-2xl p-8">
+    <form
+      action={formAction}
+      onChange={() => persistDraft()}
+      className="card-elevated space-y-5 rounded-2xl p-8"
+    >
       <input type="hidden" name="profileId" value={profileId} />
       {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
+      {restoredAt && (
+        <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-500">
+          Restored unsaved answers you typed earlier but hadn&apos;t saved yet — review below, then
+          hit Save to keep them for good.
+        </p>
+      )}
       <p className="text-xs text-muted-foreground">
         <span className="text-red-500">*</span> Required — every agent stays locked until these are
         filled in. Everything else, including the &quot;I Help&quot; statement generator below, is

@@ -24,6 +24,7 @@ import OfferBuilderDialog from "@/components/OfferBuilderDialog";
 import DeleteProjectButton from "@/components/DeleteProjectButton";
 import WhyThisMatters from "@/components/WhyThisMatters";
 import { FUNNEL_TYPES } from "@/lib/funnelType";
+import { useFormDraft } from "@/hooks/useFormDraft";
 
 const AWARENESS_LEVELS = ["Unaware", "Problem-Aware", "Solution-Aware", "Product-Aware", "Most Aware"];
 
@@ -181,16 +182,42 @@ export default function DiscoveryForm({
     return out;
   }
 
+  // A local-only backup of whatever's been typed but not yet saved — a long brief (25 fields) is
+  // exactly the kind of form a dropped connection or a browser crash mid-way through is
+  // devastating for, with no way to get any of it back before this. Every field name, plus
+  // "name" (not part of DISCOVERY_FIELD_NAMES, since that list is scoped to the discovery-assist
+  // dialog's own needs — this backup needs the project name too). See useFormDraft for how it's
+  // restored and cleared.
+  const { persist: persistDraft, clearDraft, restoredAt } = useFormDraft({
+    storageKey: `pp-discovery-draft:${project.id}`,
+    collect: () => {
+      const nameEl = document.getElementById("name") as HTMLInputElement | null;
+      return { ...collectOtherAnswers(), name: nameEl?.value ?? "" };
+    },
+    restore: (draft) => {
+      for (const [key, value] of Object.entries(draft)) {
+        const el = document.getElementById(key) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+        if (el && value) el.value = value;
+      }
+    },
+  });
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     if (skipMissingCheckRef.current) {
       skipMissingCheckRef.current = false;
+      clearDraft();
       return;
     }
     const missing = getMissingRecommendedFieldLabels(collectOtherAnswers());
     if (missing.length > 0) {
       e.preventDefault();
       setMissingWarning(missing);
+      return;
     }
+    // Only reached once the submission is actually going through (not blocked above) — the real
+    // save now has this project's complete answers, so the local-only backup has nothing left to
+    // protect that Supabase doesn't already have.
+    clearDraft();
   }
 
   function handleAssistAccept(key: string, text: string) {
@@ -216,10 +243,18 @@ export default function DiscoveryForm({
       ref={formRef}
       action={formAction}
       onSubmit={handleSubmit}
+      onChange={() => persistDraft()}
       className="space-y-6"
     >
       <input type="hidden" name="projectId" value={project.id} />
       {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
+
+      {restoredAt && (
+        <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-500">
+          Restored unsaved answers you typed earlier but hadn&apos;t saved yet — review below, then
+          hit Save to keep them for good.
+        </p>
+      )}
 
       <button
         type="button"
