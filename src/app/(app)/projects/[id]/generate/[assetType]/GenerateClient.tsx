@@ -265,6 +265,7 @@ function formatWhen(iso: string) {
 export default function GenerateClient({
   projectId,
   assetType,
+  generatorLabel,
   mode,
   initialContent,
   initialGenerationId,
@@ -276,6 +277,12 @@ export default function GenerateClient({
 }: {
   projectId: string;
   assetType: AssetType;
+  // The agent's plain-English label ("VSL Script", "Offer Ladder") for the toast that fires
+  // when a generation finishes after its own page has been navigated away from — see run()'s
+  // mountedRef check below. Passed down rather than looked up client-side (ASSET_GENERATORS)
+  // since the server component already has it and importing the whole generator registry here
+  // just for a label string would drag every prompt builder into the client bundle for nothing.
+  generatorLabel: string;
   mode: GenerationMode;
   initialContent: string | null;
   initialGenerationId: string | null;
@@ -317,6 +324,23 @@ export default function GenerateClient({
     return () => clearInterval(interval);
   }, [loading, generatingWebinarDeck, generatingScript]);
   const [error, setError] = useState<string | null>(null);
+  // Tracks whether THIS page is still the one on screen — SPA navigation doesn't cancel an
+  // in-flight fetch (see run() below), so a member can click into a different agent mid-
+  // generation and this component unmounts while the request is still running server-side.
+  // run() checks this the moment the fetch resolves: still mounted means the normal inline
+  // result (setContent etc.) is enough, already unmounted means that state update would be a
+  // silent no-op and a toast (reachable from wherever they've since navigated to — sonner's
+  // Toaster lives in the root layout) is the only way they'd ever find out it finished. Same
+  // "don't force-navigate, do notify" pattern as generateWebinarNow/createScriptNow, extended to
+  // every other generator (VSL, Offer Ladder, Ad Copy, ...) so running several agents back to
+  // back during a demo works the same way everywhere, not just the webinar deck/script pair.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   const [copied, setCopied] = useState(false);
   const [copiedForGamma, setCopiedForGamma] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -645,37 +669,56 @@ export default function GenerateClient({
       // no clue anything is actually wrong, let alone why — this used to be reported as the agent
       // just refusing to generate anything.
       if (!data) {
-        setError(
-          `The server didn't respond (HTTP ${res.status}) — this usually means the generation ran past your hosting plan's time limit for a single request. Retrying won't help until that's raised.`
-        );
+        const message = `The server didn't respond (HTTP ${res.status}) — this usually means the generation ran past your hosting plan's time limit for a single request. Retrying won't help until that's raised.`;
+        if (mountedRef.current) setError(message);
+        else toast.error(`${generatorLabel} didn't finish generating: ${message}`);
         return;
       }
       if (!res.ok) {
-        setError(data.error || "Generation failed.");
+        const message = data.error || "Generation failed.";
+        if (mountedRef.current) setError(message);
+        else toast.error(`${generatorLabel} didn't finish generating: ${message}`);
         return;
       }
-      setContent(data.content);
-      setGenerationId(data.generationId);
-      if (assetType === "webinar_outline") setWebinarPromptOpen(true);
-      if (assetType === "ppt_outline") setScriptPromptOpen(true);
-      // A fresh generation is a brand-new row — never already published under this id.
-      setPublishSlug(null);
-      setPublishedAt(null);
-      const previewSource = isWebPageAsset ? stripHtmlTags(String(data.content)) : String(data.content).replace(/\s+/g, " ").trim();
-      setPastGenerations((prev) => [
-        { id: data.generationId, createdAt: new Date().toISOString(), preview: previewSource.slice(0, 120) },
-        ...prev,
-      ]);
-      // A plain browser History API call, not router.replace() — this page reads searchParams
-      // server-side, so router.replace() would force Next.js to re-fetch and re-render the
-      // whole server tree for the route right after we just set the freshly-generated content
-      // in local state, racing against it (and, worse, potentially racing the database write
-      // that just happened — a stale re-read could reflect the row before it finished saving).
-      // All this needs to do is update the address bar so a refresh doesn't lose track of which
-      // generation is showing; it doesn't need — and must not trigger — any re-render.
-      window.history.replaceState(null, "", urlWithGeneration(data.generationId));
+      // Only touch this page's own state (and the address bar) while it's actually the page on
+      // screen — every one of these is either a silent no-op on an unmounted component (the
+      // setState calls) or, worse, actively wrong (window.history.replaceState would silently
+      // rewrite whatever DIFFERENT page's address bar is showing right now to point at this
+      // one, with nothing on screen to match it). Not mounted means the toast below is the
+      // entire notification, not a supplement to it.
+      if (mountedRef.current) {
+        setContent(data.content);
+        setGenerationId(data.generationId);
+        if (assetType === "webinar_outline") setWebinarPromptOpen(true);
+        if (assetType === "ppt_outline") setScriptPromptOpen(true);
+        // A fresh generation is a brand-new row — never already published under this id.
+        setPublishSlug(null);
+        setPublishedAt(null);
+        const previewSource = isWebPageAsset ? stripHtmlTags(String(data.content)) : String(data.content).replace(/\s+/g, " ").trim();
+        setPastGenerations((prev) => [
+          { id: data.generationId, createdAt: new Date().toISOString(), preview: previewSource.slice(0, 120) },
+          ...prev,
+        ]);
+        // A plain browser History API call, not router.replace() — this page reads searchParams
+        // server-side, so router.replace() would force Next.js to re-fetch and re-render the
+        // whole server tree for the route right after we just set the freshly-generated content
+        // in local state, racing against it (and, worse, potentially racing the database write
+        // that just happened — a stale re-read could reflect the row before it finished saving).
+        // All this needs to do is update the address bar so a refresh doesn't lose track of which
+        // generation is showing; it doesn't need — and must not trigger — any re-render.
+        window.history.replaceState(null, "", urlWithGeneration(data.generationId));
+      } else {
+        toast.success(`${generatorLabel} is ready!`, {
+          description: "Keep going with your demo — pick it up whenever you're ready.",
+          action: { label: "View it", onClick: () => router.push(urlWithGeneration(data.generationId)) },
+          duration: 45000,
+        });
+      }
     } catch {
-      setError("Network error — try again.");
+      // A genuine network-level failure (not the non-JSON-response case above, which is handled
+      // separately) — still mounted gets the usual inline banner; already navigated away gets
+      // nothing further, since there's no finished result waiting for them to come back to.
+      if (mountedRef.current) setError("Network error — try again.");
     } finally {
       setLoading(false);
     }

@@ -262,6 +262,7 @@ export default async function GenerateAssetPage({
         key={initialGenerationId ?? "new"}
         projectId={id}
         assetType={generator.assetType}
+        generatorLabel={generator.label}
         mode={project.mode}
         initialContent={initialContent}
         initialGenerationId={initialGenerationId}
