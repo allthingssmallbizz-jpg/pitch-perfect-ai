@@ -16,6 +16,7 @@ import RevokeAccessButton from "./RevokeAccessButton";
 import DeleteMemberButton from "./DeleteMemberButton";
 import ResendCredentialsButton from "./ResendCredentialsButton";
 import SetPasswordForm from "./SetPasswordForm";
+import ImpersonateMemberButton from "./ImpersonateMemberButton";
 
 export default async function AdminPage({
   searchParams,
@@ -525,6 +526,7 @@ export default async function AdminPage({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col items-start gap-1">
+                        {m.id !== user.id && <ImpersonateMemberButton userId={m.id} email={m.email} />}
                         <ResendCredentialsButton userId={m.id} email={m.email} fullName={m.full_name} />
                         <RevokeAccessButton userId={m.id} isActive={isActiveMember} />
                         <DeleteMemberButton userId={m.id} email={m.email} />

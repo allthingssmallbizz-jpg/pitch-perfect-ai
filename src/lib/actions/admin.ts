@@ -2,10 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { randomBytes } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail, buildLoginCredentialsEmail, EmailSendError } from "@/lib/email";
+import { IMPERSONATOR_COOKIE, IMPERSONATOR_COOKIE_MAX_AGE_SECONDS, type ImpersonatorSession } from "@/lib/impersonation";
 import type { Tier } from "@/types/database";
 
 const VALID_TIERS: Tier[] = ["Gold", "Silver", "Platinum", "Founding Member"];
@@ -390,4 +392,102 @@ export async function adminDeleteMember(formData: FormData) {
   }
 
   revalidatePath("/admin");
+}
+
+// "Log in as this member" — opens their account exactly as they see it, with zero password
+// involved: never reset, never asked for, never shown. Mints a real session for them server-side
+// via the service-role admin client's generateLink (an admin-only method that returns a one-time
+// sign-in token WITHOUT emailing or displaying a link anywhere — see the Supabase docs on
+// generateLink) immediately followed by verifyOtp to exchange that token for actual session
+// tokens, all in one request the member never sees or is notified about. The admin's own
+// still-valid session is stashed in a separate httpOnly cookie first (see returnToAdmin below) so
+// switching the browser's normal auth cookies over to the member's session is fully reversible.
+export async function adminImpersonateMember(formData: FormData) {
+  const { supabase: admin, adminUserId } = await requireAdmin();
+  const userId = String(formData.get("userId") || "");
+  if (!userId) return;
+  if (userId === adminUserId) {
+    redirect("/admin?error=cant-impersonate-self");
+  }
+
+  const { data: targetProfile } = await admin.from("profiles").select("email").eq("id", userId).single();
+  if (!targetProfile?.email) {
+    redirect("/admin?error=impersonate-failed");
+  }
+
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email: targetProfile.email,
+  });
+  if (linkError || !linkData?.properties?.hashed_token) {
+    redirect("/admin?error=impersonate-failed");
+  }
+
+  const { data: verified, error: verifyError } = await admin.auth.verifyOtp({
+    type: "magiclink",
+    token_hash: linkData.properties.hashed_token,
+  });
+  if (verifyError || !verified.session) {
+    redirect("/admin?error=impersonate-failed");
+  }
+
+  // The request's own cookie-bound client (not the service-role one above) — reading its current
+  // session BEFORE overwriting anything captures exactly what "Return to admin" needs to restore.
+  const sessionClient = await createClient();
+  const { data: currentSession } = await sessionClient.auth.getSession();
+  if (currentSession.session) {
+    const cookieStore = await cookies();
+    const saved: ImpersonatorSession = {
+      access_token: currentSession.session.access_token,
+      refresh_token: currentSession.session.refresh_token,
+      adminEmail: currentSession.session.user.email ?? "your admin account",
+    };
+    cookieStore.set(IMPERSONATOR_COOKIE, JSON.stringify(saved), {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: IMPERSONATOR_COOKIE_MAX_AGE_SECONDS,
+    });
+  }
+
+  // Swaps the browser's normal Supabase auth cookies over to the member's session — from this
+  // point on, every request in this browser is authenticated as them, not the admin.
+  await sessionClient.auth.setSession({
+    access_token: verified.session.access_token,
+    refresh_token: verified.session.refresh_token,
+  });
+
+  redirect("/dashboard");
+}
+
+// Ends an impersonation session and hands the browser back to the admin's own session — reads
+// the httpOnly cookie adminImpersonateMember stashed (never exposed to client JS, so nothing a
+// member could see or forge), restores it, and clears the cookie either way. Deliberately does
+// NOT go through requireAdmin(): while impersonating, the active session genuinely belongs to a
+// member, so a role check here would just block the one action that's supposed to end it. The
+// httpOnly cookie itself — only ever set by an already-admin-gated action above — is the real
+// authorization: nothing else can produce a valid value for it.
+export async function returnToAdmin() {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get(IMPERSONATOR_COOKIE)?.value;
+  cookieStore.delete(IMPERSONATOR_COOKIE);
+  if (!raw) redirect("/dashboard");
+
+  let saved: ImpersonatorSession | null = null;
+  try {
+    saved = JSON.parse(raw) as ImpersonatorSession;
+  } catch {
+    saved = null;
+  }
+  if (!saved?.access_token || !saved?.refresh_token) redirect("/dashboard");
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.setSession({
+    access_token: saved.access_token,
+    refresh_token: saved.refresh_token,
+  });
+  if (error) redirect("/login");
+
+  redirect("/admin");
 }
