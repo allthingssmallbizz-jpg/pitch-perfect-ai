@@ -91,6 +91,21 @@ export default async function ProjectPage({
   // generator, not loop back to a review of the exact brief you're already looking at — the
   // discovery-first detour only makes sense while there's still something to fill in.
   const discoveryComplete = !projectNeedsDiscovery(project);
+
+  // Landing HERE at all with a real ?intent= is only ever a mid-trip stop — picking a project
+  // for an agent from the sidebar, the dashboard, or the agent's own landing page all route
+  // through here (see ProjectPickerDialog/createProject's projectDestination) so this page can
+  // decide whether discovery needs finishing first. Once it's already done, staying on the
+  // roadmap and making them find and click the matching tool card again is exactly the "why did
+  // clicking an agent land me back on the roadmap" complaint this fixes — the intent already
+  // says which agent they wanted, so go straight there. Bio is already guaranteed complete (or
+  // bypassed) by the redirect above; this only needs to check discovery. A bare visit to this
+  // project (no ?intent=, browsing the roadmap on purpose) is untouched — this only fires when
+  // the visit itself was "get me to a specific agent."
+  if (isValidIntent && intentHref && discoveryComplete) {
+    redirect(intentHref);
+  }
+
   // Shown regardless of whether a save just happened — DiscoveryForm's own "Still need before
   // you can generate" message only appears right after submitting, so someone who filled the
   // brief in across several visits (or missed a dropdown like Awareness level, which has no

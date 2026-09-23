@@ -139,6 +139,22 @@ export default function AppSidebar({ email, displayName, isAdmin, credits, bioIn
   // project" card also routes through.
   const activeCreateType = pathname === "/projects/new" ? searchParams.get("type") : null;
 
+  // "I clicked an agent and it took me to the roadmap instead of the agent" — the sidebar's own
+  // agent links always went to /agents/[type], the project-agnostic landing page, even while
+  // already deep inside a specific project (viewing its roadmap or a different one of its
+  // agents). That page has no way to know which project was meant, so it either shows a picker
+  // (multiple projects) or, previously, always landed on the roadmap regardless (see the
+  // ?intent= redirect just added to projects/[id]/page.tsx) — an extra stop that's completely
+  // avoidable when the URL already says which project this is. Parsed from the path rather than
+  // passed as a prop since the sidebar is shared across every page, not just project ones; "new"
+  // is excluded since /projects/new is mid-creation, not an existing project to route into.
+  const currentProjectMatch = pathname.match(/^\/projects\/([^/]+)/);
+  const currentProjectId =
+    currentProjectMatch && currentProjectMatch[1] !== "new" ? currentProjectMatch[1] : null;
+  function agentHref(type: AgentAssetType): string {
+    return currentProjectId ? `/projects/${currentProjectId}?intent=${type}` : `/agents/${type}`;
+  }
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -262,7 +278,7 @@ export default function AppSidebar({ email, displayName, isAdmin, credits, bioIn
                       isActive={pathname === `/agents/${type}` || activeCreateType === type}
                       tooltip={`Step ${step} — ${agent.name} · ${CREATE_LABELS[type]}`}
                     >
-                      <Link href={`/agents/${type}`}>
+                      <Link href={agentHref(type)}>
                         {!collapsed && (
                           <span
                             aria-hidden
@@ -298,7 +314,7 @@ export default function AppSidebar({ email, displayName, isAdmin, credits, bioIn
                       isActive={pathname === `/agents/${type}` || activeCreateType === type}
                       tooltip={`${agent.name} — ${CREATE_LABELS[type]}`}
                     >
-                      <Link href={`/agents/${type}`}>
+                      <Link href={agentHref(type)}>
                         <AgentIcon agent={agent} />
                         <span className="truncate">
                           {agent.name} <span className="text-muted-foreground">· {CREATE_LABELS[type]}</span>
