@@ -209,7 +209,7 @@ export default async function GenerateAssetPage({
               DiscoveryBlockedDialog's own link below uses) rather than just the project page, so
               it doesn't land above the fold with the brief itself scrolled out of view. */}
           <Link
-            href={`/projects/${id}?intent=${assetType}#discovery-form`}
+            href={`/projects/${id}?intent=${assetType}&view=discovery#discovery-form`}
             className="flex items-center gap-1.5 rounded-full bg-red-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-500"
           >
             <ClipboardList className="h-3.5 w-3.5" />

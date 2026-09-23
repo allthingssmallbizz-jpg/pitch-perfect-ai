@@ -126,7 +126,7 @@ export default async function AdImagePage({
             a complete brief no longer forces a detour through it before this agent opens, so
             this is the way back in to tweak an answer without starting over from the dashboard. */}
         <Link
-          href={`/projects/${id}?intent=ad_image#discovery-form`}
+          href={`/projects/${id}?intent=ad_image&view=discovery#discovery-form`}
           className="flex items-center gap-1.5 rounded-full bg-red-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-500"
         >
           <ClipboardList className="h-3.5 w-3.5" />

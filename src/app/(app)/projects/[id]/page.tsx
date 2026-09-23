@@ -23,10 +23,10 @@ export default async function ProjectPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ intent?: string }>;
+  searchParams: Promise<{ intent?: string; view?: string }>;
 }) {
   const { id } = await params;
-  const { intent } = await searchParams;
+  const { intent, view } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -101,8 +101,13 @@ export default async function ProjectPage({
   // says which agent they wanted, so go straight there. Bio is already guaranteed complete (or
   // bypassed) by the redirect above; this only needs to check discovery. A bare visit to this
   // project (no ?intent=, browsing the roadmap on purpose) is untouched — this only fires when
-  // the visit itself was "get me to a specific agent."
-  if (isValidIntent && intentHref && discoveryComplete) {
+  // the visit itself was "get me to a specific agent." Skipped when ?view=discovery is set — the
+  // "Back to Discovery" button on every agent page (generate/[assetType]/page.tsx, ad-image/
+  // page.tsx) links here with the SAME ?intent= (so DiscoveryEntry's redirectTo still sends a
+  // save back to that agent) specifically to look at the brief, not to be bounced straight back
+  // to the agent it just came from — which is exactly what this redirect would otherwise do the
+  // instant discovery is already complete, i.e. every single time, making the button do nothing.
+  if (isValidIntent && intentHref && discoveryComplete && view !== "discovery") {
     redirect(intentHref);
   }
 
