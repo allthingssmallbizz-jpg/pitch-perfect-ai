@@ -127,7 +127,7 @@ export default async function AdImagePage({
             this is the way back in to tweak an answer without starting over from the dashboard. */}
         <Link
           href={`/projects/${id}?intent=ad_image#discovery-form`}
-          className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+          className="flex items-center gap-1.5 rounded-full bg-red-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-500"
         >
           <ClipboardList className="h-3.5 w-3.5" />
           Back to Discovery
