@@ -153,6 +153,11 @@ export default async function GenerateAssetPage({
   const MATCHING_ASSET_TYPE: Partial<Record<GeneratorAssetType, GeneratorAssetType>> = {
     landing_page: "thank_you_page",
     thank_you_page: "landing_page",
+    // One-directional on purpose: the blueprint (Sarah) is where "is the actual deck done yet?"
+    // comes up, so a link to Your Signature Webinar belongs there once one exists — but
+    // ppt_outline's own matching page is webinar_script (see below), not back to the blueprint
+    // it was built from, so this doesn't get a reverse entry.
+    webinar_outline: "ppt_outline",
     ppt_outline: "webinar_script",
     webinar_script: "ppt_outline",
   };
@@ -219,13 +224,15 @@ export default async function GenerateAssetPage({
             <Link
               href={`/projects/${id}/generate/${matchingPage.assetType}?generationId=${matchingPage.generationId}`}
               className={
-                // Deliberately red-on-white for the Your Webinar <-> Webinar Script toggle
-                // specifically — the request was "I had to go looking for it," and this pair shares
-                // one agent identity across both pages (see the icon-badge comment above), so this
-                // is the one toggle that most needs to visually shout instead of blend in. Landing
+                // Deliberately red-on-white for the Blueprint -> Your Webinar -> Webinar Script
+                // chain specifically — the request was "I had to go looking for it" (and, for the
+                // blueprint -> deck link, "a view webinar tab should be in Agent Sarah"), so these
+                // are the toggles that most need to visually shout instead of blend in. Landing
                 // Page <-> Thank You Page reuses the same matchingPage mechanism but wasn't part of
                 // that complaint, so it keeps its original quieter neutral styling.
-                generator.assetType === "ppt_outline" || generator.assetType === "webinar_script"
+                generator.assetType === "webinar_outline" ||
+                generator.assetType === "ppt_outline" ||
+                generator.assetType === "webinar_script"
                   ? "flex items-center gap-1.5 rounded-full bg-red-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-500"
                   : "flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
               }
