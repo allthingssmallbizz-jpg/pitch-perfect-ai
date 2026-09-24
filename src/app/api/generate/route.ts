@@ -239,6 +239,16 @@ export async function POST(req: NextRequest) {
     const message = err instanceof Error ? err.message : "Generation failed";
     await admin.from("generations").update({ status: "failed", error: message }).eq("id", generationId);
 
-    return NextResponse.json({ error: "Generation failed. You were not charged credits." }, { status: 502 });
+    // The real error used to be swallowed here — saved to the row's own `error` column but
+    // never actually returned, so every failure looked identical ("Generation failed") whether
+    // it was a Claude API refusal, a bad request, a bug in that specific generator's prompt
+    // builder, or something else entirely. That made a member-reported "it's not working" for
+    // one specific agent impossible to diagnose without direct database access. Anthropic SDK
+    // error messages don't carry anything sensitive (rate limits, invalid-request details,
+    // content-policy refusals) — safe to show directly instead of guessing blind.
+    return NextResponse.json(
+      { error: `Generation failed: ${message} You were not charged credits.` },
+      { status: 502 }
+    );
   }
 }
