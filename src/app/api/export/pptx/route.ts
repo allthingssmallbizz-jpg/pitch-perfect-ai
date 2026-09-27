@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getOwnedGeneration } from "@/lib/generations";
 import { parsePptOutline, parseWebinarScriptBySlideNumber } from "@/lib/ai/pptxParser";
-import { buildDeck, resolveTheme } from "@/lib/pptxDeckBuilder";
+import { buildDeck, resolveTheme, type SlideMediaForExport } from "@/lib/pptxDeckBuilder";
 
 export const runtime = "nodejs";
 
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const [{ data: project }, { data: brandVoice }, { data: scriptRow }] = await Promise.all([
+  const [{ data: project }, { data: brandVoice }, { data: scriptRow }, { data: mediaRows }] = await Promise.all([
     generation.project_id
       ? admin.from("projects").select("name").eq("id", generation.project_id).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -73,13 +73,39 @@ export async function GET(req: NextRequest) {
           .limit(1)
           .maybeSingle()
       : Promise.resolve({ data: null }),
+    // Member-added per-slide images/charts (see /api/generations/[id]/slide-media and
+    // slideMedia.ts) — optional, so most generations simply have none of these rows.
+    admin.from("slide_media").select("slide_number, kind, storage_path, chart_type, chart_data, prompt").eq("generation_id", generation.id),
   ]);
 
   const theme = resolveTheme(brandVoice);
   const brandName = project?.name?.trim() || "Pitch Perfect AI";
   const scriptBySlideNumber = scriptRow?.content ? parseWebinarScriptBySlideNumber(scriptRow.content) : undefined;
 
-  const pptx = buildDeck(slides, theme, brandName, scriptBySlideNumber);
+  // Images are stored as raw files in the private slide-images bucket, not inline — fetch each
+  // one's bytes now so buildDeck can embed it directly as base64 (pptxgenjs needs the actual
+  // image data, not a URL). Charts need no fetch at all; their data was already stored inline.
+  const mediaBySlideNumber = new Map<number, SlideMediaForExport>();
+  for (const row of mediaRows ?? []) {
+    if (row.kind === "chart" && row.chart_type && row.chart_data) {
+      const data = row.chart_data as { labels: string[]; values: number[] };
+      mediaBySlideNumber.set(row.slide_number, {
+        kind: "chart",
+        chartType: row.chart_type as "bar" | "line" | "pie",
+        labels: data.labels,
+        values: data.values,
+        title: row.prompt ?? undefined,
+      });
+    } else if (row.kind === "image" && row.storage_path) {
+      const { data: file } = await admin.storage.from("slide-images").download(row.storage_path);
+      if (file) {
+        const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+        mediaBySlideNumber.set(row.slide_number, { kind: "image", base64 });
+      }
+    }
+  }
+
+  const pptx = buildDeck(slides, theme, brandName, scriptBySlideNumber, mediaBySlideNumber);
   const buffer = (await pptx.write({ outputType: "nodebuffer" })) as Buffer;
 
   const filename = generation.asset_type === "course_module_slides" ? "course-module-slides.pptx" : "powerpoint-outline.pptx";

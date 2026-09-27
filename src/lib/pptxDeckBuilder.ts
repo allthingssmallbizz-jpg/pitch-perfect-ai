@@ -1,5 +1,5 @@
 import PptxGenJS from "pptxgenjs";
-import type { ParsedSlide } from "./ai/pptxParser";
+import { classifySlideLayout, type ParsedSlide } from "./ai/pptxParser";
 
 // A real, designed slide theme system — title/section/content/closing layouts, brand colors,
 // decorative shapes, and a consistent footer — instead of one flat layout repeated 60-90 times.
@@ -61,10 +61,13 @@ function textOn(bgHex: string): string {
 const SLIDE_W = 13.33;
 const SLIDE_H = 7.5;
 
-// A phase/day/module opener gets its own bold, full-color divider slide instead of blending into
-// the regular content flow — this is what actually breaks a 60-90 slide deck into a presentation
-// that reads as structured, not a wall of identical slides.
-const SECTION_HEADING = /^(phase\s+\d+|day\s+\d+|part\s+\d+|module\s+\d+)\b/i;
+// A member-added visual for one "content" slide — either an AI-generated illustrative image
+// (base64-encoded, no data-URI prefix — that's added at the addImage call site) or a simple data
+// chart rendered as a real, native, editable PowerPoint chart object via pptxgenjs's own addChart,
+// not a picture of one. See src/lib/ai/generators/slideMedia.ts and the slide_media table.
+export type SlideMediaForExport =
+  | { kind: "image"; base64: string }
+  | { kind: "chart"; chartType: "bar" | "line" | "pie"; labels: string[]; values: number[]; title?: string };
 
 function footer(slide: PptxGenJS.Slide, index: number, total: number, brandName: string, textColor: string, accent: string) {
   slide.addShape("rect", { x: 0, y: SLIDE_H - 0.36, w: SLIDE_W, h: 0.015, fill: { color: accent, transparency: 55 } });
@@ -208,7 +211,8 @@ function addContentSlide(
   theme: DeckTheme,
   index: number,
   total: number,
-  brandName: string
+  brandName: string,
+  media?: SlideMediaForExport
 ): PptxGenJS.Slide {
   const slide = pptx.addSlide();
   const heading = "1A1A2E";
@@ -234,6 +238,11 @@ function addContentSlide(
   });
   slide.addShape("rect", { x: 0.78, y: 1.5, w: 1.5, h: 0.06, fill: { color: theme.accent } });
 
+  // With a member-added image or chart, the bullets column narrows to make room for it on the
+  // right rather than the two overlapping — matches the same layout SlidePreview.tsx shows
+  // in-app, so what a member sees before exporting is what actually ends up in the .pptx.
+  const bulletsWidth = media ? 6.6 : 11.6;
+
   if (parsed.bullets.length > 0) {
     // The prompt asks for "up to 3 bullets" per slide; pptxParser's looksLikeSpokenProse now
     // keeps genuine mislabeled speaker-note paragraphs out of `.bullets` entirely, but this cap
@@ -247,7 +256,7 @@ function addContentSlide(
       {
         x: 0.9,
         y: 1.95,
-        w: 11.6,
+        w: bulletsWidth,
         h: 4.6,
         fontSize: 18,
         color: body,
@@ -259,6 +268,31 @@ function addContentSlide(
         // regardless of how bright the brand's primary color is.
       }
     );
+  }
+
+  if (media) {
+    const box = { x: 7.85, y: 1.95, w: 4.6, h: 4.6 };
+    if (media.kind === "image") {
+      slide.addImage({
+        data: `image/png;base64,${media.base64}`,
+        ...box,
+        sizing: { type: "cover", w: box.w, h: box.h },
+        rounding: true,
+      });
+    } else {
+      slide.addChart(
+        pptx.ChartType[media.chartType],
+        [{ name: media.title || parsed.title, labels: media.labels, values: media.values }],
+        {
+          ...box,
+          chartColors: [theme.primary, theme.accent, theme.outline, theme.secondary],
+          showLegend: media.chartType === "pie",
+          showTitle: false,
+          catAxisLabelColor: body,
+          valAxisLabelColor: body,
+        }
+      );
+    }
   }
 
   footer(slide, index, total, brandName, "8A8A99", theme.outline);
@@ -348,7 +382,8 @@ export function buildDeck(
   slides: ParsedSlide[],
   theme: DeckTheme,
   brandName: string,
-  scriptBySlideNumber?: Map<number, string>
+  scriptBySlideNumber?: Map<number, string>,
+  mediaBySlideNumber?: Map<number, SlideMediaForExport>
 ): PptxGenJS {
   const pptx = new PptxGenJS();
   pptx.defineLayout({ name: "PP_WIDESCREEN", width: SLIDE_W, height: SLIDE_H });
@@ -358,14 +393,15 @@ export function buildDeck(
 
   const total = slides.length;
   slides.forEach((parsed, index) => {
+    const layout = classifySlideLayout(index, total, parsed.title);
     const slide =
-      index === 0
+      layout === "title"
         ? addTitleSlide(pptx, parsed, theme, brandName, total)
-        : index === total - 1
+        : layout === "closing"
           ? addClosingSlide(pptx, parsed, theme, total, brandName)
-          : SECTION_HEADING.test(parsed.title.trim())
+          : layout === "section"
             ? addSectionSlide(pptx, parsed, theme, index, total, brandName)
-            : addContentSlide(pptx, parsed, theme, index, total, brandName);
+            : addContentSlide(pptx, parsed, theme, index, total, brandName, mediaBySlideNumber?.get(parsed.number));
 
     // A completed Webinar Script's own per-slide talk-track is a far fuller, more usable set of
     // presenter notes than the outline's own embedded 1-3 sentence notes — see the export route's

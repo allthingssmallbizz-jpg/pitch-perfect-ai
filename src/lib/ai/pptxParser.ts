@@ -13,6 +13,15 @@ export interface ParsedSlide {
 }
 
 const SLIDE_HEADING = /^#{0,4}\s*\*{0,2}\s*slide\s+(\d+)\s*[:.\-–]?\s*(.*?)\*{0,2}\s*$/i;
+
+// A phase/day/module opener gets its own bold, full-color divider slide in the exported .pptx
+// (see pptxDeckBuilder.ts) instead of blending into the regular content flow. Lives here (a pure,
+// dependency-free file safe to import from either a server route or a "use client" component)
+// rather than in pptxDeckBuilder.ts itself, which pulls in pptxgenjs — a Node-oriented library
+// that has no business in a browser bundle. SlidePreview.tsx's per-slide "Generate image"/"Add
+// chart" buttons need this same classification client-side, kept in sync with the real export by
+// sharing this one function rather than a second copy of the regex.
+const SECTION_HEADING = /^(phase\s+\d+|day\s+\d+|part\s+\d+|module\s+\d+)\b/i;
 const CONTENT_LABEL = /^[-*]?\s*\*{0,2}\s*on-slide content\*{0,2}\s*[:.]?\s*(.*)$/i;
 const NOTES_LABEL = /^[-*]?\s*\*{0,2}\s*speaker notes\*{0,2}\s*[:.]?\s*(.*)$/i;
 const BULLET_LINE = /^\s*[-*•]\s+(.*)$/;
@@ -32,6 +41,19 @@ const SEPARATOR_LINE = /^-{3,}$/;
 function looksLikeSpokenProse(line: string): boolean {
   const sentenceEnders = (line.match(/[.!?](\s|$)/g) ?? []).length;
   return sentenceEnders >= 2 || line.length > 220;
+}
+
+export type SlideLayoutKind = "title" | "section" | "closing" | "content";
+
+// Single source of truth for which of the four .pptx layouts a given slide gets (see
+// pptxDeckBuilder.ts's buildDeck) — and, since only "content" slides have a bullets column to
+// attach a member-added image/chart to, also what the slide-media routes and SlidePreview.tsx use
+// to decide which slides can even offer that option.
+export function classifySlideLayout(index: number, total: number, title: string): SlideLayoutKind {
+  if (index === 0) return "title";
+  if (index === total - 1) return "closing";
+  if (SECTION_HEADING.test(title.trim())) return "section";
+  return "content";
 }
 
 export function parsePptOutline(markdown: string): ParsedSlide[] {

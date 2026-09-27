@@ -360,6 +360,31 @@ export type PageView = {
   created_at: string;
 };
 
+// One item per slide of a Build Module Slides deck (course_module_slides) — either an
+// AI-generated illustrative image or a member-entered data chart, shown in the in-app slide
+// preview (SlidePreview.tsx) and baked into the exported .pptx (pptxDeckBuilder.ts). Only one of
+// storage_path (image) or chart_type/chart_data (chart) is ever set on a given row.
+export type SlideMediaKind = "image" | "chart";
+export type SlideChartType = "bar" | "line" | "pie";
+
+export type SlideChartData = {
+  labels: string[];
+  values: number[];
+};
+
+export type SlideMedia = {
+  id: string;
+  generation_id: string;
+  user_id: string;
+  slide_number: number;
+  kind: SlideMediaKind;
+  storage_path: string | null;
+  chart_type: SlideChartType | null;
+  chart_data: SlideChartData | null;
+  prompt: string | null;
+  created_at: string;
+};
+
 // Minimal Database type shape for @supabase/ssr / @supabase/supabase-js generics.
 // Matches the GenericSchema/GenericTable shape those packages expect (Row/Insert/Update/
 // Relationships, plus Views/Functions on the schema) — see
@@ -387,6 +412,7 @@ export type Database = {
       ghl_connections: Table<GhlConnection>;
       form_leads: Table<FormLead>;
       page_views: Table<PageView>;
+      slide_media: Table<SlideMedia>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

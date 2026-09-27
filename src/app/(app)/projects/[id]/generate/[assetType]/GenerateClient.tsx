@@ -56,6 +56,7 @@ import type { PageStats } from "@/lib/analytics";
 import PageEditPanel from "./PageEditPanel";
 import TextEditPanel from "./TextEditPanel";
 import SlidePreview from "./SlidePreview";
+import { SLIDE_MEDIA_ASSET_TYPES } from "@/lib/ai/generators/slideMedia";
 
 export type PastGeneration = { id: string; createdAt: string; preview: string };
 
@@ -1322,7 +1323,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             <TextEditPanel generationId={generationId} onApplied={handleAiEditApplied} />
           )}
           {isSlideDeckAsset && deckViewMode === "slides" ? (
-            <SlidePreview markdown={content} />
+            <SlidePreview markdown={content} generationId={generationId} mediaEnabled={SLIDE_MEDIA_ASSET_TYPES.includes(assetType)} />
           ) : (
             <RichTextEditor key={editorKey} markdown={content} onChange={handleEditorChange} />
           )}
