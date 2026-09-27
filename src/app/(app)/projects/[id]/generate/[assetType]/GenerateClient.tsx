@@ -310,6 +310,9 @@ export default function GenerateClient({
   const isWebPageAsset = WEB_PAGE_ASSET_TYPES.includes(assetType);
   const downloadFilename = assetType === "thank_you_page" ? "thank-you-page.html" : "landing-page.html";
   const [content, setContent] = useState<string | null>(initialContent);
+  // Forces RichTextEditor to fully remount from fresh content after an AI edit is applied — see
+  // handleAiEditApplied below for why a remount rather than relying on its own sync effect.
+  const [editorKey, setEditorKey] = useState(0);
   const [generationId, setGenerationId] = useState<string | null>(initialGenerationId);
   const [loading, setLoading] = useState(false);
   // Course Outline's own per-generation choice (see courseOutline.ts) — not a saved project fact,
@@ -805,10 +808,19 @@ export default function GenerateClient({
   }
 
   // The edit route already persisted the update directly to the DB row — this just reflects it
-  // in local state, no autosave round-trip needed.
+  // in local state, no autosave round-trip needed. Also bumps editorKey to force RichTextEditor
+  // to fully remount from the fresh content — a member applying a targeted add/remove/change
+  // (TextEditPanel) reported not seeing their update show up in the outline at all; RichTextEditor
+  // has its own effect that's supposed to sync external content changes into the live Tiptap
+  // instance without a remount, but that path had only ever actually been exercised by version
+  // restores before now (PageEditPanel's web-page assets render through an iframe/preview, never
+  // through RichTextEditor, so this exact "external edit lands in the live markdown editor" case
+  // was new). A full remount keyed to the edit itself is the more bulletproof fix — it can't
+  // silently no-op the way a diff-based sync effect could, since there's no diff to get wrong.
   function handleAiEditApplied(newContent: string) {
     setContent(newContent);
     setSaved(false);
+    setEditorKey((k) => k + 1);
   }
 
   async function copyToClipboard() {
@@ -1273,7 +1285,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           {assetType === "course_outline" && generationId && (
             <TextEditPanel generationId={generationId} onApplied={handleAiEditApplied} />
           )}
-          <RichTextEditor markdown={content} onChange={handleEditorChange} />
+          <RichTextEditor key={editorKey} markdown={content} onChange={handleEditorChange} />
         </div>
       )}
 

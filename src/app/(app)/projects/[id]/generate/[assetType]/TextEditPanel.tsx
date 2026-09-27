@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Wand2, Loader2 } from "lucide-react";
+import { Wand2, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TEXT_EDIT_CREDIT_COST } from "@/lib/ai/generators/textEdit";
@@ -21,6 +21,10 @@ export default function TextEditPanel({
 }) {
   const [instruction, setInstruction] = useState("");
   const [applying, setApplying] = useState(false);
+  // A toast alone was easy to miss/not register as "it actually worked, go look" — reported as
+  // "I hit apply but don't see the update." This stays on screen (not timed out) until the next
+  // apply, naming exactly what was requested, so there's no ambiguity about whether it landed.
+  const [lastApplied, setLastApplied] = useState<string | null>(null);
 
   async function handleApply() {
     if (!instruction.trim()) {
@@ -28,7 +32,9 @@ export default function TextEditPanel({
       return;
     }
     setApplying(true);
+    setLastApplied(null);
     try {
+      const appliedInstruction = instruction;
       const res = await fetch(`/api/generations/${generationId}/edit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -39,6 +45,7 @@ export default function TextEditPanel({
 
       onApplied(data.content);
       setInstruction("");
+      setLastApplied(appliedInstruction);
       toast.success("Updated!");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not apply that update.");
@@ -70,6 +77,14 @@ export default function TextEditPanel({
           {applying ? "Working..." : `Apply update (${TEXT_EDIT_CREDIT_COST} credits)`}
         </Button>
       </div>
+      {lastApplied && (
+        <div className="mt-3 flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400">
+          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            Updated: &quot;{lastApplied}&quot; — scroll down to see the change reflected in the course below.
+          </span>
+        </div>
+      )}
     </div>
   );
 }
