@@ -55,12 +55,19 @@ import { getPublicSiteUrl } from "@/lib/publishing";
 import type { PageStats } from "@/lib/analytics";
 import PageEditPanel from "./PageEditPanel";
 import TextEditPanel from "./TextEditPanel";
+import SlidePreview from "./SlidePreview";
 
 export type PastGeneration = { id: string; createdAt: string; preview: string };
 
 // Cora's three "one module at a time" generators — each needs a "which module?" input before it
 // can run at all (see moduleIdentifier state below), unlike every other agent's plain Generate.
 const MODULE_SCOPED_ASSET_TYPES: AssetType[] = ["course_module_slides", "course_module_quiz", "course_module_workbook"];
+
+// Both write markdown in the exact same "Slide #: Title / On-slide content / Speaker notes" shape
+// (see pptOutline.ts and courseModuleSlides.ts) that parsePptOutline and the real .pptx export
+// already parse — the visual slide-by-slide preview below (SlidePreview.tsx) reuses that same
+// parser rather than a second format.
+const SLIDE_DECK_ASSET_TYPES: AssetType[] = ["ppt_outline", "course_module_slides"];
 
 // Landing Page and Thank You Page are the generators whose content is a real HTML document, not
 // markdown — used both to build a clean preview snippet (raw tags would otherwise show up as
@@ -308,6 +315,7 @@ export default function GenerateClient({
     return genId ? `${pathname}?generationId=${genId}` : pathname;
   }
   const isWebPageAsset = WEB_PAGE_ASSET_TYPES.includes(assetType);
+  const isSlideDeckAsset = SLIDE_DECK_ASSET_TYPES.includes(assetType);
   const downloadFilename = assetType === "thank_you_page" ? "thank-you-page.html" : "landing-page.html";
   const [content, setContent] = useState<string | null>(initialContent);
   // Forces RichTextEditor to fully remount from fresh content after an AI edit is applied — see
@@ -376,6 +384,10 @@ export default function GenerateClient({
   // buildEditableHtml); "html" is the raw-source textarea, the power-user fallback.
   const [viewMode, setViewMode] = useState<"preview" | "inline" | "html">("preview");
   const inlineIframeRef = useRef<HTMLIFrameElement>(null);
+  // Slide-deck assets (Your Signature Webinar, Build Module Slides) default to the visual
+  // slide-by-slide preview (SlidePreview.tsx) rather than the raw markdown editor — "text" is the
+  // fallback for anyone who wants to read/edit the underlying content directly.
+  const [deckViewMode, setDeckViewMode] = useState<"slides" | "text">("slides");
 
   const colorVars = useMemo(() => (content && isWebPageAsset ? extractCssColorVars(content) : null), [content, isWebPageAsset]);
   // One undo stack per CSS color variable (keyed by "--pp-primary" etc.) — a plain array of
@@ -1034,6 +1046,30 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
                 </button>
               </div>
             )}
+            {isSlideDeckAsset && (
+              <div className="ml-auto flex overflow-hidden rounded-md border border-border">
+                <button
+                  type="button"
+                  onClick={() => setDeckViewMode("slides")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm ${
+                    deckViewMode === "slides" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Eye className="h-4 w-4" />
+                  Slides
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeckViewMode("text")}
+                  className={`flex items-center gap-1.5 border-l border-border px-3 py-1.5 text-sm ${
+                    deckViewMode === "text" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Code2 className="h-4 w-4" />
+                  Text
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -1285,7 +1321,11 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           {assetType === "course_outline" && generationId && (
             <TextEditPanel generationId={generationId} onApplied={handleAiEditApplied} />
           )}
-          <RichTextEditor key={editorKey} markdown={content} onChange={handleEditorChange} />
+          {isSlideDeckAsset && deckViewMode === "slides" ? (
+            <SlidePreview markdown={content} />
+          ) : (
+            <RichTextEditor key={editorKey} markdown={content} onChange={handleEditorChange} />
+          )}
         </div>
       )}
 
