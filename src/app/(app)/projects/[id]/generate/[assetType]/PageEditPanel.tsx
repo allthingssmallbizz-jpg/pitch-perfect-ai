@@ -135,7 +135,9 @@ export default function PageEditPanel({
       </p>
       <p className="mb-3 text-xs text-muted-foreground">
         Describe exactly what you want changed — a headline, a section, a color, adding a photo —
-        and it&apos;ll be applied to the page above. Everything else stays exactly as it is.
+        and it&apos;ll be applied to the page above. Everything else stays exactly as it is. Heads
+        up: hitting <strong>Regenerate</strong> later starts this page over completely fresh from
+        your Discovery brief and will lose any update made here.
       </p>
       <Textarea
         value={instruction}

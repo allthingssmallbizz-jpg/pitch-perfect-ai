@@ -329,6 +329,10 @@ export default function GenerateClient({
   // Forces RichTextEditor to fully remount from fresh content after an AI edit is applied — see
   // handleAiEditApplied below for why a remount rather than relying on its own sync effect.
   const [editorKey, setEditorKey] = useState(0);
+  // True once a targeted "Add, remove, or change something" (or inline page) edit has been
+  // applied to the currently-open generation — Regenerate's click handler warns before discarding
+  // it, since a full regenerate has no way to carry it forward (see handleAiEditApplied).
+  const [hasAppliedEdit, setHasAppliedEdit] = useState(false);
   const [generationId, setGenerationId] = useState<string | null>(initialGenerationId);
   const [loading, setLoading] = useState(false);
   // Course Outline's own per-generation choice (see courseOutline.ts) — not a saved project fact,
@@ -748,6 +752,9 @@ export default function GenerateClient({
       if (mountedRef.current) {
         setContent(data.content);
         setGenerationId(data.generationId);
+        // A brand-new generation has no edit applied to it yet — whatever was true of the
+        // previous one this just replaced no longer applies.
+        setHasAppliedEdit(false);
         if (assetType === "webinar_outline") setWebinarPromptOpen(true);
         if (assetType === "ppt_outline") setScriptPromptOpen(true);
         // A fresh generation is a brand-new row — never already published under this id.
@@ -864,6 +871,12 @@ export default function GenerateClient({
     setContent(newContent);
     setSaved(false);
     setEditorKey((k) => k + 1);
+    // Regenerate rebuilds this asset entirely fresh from the project's Discovery brief — it has
+    // no memory of a targeted edit applied afterward, since that edit only ever touched this one
+    // generation's saved content, never Discovery itself. Tracked so Regenerate's own click
+    // handler below can warn before silently throwing an edit away (see the reported "I added a
+    // framework, hit Regenerate, and it was just gone" bug).
+    setHasAppliedEdit(true);
   }
 
   async function copyToClipboard() {
@@ -980,7 +993,25 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
         </div>
       )}
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Button onClick={() => run()} disabled={loading}>
+        <Button
+          onClick={() => {
+            // Regenerate rebuilds this entirely fresh from the project's Discovery brief — it has
+            // no way to carry forward a targeted "Add, remove, or change something" edit, since
+            // that edit only ever touched this one generation's saved content, not Discovery
+            // itself. Reported as "I added a framework, hit Regenerate, and it just disappeared" —
+            // this is the warning that should have caught it before it happened silently.
+            if (
+              hasAppliedEdit &&
+              !window.confirm(
+                "Regenerating rebuilds this completely fresh from your Discovery brief — any changes you made in \"Add, remove, or change something\" will be lost and can't be recovered from here. Continue?"
+              )
+            ) {
+              return;
+            }
+            run();
+          }}
+          disabled={loading}
+        >
           <Sparkles className="mr-2 h-4 w-4" />
           {loading ? "Generating..." : content ? "Regenerate" : "Generate"}
         </Button>

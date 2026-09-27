@@ -63,6 +63,10 @@ export default function TextEditPanel({
       <p className="mb-3 text-xs text-muted-foreground">
         Tell Cora exactly what to add, take out, or change in the course above — a whole module, a
         specific lesson, a rename — and only that changes. Everything else stays exactly as it is.
+        Heads up: this only changes what&apos;s shown above — hitting <strong>Regenerate</strong>{" "}
+        later starts over completely fresh from your Discovery brief and will lose it. For a change
+        you want to stick permanently (and also show up in every module&apos;s slides/quiz/workbook),
+        add it to this project&apos;s Discovery Notes instead.
       </p>
       <Textarea
         value={instruction}
