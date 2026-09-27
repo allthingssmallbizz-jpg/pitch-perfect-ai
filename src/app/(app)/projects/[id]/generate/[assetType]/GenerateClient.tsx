@@ -53,6 +53,7 @@ import { downloadHtmlFile, openInBrowserTab } from "@/lib/browserFile";
 import { getPublicSiteUrl } from "@/lib/publishing";
 import type { PageStats } from "@/lib/analytics";
 import PageEditPanel from "./PageEditPanel";
+import TextEditPanel from "./TextEditPanel";
 
 export type PastGeneration = { id: string; createdAt: string; preview: string };
 
@@ -1228,6 +1229,9 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
       {content && !isWebPageAsset && (
         <div className="space-y-4">
           <TtsPlayer text={content} />
+          {assetType === "course_outline" && generationId && (
+            <TextEditPanel generationId={generationId} onApplied={handleAiEditApplied} />
+          )}
           <RichTextEditor markdown={content} onChange={handleEditorChange} />
         </div>
       )}

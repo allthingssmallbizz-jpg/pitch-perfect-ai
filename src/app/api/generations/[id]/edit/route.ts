@@ -6,7 +6,15 @@ import { checkGuardrails, decrementCredits } from "@/lib/credits";
 import { generateCompleteAsset } from "@/lib/ai/anthropic";
 import { WEB_PAGE_ASSET_TYPES, stripHtmlCodeFence } from "@/lib/ai/generators/htmlPage";
 import { buildPageEditPrompt, PAGE_EDIT_CREDIT_COST, PAGE_EDIT_MAX_OUTPUT_TOKENS } from "@/lib/ai/generators/pageEdit";
+import { buildTextEditPrompt, TEXT_EDIT_CREDIT_COST, TEXT_EDIT_MAX_OUTPUT_TOKENS } from "@/lib/ai/generators/textEdit";
 import { parseVideoEmbedUrl, upsertVideoEmbed, removeVideoEmbed } from "@/lib/videoEmbed";
+
+// Asset types that can use the plain markdown edit path below (in addition to the HTML-page path
+// every asset in WEB_PAGE_ASSET_TYPES already had) — an explicit allowlist rather than "anything
+// not a web page," since some markdown generators (a structured JSON-ish output, a very short
+// asset) might not be a good fit for a freeform "add/remove" edit without more thought. Course
+// Outline is the first; nothing structural stops adding another generator here later.
+const TEXT_EDITABLE_ASSET_TYPES = ["course_outline"];
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -41,8 +49,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if ("error" in owned) return NextResponse.json({ error: owned.error }, { status: owned.status });
 
   const { userId, generation } = owned;
-  if (!WEB_PAGE_ASSET_TYPES.includes(generation.asset_type)) {
-    return NextResponse.json({ error: "Only Landing Pages and Thank You Pages can be edited this way." }, { status: 400 });
+  const isWebPageAsset = WEB_PAGE_ASSET_TYPES.includes(generation.asset_type);
+  const isTextEditableAsset = TEXT_EDITABLE_ASSET_TYPES.includes(generation.asset_type);
+  if (!isWebPageAsset && !isTextEditableAsset) {
+    return NextResponse.json({ error: "This asset type can't be edited this way." }, { status: 400 });
   }
   if (!generation.content?.trim()) {
     return NextResponse.json({ error: "Nothing generated yet." }, { status: 400 });
@@ -51,6 +61,52 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const parsed = requestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request." }, { status: 400 });
+  }
+
+  // The plain markdown path (Course Outline, etc.) has none of the image/video machinery below —
+  // just a text instruction describing what to add, remove, or change. Handled as its own short
+  // branch rather than threaded through the web-page logic beneath, since none of that (photo
+  // upload, video embed markers, CSS variable protection) means anything for a markdown document.
+  if (isTextEditableAsset) {
+    const instruction = parsed.data.instruction.trim();
+    if (!instruction) {
+      return NextResponse.json({ error: "Describe what to add, remove, or change first." }, { status: 400 });
+    }
+
+    const guardrail = await checkGuardrails(userId, TEXT_EDIT_CREDIT_COST);
+    if (!guardrail.ok) {
+      return NextResponse.json({ error: guardrail.message, reason: guardrail.reason }, { status: 429 });
+    }
+
+    const admin = createAdminClient();
+    try {
+      const prompt = buildTextEditPrompt(generation.content, instruction);
+      const result = await generateCompleteAsset(
+        "You are a precise editor. You make exactly the change requested and leave everything else untouched.",
+        prompt,
+        TEXT_EDIT_MAX_OUTPUT_TOKENS
+      );
+
+      const { error: updateError } = await admin
+        .from("generations")
+        .update({
+          content: result.content,
+          model: result.model,
+          input_tokens: generation.input_tokens + result.inputTokens,
+          output_tokens: generation.output_tokens + result.outputTokens,
+          cost_usd: generation.cost_usd + result.costUsd,
+        })
+        .eq("id", id);
+      if (updateError) throw new Error("Could not save the update.");
+
+      await recordGenerationVersion(id, userId, result.content, "edit", `Update: ${instruction.slice(0, 80)}`);
+      await decrementCredits(userId, TEXT_EDIT_CREDIT_COST);
+
+      return NextResponse.json({ content: result.content, creditsCharged: TEXT_EDIT_CREDIT_COST });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not apply that update.";
+      return NextResponse.json({ error: message }, { status: 502 });
+    }
   }
 
   let workingContent = generation.content;
