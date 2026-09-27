@@ -899,7 +899,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
               <Copy className="mr-2 h-4 w-4" />
               {copied ? "Copied!" : "Copy"}
             </Button>
-            {assetType === "ppt_outline" && (
+            {(assetType === "ppt_outline" || assetType === "course_module_slides") && (
               <Button
                 variant="outline"
                 onClick={copyForGamma}
@@ -964,7 +964,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
                         Export .docx
                       </a>
                     </Button>
-                    {assetType === "ppt_outline" && (
+                    {(assetType === "ppt_outline" || assetType === "course_module_slides") && (
                       <Button variant="outline" asChild>
                         <a href={`/api/export/pptx?generationId=${generationId}`}>
                           <FileDown className="mr-2 h-4 w-4" />
@@ -1015,7 +1015,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
         )}
       </div>
 
-      {assetType === "ppt_outline" && content && (
+      {(assetType === "ppt_outline" || assetType === "course_module_slides") && content && (
         <p className="mb-4 -mt-2 text-xs text-muted-foreground">
           Heads up: <strong>Copy</strong> grabs this raw text as-is — on-slide content and speaker
           notes together, with no separation. Use <strong>Export .pptx (designed deck)</strong> for

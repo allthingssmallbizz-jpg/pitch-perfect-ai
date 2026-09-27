@@ -14,6 +14,13 @@ export const runtime = "nodejs";
 // project as the notes source when one exists — see the scriptRow query below. Only meaningful for
 // asset_type "ppt_outline" (its markdown structure is what parsePptOutline expects); every other
 // asset type still exports through PDF/.docx.
+//
+// Build Module Slides (Agent Cora's course-module teaching decks) reuses this same route —
+// its markdown deliberately uses the identical "Slide #: Title" / "On-slide content" /
+// "Speaker notes" labels parsePptOutline expects (see courseModuleSlides.ts), so no separate
+// parser or deck builder was needed, just letting this asset type through the check below.
+const PPTX_EXPORTABLE_ASSET_TYPES = ["ppt_outline", "course_module_slides"];
+
 export async function GET(req: NextRequest) {
   const generationId = req.nextUrl.searchParams.get("generationId");
   if (!generationId) return NextResponse.json({ error: "Missing generationId" }, { status: 400 });
@@ -25,8 +32,11 @@ export async function GET(req: NextRequest) {
   if (!generation.content) {
     return NextResponse.json({ error: "Nothing to export yet." }, { status: 400 });
   }
-  if (generation.asset_type !== "ppt_outline") {
-    return NextResponse.json({ error: "Slide export is only available for Your Signature Webinar decks." }, { status: 400 });
+  if (!PPTX_EXPORTABLE_ASSET_TYPES.includes(generation.asset_type)) {
+    return NextResponse.json(
+      { error: "Slide export is only available for Your Signature Webinar decks and Course Module Slides." },
+      { status: 400 }
+    );
   }
 
   const slides = parsePptOutline(generation.content);
@@ -48,8 +58,11 @@ export async function GET(req: NextRequest) {
     // real PowerPoint speaker notes automatically — the whole point of generating a proper script
     // is that nobody has to manually copy/paste it into the Notes pane themselves afterward. Falls
     // back to the deck's own short embedded notes (parsePptOutline's `.notes`) per slide when
-    // there's no script yet.
-    generation.project_id
+    // there's no script yet. Only meaningful for ppt_outline itself — Webinar Script is Your
+    // Signature Webinar's own pair, not Build Module Slides', and a project can genuinely have
+    // both a webinar AND a course going at once, so this must not attach one asset's script onto
+    // the other's totally unrelated module deck.
+    generation.project_id && generation.asset_type === "ppt_outline"
       ? admin
           .from("generations")
           .select("content")
@@ -69,10 +82,12 @@ export async function GET(req: NextRequest) {
   const pptx = buildDeck(slides, theme, brandName, scriptBySlideNumber);
   const buffer = (await pptx.write({ outputType: "nodebuffer" })) as Buffer;
 
+  const filename = generation.asset_type === "course_module_slides" ? "course-module-slides.pptx" : "powerpoint-outline.pptx";
+
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      "Content-Disposition": `attachment; filename="powerpoint-outline.pptx"`,
+      "Content-Disposition": `attachment; filename="${filename}"`,
     },
   });
 }
