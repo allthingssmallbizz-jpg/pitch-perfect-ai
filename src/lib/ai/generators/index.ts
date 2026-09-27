@@ -33,6 +33,8 @@ import {
   buildCourseModuleSlidesPrompt,
   COURSE_MODULE_SLIDES_CREDIT_COST,
   COURSE_MODULE_SLIDES_MAX_OUTPUT_TOKENS,
+  isCourseModuleSlidesIncomplete,
+  COURSE_MODULE_SLIDES_CONTINUATION_HINT,
 } from "./courseModuleSlides";
 export { WEB_PAGE_ASSET_TYPES } from "./htmlPage";
 export { COURSE_LEVELS, isCourseLevel, type CourseLevel } from "./courseOutline";
@@ -217,6 +219,8 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
     // module to build arrive via extra instead. See BuildPromptExtra above.
     buildPrompt: (project, _priorGenerations, extra) =>
       buildCourseModuleSlidesPrompt(project, extra?.courseOutlineFullContent ?? "", extra?.moduleIdentifier ?? ""),
+    isOutputIncomplete: isCourseModuleSlidesIncomplete,
+    continuationHint: COURSE_MODULE_SLIDES_CONTINUATION_HINT,
   },
 };
 

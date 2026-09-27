@@ -1,8 +1,26 @@
 import type { Project } from "@/types/database";
 import { formatDiscoveryBlock } from "./shared";
+import { parsePptOutline } from "../pptxParser";
 
 export const COURSE_MODULE_SLIDES_CREDIT_COST = 5;
 export const COURSE_MODULE_SLIDES_MAX_OUTPUT_TOKENS = 8000;
+
+// A real module deck runs 8-20 slides per the prompt's own target range — this floor sits well
+// below the bottom of that range on purpose (not right up against it), the same reasoning as
+// PPT_OUTLINE_MIN_ACCEPTABLE_SLIDES: it's meant to catch a genuine failure (Claude compressing
+// several lessons into one or two slides and stopping well short, the same real bug that
+// motivated that constant — see its own comment) without false-triggering on a legitimately
+// short, simple module that lands at 6-7 slides. Reuses parsePptOutline directly rather than a
+// separate parser, since this generator's own prompt deliberately outputs the identical "Slide
+// #: Title" / "On-slide content" / "Speaker notes" format (see buildCourseModuleSlidesPrompt).
+export const COURSE_MODULE_SLIDES_MIN_ACCEPTABLE_SLIDES = 5;
+
+export function isCourseModuleSlidesIncomplete(content: string): boolean {
+  return parsePptOutline(content).length < COURSE_MODULE_SLIDES_MIN_ACCEPTABLE_SLIDES;
+}
+
+export const COURSE_MODULE_SLIDES_CONTINUATION_HINT =
+  "You stopped short of a genuinely thorough deck for this one module — it is not done yet. Keep writing through the rest of this module's sub-modules and lessons (teaching content, then each lesson's action-step slide, then the final wrap-up slide) with the same one-slide-per-real-teaching-point pacing as before, not one slide per sub-module.";
 
 // Course Outline's own "Sarah -> Polly" step: the outline is the strategic curriculum skeleton
 // (module -> sub-module -> lesson beats), not the finished, presentable material — this is what
