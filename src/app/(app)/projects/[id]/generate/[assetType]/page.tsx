@@ -40,6 +40,15 @@ export default async function GenerateAssetPage({
   // actually navigated in (My Websites, the sidebar, the matching-page toggle below, a fresh
   // "Generate matching Thank You Page"). Every other asset type still belongs to its project.
   const isWebPageAsset = WEB_PAGE_ASSET_TYPES.includes(generator.assetType);
+  // Cora's three "one module at a time" tools belong to the Course Outline they were built
+  // from, not the project overview — landing on the roadmap instead of back inside Cora meant
+  // finding the agent again from the sidebar/dashboard just to pick up where you left off. Their
+  // back link returns straight to the outline instead, the same way web-page assets return to
+  // My Websites rather than the project. Course Outline itself keeps the normal project back link.
+  const isCourseModuleAsset =
+    generator.assetType === "course_module_slides" ||
+    generator.assetType === "course_module_quiz" ||
+    generator.assetType === "course_module_workbook";
 
   const supabase = await createClient();
   const {
@@ -200,8 +209,17 @@ export default async function GenerateAssetPage({
           dismissible={bypassActive}
         />
       )}
-      <Link href={isWebPageAsset ? "/websites" : `/projects/${id}`} className="text-sm text-primary hover:underline">
-        ← {isWebPageAsset ? "My Websites" : project.name}
+      <Link
+        href={
+          isWebPageAsset
+            ? "/websites"
+            : isCourseModuleAsset
+              ? `/projects/${id}/generate/course_outline`
+              : `/projects/${id}`
+        }
+        className="text-sm text-primary hover:underline"
+      >
+        ← {isWebPageAsset ? "My Websites" : isCourseModuleAsset ? "Course Outline" : project.name}
       </Link>
       <div className="mt-4 mb-1 flex flex-wrap items-center justify-between gap-3">
         <AgentBadge agent={agent} size="lg" showTagline />
