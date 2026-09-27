@@ -305,6 +305,10 @@ export default function GenerateClient({
   const [content, setContent] = useState<string | null>(initialContent);
   const [generationId, setGenerationId] = useState<string | null>(initialGenerationId);
   const [loading, setLoading] = useState(false);
+  // Course Outline's own per-generation choice (see courseOutline.ts) — not a saved project fact,
+  // since a member may reasonably want a Basic AND an Advanced version of the same course.
+  // Harmless to hold on every other agent's page too; it's simply never read there.
+  const [courseLevel, setCourseLevel] = useState<"Basic" | "Intermediate" | "Advanced">("Intermediate");
   // Longer generators (PPT Outline's 60-90 slides especially) can genuinely take a few minutes —
   // Claude auto-continues in several sequential calls once it hits the per-call output cap. With
   // no feedback beyond a static "Building..." message, a run that's still legitimately working
@@ -658,7 +662,7 @@ export default function GenerateClient({
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, assetType, mode }),
+        body: JSON.stringify({ projectId, assetType, mode, courseLevel }),
       });
       const data = await res.json().catch(() => null);
       // A non-JSON response (data === null) means the platform cut the request off before the
@@ -811,6 +815,24 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
 
   return (
     <div>
+      {assetType === "course_outline" && (
+        <div className="mb-3">
+          <label htmlFor="course-level" className="mb-1 block text-xs font-medium text-muted-foreground">
+            Course level
+          </label>
+          <select
+            id="course-level"
+            value={courseLevel}
+            onChange={(e) => setCourseLevel(e.target.value as "Basic" | "Intermediate" | "Advanced")}
+            disabled={loading}
+            className="h-9 w-[220px] rounded-md border border-input bg-input/30 px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <option value="Basic">Basic — zero experience assumed</option>
+            <option value="Intermediate">Intermediate — knows the basics</option>
+            <option value="Advanced">Advanced — already competent</option>
+          </select>
+        </div>
+      )}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Button onClick={run} disabled={loading}>
           <Sparkles className="mr-2 h-4 w-4" />

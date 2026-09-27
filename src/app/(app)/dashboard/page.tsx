@@ -17,6 +17,7 @@ import {
   PartyPopper,
   Flag,
   ScrollText,
+  GraduationCap,
   type LucideIcon,
 } from "lucide-react";
 import { Undo2 } from "lucide-react";
@@ -61,6 +62,7 @@ const DELIVERABLE_TYPES: GeneratorAssetType[] = [
   "email_sequence",
   "ad_copy",
   "offer_ladder",
+  "course_outline",
 ];
 
 const DELIVERABLE_ICONS: Record<GeneratorAssetType, LucideIcon> = {
@@ -75,6 +77,7 @@ const DELIVERABLE_ICONS: Record<GeneratorAssetType, LucideIcon> = {
   email_sequence: Mail,
   ad_copy: Megaphone,
   offer_ladder: Layers,
+  course_outline: GraduationCap,
 };
 
 export default async function DashboardPage() {

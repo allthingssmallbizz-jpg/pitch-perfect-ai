@@ -27,7 +27,8 @@ export type AssetType =
   | "thank_you_page"
   | "challenge_outline"
   | "ihelp_builder"
-  | "webinar_script";
+  | "webinar_script"
+  | "course_outline";
 
 export type PresentationType =
   | "webinar"

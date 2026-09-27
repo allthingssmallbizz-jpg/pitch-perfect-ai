@@ -32,6 +32,11 @@ const requestSchema = z.object({
   projectId: z.string().uuid(),
   assetType: z.enum(ASSET_TYPES as [string, ...string[]]),
   mode: z.enum(["coach", "expert"] as const),
+  // Course Outline's own per-generation level choice (Basic/Intermediate/Advanced) — loosely
+  // validated here since an unrecognized value just falls back to a sensible default inside
+  // ASSET_GENERATORS.course_outline's buildPrompt (see courseOutline.ts). Ignored entirely by
+  // every other generator.
+  courseLevel: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -49,10 +54,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { projectId, assetType, mode } = parsed.data as {
+  const { projectId, assetType, mode, courseLevel } = parsed.data as {
     projectId: string;
     assetType: keyof typeof ASSET_GENERATORS;
     mode: GenerationMode;
+    courseLevel?: string;
   };
 
   const generator = ASSET_GENERATORS[assetType];
@@ -186,7 +192,7 @@ export async function POST(req: NextRequest) {
       priorGenerations.push({ assetType: row.asset_type, content: row.content! });
     }
 
-    const userPrompt = generator.buildPrompt(project, priorGenerations);
+    const userPrompt = generator.buildPrompt(project, priorGenerations, { courseLevel });
 
     const result = await generateCompleteAsset(
       systemPrompt,

@@ -23,7 +23,14 @@ import {
   isWebinarScriptIncomplete,
   WEBINAR_SCRIPT_CONTINUATION_HINT,
 } from "./webinarScript";
+import {
+  buildCourseOutlinePrompt,
+  COURSE_OUTLINE_CREDIT_COST,
+  COURSE_OUTLINE_MAX_OUTPUT_TOKENS,
+  isCourseLevel,
+} from "./courseOutline";
 export { WEB_PAGE_ASSET_TYPES } from "./htmlPage";
+export { COURSE_LEVELS, isCourseLevel, type CourseLevel } from "./courseOutline";
 
 // Excludes "presentation_analysis" and "headline_lab" — neither is driven by a project's
 // discovery fields (their input is pasted content / a topic brief), so they aren't part
@@ -51,13 +58,21 @@ export type GeneratorAssetType = Exclude<
   | "ihelp_builder"
 >;
 
+// Every generator's buildPrompt shares this same (project, priorGenerations) shape except
+// Course Outline, which also takes a per-generation level choice (Basic/Intermediate/Advanced —
+// see courseOutline.ts) that isn't a permanent fact about the project the way discovery fields
+// are, since a member may reasonably want a Basic AND an Advanced version of the same course.
+// Declared as a generic optional third param rather than a parallel interface so every other
+// generator's existing (project, prior) => string function stays valid here unchanged.
+type BuildPromptExtra = { courseLevel?: string };
+
 export interface AssetGenerator {
   assetType: GeneratorAssetType;
   label: string;
   description: string;
   creditCost: number;
   maxOutputTokens: number;
-  buildPrompt: (project: Project, priorGenerations: PriorGeneration[]) => string;
+  buildPrompt: (project: Project, priorGenerations: PriorGeneration[], extra?: BuildPromptExtra) => string;
   // Optional extra completeness check passed through to generateCompleteAsset (anthropic.ts) —
   // for a generator with a hard, checkable length requirement the prompt alone can't reliably
   // enforce (PPT Outline's 60-90 slides), this catches Claude stopping on its own well short of
@@ -158,6 +173,21 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
     buildPrompt: buildWebinarScriptPrompt,
     isOutputIncomplete: isWebinarScriptIncomplete,
     continuationHint: WEBINAR_SCRIPT_CONTINUATION_HINT,
+  },
+  course_outline: {
+    assetType: "course_outline",
+    label: "Course Outline",
+    description: "Module-by-module transformational course curriculum — Basic, Intermediate, or Advanced.",
+    creditCost: COURSE_OUTLINE_CREDIT_COST,
+    maxOutputTokens: COURSE_OUTLINE_MAX_OUTPUT_TOKENS,
+    // Adapts the generic (project, prior, extra?) shape every other generator ignores into
+    // buildCourseOutlinePrompt's own cleanly-typed CourseLevel param — see BuildPromptExtra above.
+    buildPrompt: (project, priorGenerations, extra) =>
+      buildCourseOutlinePrompt(
+        project,
+        priorGenerations,
+        extra?.courseLevel && isCourseLevel(extra.courseLevel) ? extra.courseLevel : undefined
+      ),
   },
 };
 

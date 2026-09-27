@@ -77,6 +77,7 @@ const OTHER_ASSET_TYPES: Exclude<AgentAssetType, "presentation_analysis">[] = [
   "webinar_script",
   "ad_copy",
   "offer_ladder",
+  "course_outline",
 ];
 
 type CreateAssetType = (typeof CORE_PATH_ASSET_TYPES)[number] | (typeof OTHER_ASSET_TYPES)[number];
@@ -99,6 +100,7 @@ const CREATE_LABELS: Record<CreateAssetType, string> = {
   email_sequence: "Emails",
   ad_copy: "Ad Copy",
   offer_ladder: "Offer Ladder",
+  course_outline: "Course Outline",
 };
 
 // The same robot-mascot avatar AgentBadge uses elsewhere (see getAgentAvatarDataUri), just at
