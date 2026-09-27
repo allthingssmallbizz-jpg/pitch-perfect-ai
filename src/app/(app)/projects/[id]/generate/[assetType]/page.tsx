@@ -8,6 +8,7 @@ import { projectNeedsDiscovery, REQUIRED_DISCOVERY_FIELDS } from "@/lib/projects
 import { isPresenterBioIncomplete } from "@/lib/ai/presenterBio";
 import { isRestrictionBypassActive } from "@/lib/adminBypass";
 import { getPageStats, type PageStats } from "@/lib/analytics";
+import { parseCourseModuleList, type CourseModuleRef } from "@/lib/ai/courseModules";
 import AgentBadge from "@/components/AgentBadge";
 import BioBlockedDialog from "@/components/BioBlockedDialog";
 import DiscoveryBlockedDialog from "@/components/DiscoveryBlockedDialog";
@@ -193,6 +194,25 @@ export default async function GenerateAssetPage({
     initialStats = await getPageStats(supabase, initialGenerationId);
   }
 
+  // Cora's three "one module at a time" tools used to make a member type the module's name/number
+  // by hand every single time — easy to typo, and gave no sense of "which modules have I already
+  // built, which one's next." Pulling the real module list out of this project's own Course
+  // Outline turns that into a dropdown of the actual modules, and is what the "Build the next
+  // module" button (GenerateClient.tsx) uses to know what comes after whichever one is selected.
+  let courseModules: CourseModuleRef[] = [];
+  if (isCourseModuleAsset) {
+    const { data: outline } = await supabase
+      .from("generations")
+      .select("content")
+      .eq("project_id", id)
+      .eq("asset_type", "course_outline")
+      .eq("status", "complete")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (outline?.content) courseModules = parseCourseModuleList(outline.content);
+  }
+
   const agent = AGENTS[generator.assetType];
 
   return (
@@ -328,6 +348,7 @@ export default async function GenerateAssetPage({
         initialPublishedAt={initialPublishedAt}
         initialStats={initialStats}
         initialPastGenerations={pastGenerations}
+        courseModules={courseModules}
       />
     </div>
   );

@@ -53,6 +53,7 @@ import {
 import { downloadHtmlFile, openInBrowserTab } from "@/lib/browserFile";
 import { getPublicSiteUrl } from "@/lib/publishing";
 import type { PageStats } from "@/lib/analytics";
+import type { CourseModuleRef } from "@/lib/ai/courseModules";
 import PageEditPanel from "./PageEditPanel";
 import TextEditPanel from "./TextEditPanel";
 import SlidePreview from "./SlidePreview";
@@ -289,6 +290,7 @@ export default function GenerateClient({
   initialPublishedAt,
   initialStats,
   initialPastGenerations,
+  courseModules,
 }: {
   projectId: string;
   assetType: AssetType;
@@ -309,6 +311,11 @@ export default function GenerateClient({
   initialPublishedAt: string | null;
   initialStats: PageStats | null;
   initialPastGenerations: PastGeneration[];
+  // Cora's three module-scoped tools only — the real module list parsed out of this project's
+  // Course Outline (see courseModules.ts), replacing free-text guessing with a dropdown of the
+  // actual modules and powering "Build the next module" below. Empty for every other agent, and
+  // for a module-scoped one whose outline hasn't been generated yet or didn't parse.
+  courseModules: CourseModuleRef[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -687,8 +694,13 @@ export default function GenerateClient({
     }
   }
 
-  async function run() {
-    if (MODULE_SCOPED_ASSET_TYPES.includes(assetType) && !moduleIdentifier.trim()) {
+  // Accepts an override so "Build the next module" (see below) can set moduleIdentifier and
+  // fire the same generation in one click without racing React's async state update — reading
+  // the moduleIdentifier state var right after setModuleIdentifier(next) would still see the OLD
+  // value, since the state update hasn't committed yet.
+  async function run(moduleIdentifierOverride?: string) {
+    const effectiveModuleIdentifier = moduleIdentifierOverride ?? moduleIdentifier;
+    if (MODULE_SCOPED_ASSET_TYPES.includes(assetType) && !effectiveModuleIdentifier.trim()) {
       toast.error(
         assetType === "course_module_quiz"
           ? "Say which module you want a quiz for first."
@@ -705,7 +717,7 @@ export default function GenerateClient({
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, assetType, mode, courseLevel, customNaming, moduleIdentifier }),
+        body: JSON.stringify({ projectId, assetType, mode, courseLevel, customNaming, moduleIdentifier: effectiveModuleIdentifier }),
       });
       const data = await res.json().catch(() => null);
       // A non-JSON response (data === null) means the platform cut the request off before the
@@ -769,6 +781,24 @@ export default function GenerateClient({
     } finally {
       setLoading(false);
     }
+  }
+
+  // "Which module comes after the one just built?" — matched against the dropdown's own value
+  // (either "Module 3" or the full "Module 3: Title" the select stores), so this only ever knows
+  // "next" relative to whichever module is currently selected. Reopening an older module deck from
+  // "Past generations" below doesn't retroactively update this — there's no stored link from a
+  // generation back to which module it was for — so it just reflects the dropdown's own state.
+  const currentModuleIndex = courseModules.findIndex(
+    (m) => m.title === moduleIdentifier || `Module ${m.number}` === moduleIdentifier
+  );
+  const nextModule = currentModuleIndex !== -1 ? courseModules[currentModuleIndex + 1] : undefined;
+
+  async function buildNextModule() {
+    if (!nextModule) return;
+    setModuleIdentifier(nextModule.title);
+    setContent(null);
+    setGenerationId(null);
+    await run(nextModule.title);
   }
 
   function openPast(pastId: string) {
@@ -908,24 +938,49 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           <label htmlFor="module-identifier" className="mb-1 block text-xs font-medium text-muted-foreground">
             Which module? <span className="text-primary">*</span>
           </label>
-          <p className="mb-1.5 text-xs text-muted-foreground">
-            Type the module&apos;s number or name exactly as it appears in your Course Outline (e.g.
-            &quot;Module 3&quot; or &quot;Module 3: Building Your Offer&quot;) — Cora will find it and build{" "}
-            {assetType === "course_module_quiz" ? "a quiz" : assetType === "course_module_workbook" ? "a workbook" : "slides"} for
-            that module only.
-          </p>
-          <Input
-            id="module-identifier"
-            value={moduleIdentifier}
-            onChange={(e) => setModuleIdentifier(e.target.value)}
-            disabled={loading}
-            placeholder="e.g. Module 3"
-            className="w-full max-w-xs"
-          />
+          {courseModules.length > 0 ? (
+            <>
+              <p className="mb-1.5 text-xs text-muted-foreground">
+                Pulled straight from your Course Outline — pick the module Cora should build{" "}
+                {assetType === "course_module_quiz" ? "a quiz" : assetType === "course_module_workbook" ? "a workbook" : "slides"} for.
+              </p>
+              <select
+                id="module-identifier"
+                value={moduleIdentifier}
+                onChange={(e) => setModuleIdentifier(e.target.value)}
+                disabled={loading}
+                className="w-full max-w-sm rounded-md border border-border bg-card px-3 py-2 text-sm"
+              >
+                <option value="">Choose a module...</option>
+                {courseModules.map((m) => (
+                  <option key={m.number} value={m.title}>
+                    {m.title}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <>
+              <p className="mb-1.5 text-xs text-muted-foreground">
+                Type the module&apos;s number or name exactly as it appears in your Course Outline (e.g.
+                &quot;Module 3&quot; or &quot;Module 3: Building Your Offer&quot;) — Cora will find it and build{" "}
+                {assetType === "course_module_quiz" ? "a quiz" : assetType === "course_module_workbook" ? "a workbook" : "slides"} for
+                that module only.
+              </p>
+              <Input
+                id="module-identifier"
+                value={moduleIdentifier}
+                onChange={(e) => setModuleIdentifier(e.target.value)}
+                disabled={loading}
+                placeholder="e.g. Module 3"
+                className="w-full max-w-xs"
+              />
+            </>
+          )}
         </div>
       )}
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Button onClick={run} disabled={loading}>
+        <Button onClick={() => run()} disabled={loading}>
           <Sparkles className="mr-2 h-4 w-4" />
           {loading ? "Generating..." : content ? "Regenerate" : "Generate"}
         </Button>
@@ -1104,6 +1159,24 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           right after a fresh blueprint finishes generating, when "what's next?" is the live
           question; this button is what stays around for anyone who dismissed that or is
           revisiting a saved blueprint later. */}
+      {/* The streamlined "now do the next one" step for Cora's module-scoped tools — a member
+          reported finishing Module 1's slides and having no clear way to move on to Module 2
+          without hunting around. This never touches Module 1's own generation (a fresh POST to
+          /api/generate always creates a brand-new row — see run() above), which stays exactly
+          where it was, reachable any time from "Past generations" below. */}
+      {MODULE_SCOPED_ASSET_TYPES.includes(assetType) && content && nextModule && (
+        <div className="mb-4 -mt-2">
+          <Button onClick={buildNextModule} disabled={loading}>
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            {loading ? "Building..." : `Build ${nextModule.title} Next →`}
+          </Button>
+          <p className="mt-2 text-xs text-muted-foreground">
+            This module&apos;s {assetType === "course_module_quiz" ? "quiz" : assetType === "course_module_workbook" ? "workbook" : "slides"}{" "}
+            stay saved under &quot;Past generations&quot; below — building the next module never erases or overwrites it.
+          </p>
+        </div>
+      )}
+
       {assetType === "webinar_outline" && content && (
         <div className="mb-4 -mt-2">
           <Button onClick={generateWebinarNow} disabled={generatingWebinarDeck}>
