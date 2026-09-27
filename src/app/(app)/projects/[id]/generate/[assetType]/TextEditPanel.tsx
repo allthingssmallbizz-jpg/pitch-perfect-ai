@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Wand2, Loader2, CheckCircle2 } from "lucide-react";
+import { Wand2, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TEXT_EDIT_CREDIT_COST } from "@/lib/ai/generators/textEdit";
@@ -25,6 +25,14 @@ export default function TextEditPanel({
   // "I hit apply but don't see the update." This stays on screen (not timed out) until the next
   // apply, naming exactly what was requested, so there's no ambiguity about whether it landed.
   const [lastApplied, setLastApplied] = useState<string | null>(null);
+  // A toast alone on FAILURE has the same "easy to miss, looks like nothing happened" problem the
+  // success banner above was already built to fix — reported again as "I hit apply and nothing
+  // happens," which is exactly what a real failure (e.g. the underlying AI provider account being
+  // out of funds — see the Anthropic/OpenAI billing issues elsewhere in this app) looks like when
+  // the only sign of it is a toast that's already gone by the time someone looks back at the
+  // screen. This stays on screen the same way the green one does, so "it silently did nothing" is
+  // never actually silent.
+  const [lastError, setLastError] = useState<string | null>(null);
 
   async function handleApply() {
     if (!instruction.trim()) {
@@ -33,6 +41,7 @@ export default function TextEditPanel({
     }
     setApplying(true);
     setLastApplied(null);
+    setLastError(null);
     try {
       const appliedInstruction = instruction;
       const res = await fetch(`/api/generations/${generationId}/edit`, {
@@ -48,7 +57,9 @@ export default function TextEditPanel({
       setLastApplied(appliedInstruction);
       toast.success("Updated!");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not apply that update.");
+      const message = e instanceof Error ? e.message : "Could not apply that update.";
+      setLastError(message);
+      toast.error(message);
     } finally {
       setApplying(false);
     }
@@ -87,6 +98,12 @@ export default function TextEditPanel({
           <span>
             Updated: &quot;{lastApplied}&quot; — scroll down to see the change reflected in the course below.
           </span>
+        </div>
+      )}
+      {lastError && (
+        <div className="mt-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>Didn&apos;t go through: {lastError}</span>
         </div>
       )}
     </div>
