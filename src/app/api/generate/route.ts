@@ -162,6 +162,10 @@ export async function POST(req: NextRequest) {
       missingModule: "Say which module you want a quiz for first.",
       missingOutline: "Generate your Course Outline first — the quiz needs the actual course structure to build from.",
     },
+    course_module_workbook: {
+      missingModule: "Say which module you want a workbook for first.",
+      missingOutline: "Generate your Course Outline first — the workbook needs the actual course structure to build from.",
+    },
   };
   let courseOutlineFullContent: string | undefined;
   const moduleScoped = MODULE_SCOPED_PROMPTS[assetType];

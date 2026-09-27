@@ -58,6 +58,10 @@ import TextEditPanel from "./TextEditPanel";
 
 export type PastGeneration = { id: string; createdAt: string; preview: string };
 
+// Cora's three "one module at a time" generators — each needs a "which module?" input before it
+// can run at all (see moduleIdentifier state below), unlike every other agent's plain Generate.
+const MODULE_SCOPED_ASSET_TYPES: AssetType[] = ["course_module_slides", "course_module_quiz", "course_module_workbook"];
+
 // Landing Page and Thank You Page are the generators whose content is a real HTML document, not
 // markdown — used both to build a clean preview snippet (raw tags would otherwise show up as
 // literal text in the "Past generations" list) and client-side for the .html download filename/blob.
@@ -668,9 +672,13 @@ export default function GenerateClient({
   }
 
   async function run() {
-    if ((assetType === "course_module_slides" || assetType === "course_module_quiz") && !moduleIdentifier.trim()) {
+    if (MODULE_SCOPED_ASSET_TYPES.includes(assetType) && !moduleIdentifier.trim()) {
       toast.error(
-        assetType === "course_module_quiz" ? "Say which module you want a quiz for first." : "Say which module to build slides for first."
+        assetType === "course_module_quiz"
+          ? "Say which module you want a quiz for first."
+          : assetType === "course_module_workbook"
+            ? "Say which module you want a workbook for first."
+            : "Say which module to build slides for first."
       );
       return;
     }
@@ -870,7 +878,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           />
         </div>
       )}
-      {(assetType === "course_module_slides" || assetType === "course_module_quiz") && (
+      {MODULE_SCOPED_ASSET_TYPES.includes(assetType) && (
         <div className="mb-3">
           <label htmlFor="module-identifier" className="mb-1 block text-xs font-medium text-muted-foreground">
             Which module? <span className="text-primary">*</span>
@@ -878,7 +886,8 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           <p className="mb-1.5 text-xs text-muted-foreground">
             Type the module&apos;s number or name exactly as it appears in your Course Outline (e.g.
             &quot;Module 3&quot; or &quot;Module 3: Building Your Offer&quot;) — Cora will find it and build{" "}
-            {assetType === "course_module_quiz" ? "a quiz" : "slides"} for that module only.
+            {assetType === "course_module_quiz" ? "a quiz" : assetType === "course_module_workbook" ? "a workbook" : "slides"} for
+            that module only.
           </p>
           <Input
             id="module-identifier"

@@ -37,6 +37,11 @@ import {
   COURSE_MODULE_SLIDES_CONTINUATION_HINT,
 } from "./courseModuleSlides";
 import { buildCourseModuleQuizPrompt, COURSE_MODULE_QUIZ_CREDIT_COST, COURSE_MODULE_QUIZ_MAX_OUTPUT_TOKENS } from "./courseModuleQuiz";
+import {
+  buildCourseModuleWorkbookPrompt,
+  COURSE_MODULE_WORKBOOK_CREDIT_COST,
+  COURSE_MODULE_WORKBOOK_MAX_OUTPUT_TOKENS,
+} from "./courseModuleWorkbook";
 export { WEB_PAGE_ASSET_TYPES } from "./htmlPage";
 export { COURSE_LEVELS, isCourseLevel, type CourseLevel } from "./courseOutline";
 
@@ -233,6 +238,16 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
     // quiz arrive via extra rather than the standard priorGenerations. See BuildPromptExtra above.
     buildPrompt: (project, _priorGenerations, extra) =>
       buildCourseModuleQuizPrompt(project, extra?.courseOutlineFullContent ?? "", extra?.moduleIdentifier ?? ""),
+  },
+  course_module_workbook: {
+    assetType: "course_module_workbook",
+    label: "Module Workbook",
+    description: "Fillable student workbook for one module of an existing Course Outline — exercises, reflection prompts, and a completion checklist.",
+    creditCost: COURSE_MODULE_WORKBOOK_CREDIT_COST,
+    maxOutputTokens: COURSE_MODULE_WORKBOOK_MAX_OUTPUT_TOKENS,
+    // Same extra shape as its two siblings above.
+    buildPrompt: (project, _priorGenerations, extra) =>
+      buildCourseModuleWorkbookPrompt(project, extra?.courseOutlineFullContent ?? "", extra?.moduleIdentifier ?? ""),
   },
 };
 

@@ -30,7 +30,8 @@ export type AssetType =
   | "webinar_script"
   | "course_outline"
   | "course_module_slides"
-  | "course_module_quiz";
+  | "course_module_quiz"
+  | "course_module_workbook";
 
 export type PresentationType =
   | "webinar"
