@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeftRight, ClipboardList, MonitorPlay, ScrollText, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, ClipboardList, ListChecks, MonitorPlay, ScrollText, type LucideIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ASSET_GENERATORS, WEB_PAGE_ASSET_TYPES, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
@@ -253,6 +253,15 @@ export default async function GenerateAssetPage({
             >
               <MonitorPlay className="h-3.5 w-3.5" />
               Build Module Slides
+            </Link>
+          )}
+          {generator.assetType === "course_outline" && pastGenerations.length > 0 && (
+            <Link
+              href={`/projects/${id}/generate/course_module_quiz`}
+              className="flex items-center gap-1.5 rounded-full bg-red-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-500"
+            >
+              <ListChecks className="h-3.5 w-3.5" />
+              Build Module Quiz
             </Link>
           )}
         </div>

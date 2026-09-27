@@ -18,6 +18,7 @@ import {
   Flag,
   ScrollText,
   GraduationCap,
+  ListChecks,
   type LucideIcon,
 } from "lucide-react";
 import { Undo2 } from "lucide-react";
@@ -64,6 +65,7 @@ const DELIVERABLE_TYPES: GeneratorAssetType[] = [
   "offer_ladder",
   "course_outline",
   "course_module_slides",
+  "course_module_quiz",
 ];
 
 const DELIVERABLE_ICONS: Record<GeneratorAssetType, LucideIcon> = {
@@ -80,6 +82,7 @@ const DELIVERABLE_ICONS: Record<GeneratorAssetType, LucideIcon> = {
   offer_ladder: Layers,
   course_outline: GraduationCap,
   course_module_slides: MonitorPlay,
+  course_module_quiz: ListChecks,
 };
 
 export default async function DashboardPage() {

@@ -147,15 +147,27 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Build Module Slides needs (a) which module to build, and (b) the FULL text of an already-
-  // complete Course Outline to find that module inside — fetched here directly (not through the
-  // shared formatPriorGenerationsBlock/priorGenerations mechanism further below, which truncates
-  // prior-generation context to 4000 characters; a real multi-module curriculum routinely exceeds
-  // that, and truncating it would silently cut off any module past the first one or two).
+  // Build Module Slides and Module Quiz both need (a) which module to build for, and (b) the
+  // FULL text of an already-complete Course Outline to find that module inside — fetched here
+  // directly (not through the shared formatPriorGenerationsBlock/priorGenerations mechanism
+  // further below, which truncates prior-generation context to 4000 characters; a real
+  // multi-module curriculum routinely exceeds that, and truncating it would silently cut off any
+  // module past the first one or two).
+  const MODULE_SCOPED_PROMPTS: Record<string, { missingModule: string; missingOutline: string }> = {
+    course_module_slides: {
+      missingModule: "Say which module to build slides for first.",
+      missingOutline: "Generate your Course Outline first — Build Module Slides needs the actual course structure to build from.",
+    },
+    course_module_quiz: {
+      missingModule: "Say which module you want a quiz for first.",
+      missingOutline: "Generate your Course Outline first — the quiz needs the actual course structure to build from.",
+    },
+  };
   let courseOutlineFullContent: string | undefined;
-  if (assetType === "course_module_slides") {
+  const moduleScoped = MODULE_SCOPED_PROMPTS[assetType];
+  if (moduleScoped) {
     if (!moduleIdentifier?.trim()) {
-      return NextResponse.json({ error: "Say which module to build slides for first." }, { status: 400 });
+      return NextResponse.json({ error: moduleScoped.missingModule }, { status: 400 });
     }
     const { data: outline } = await supabase
       .from("generations")
@@ -167,10 +179,7 @@ export async function POST(req: NextRequest) {
       .limit(1)
       .maybeSingle();
     if (!outline?.content) {
-      return NextResponse.json(
-        { error: "Generate your Course Outline first — Build Module Slides needs the actual course structure to build from." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: moduleScoped.missingOutline }, { status: 400 });
     }
     courseOutlineFullContent = outline.content;
   }

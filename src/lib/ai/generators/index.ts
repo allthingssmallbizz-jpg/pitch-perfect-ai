@@ -36,6 +36,7 @@ import {
   isCourseModuleSlidesIncomplete,
   COURSE_MODULE_SLIDES_CONTINUATION_HINT,
 } from "./courseModuleSlides";
+import { buildCourseModuleQuizPrompt, COURSE_MODULE_QUIZ_CREDIT_COST, COURSE_MODULE_QUIZ_MAX_OUTPUT_TOKENS } from "./courseModuleQuiz";
 export { WEB_PAGE_ASSET_TYPES } from "./htmlPage";
 export { COURSE_LEVELS, isCourseLevel, type CourseLevel } from "./courseOutline";
 
@@ -221,6 +222,17 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
       buildCourseModuleSlidesPrompt(project, extra?.courseOutlineFullContent ?? "", extra?.moduleIdentifier ?? ""),
     isOutputIncomplete: isCourseModuleSlidesIncomplete,
     continuationHint: COURSE_MODULE_SLIDES_CONTINUATION_HINT,
+  },
+  course_module_quiz: {
+    assetType: "course_module_quiz",
+    label: "Module Quiz",
+    description: "Knowledge-check quiz for one module of an existing Course Outline — multiple choice, true/false, and short-answer, with an answer key.",
+    creditCost: COURSE_MODULE_QUIZ_CREDIT_COST,
+    maxOutputTokens: COURSE_MODULE_QUIZ_MAX_OUTPUT_TOKENS,
+    // Same extra shape as Build Module Slides — the full course outline text and which module to
+    // quiz arrive via extra rather than the standard priorGenerations. See BuildPromptExtra above.
+    buildPrompt: (project, _priorGenerations, extra) =>
+      buildCourseModuleQuizPrompt(project, extra?.courseOutlineFullContent ?? "", extra?.moduleIdentifier ?? ""),
   },
 };
 
