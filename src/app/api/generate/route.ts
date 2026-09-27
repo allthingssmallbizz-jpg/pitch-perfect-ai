@@ -37,6 +37,10 @@ const requestSchema = z.object({
   // ASSET_GENERATORS.course_outline's buildPrompt (see courseOutline.ts). Ignored entirely by
   // every other generator.
   courseLevel: z.string().optional(),
+  // Course Outline's optional "name it yourself" override — a course title and/or module names
+  // the member already picked, used verbatim instead of Cora inventing them. Also ignored
+  // entirely by every other generator.
+  customNaming: z.string().max(2000).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -54,11 +58,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { projectId, assetType, mode, courseLevel } = parsed.data as {
+  const { projectId, assetType, mode, courseLevel, customNaming } = parsed.data as {
     projectId: string;
     assetType: keyof typeof ASSET_GENERATORS;
     mode: GenerationMode;
     courseLevel?: string;
+    customNaming?: string;
   };
 
   const generator = ASSET_GENERATORS[assetType];
@@ -192,7 +197,7 @@ export async function POST(req: NextRequest) {
       priorGenerations.push({ assetType: row.asset_type, content: row.content! });
     }
 
-    const userPrompt = generator.buildPrompt(project, priorGenerations, { courseLevel });
+    const userPrompt = generator.buildPrompt(project, priorGenerations, { courseLevel, customNaming });
 
     const result = await generateCompleteAsset(
       systemPrompt,

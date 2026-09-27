@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import type { AssetType, GenerationMode } from "@/types/database";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Sparkles,
   Copy,
@@ -309,6 +310,11 @@ export default function GenerateClient({
   // since a member may reasonably want a Basic AND an Advanced version of the same course.
   // Harmless to hold on every other agent's page too; it's simply never read there.
   const [courseLevel, setCourseLevel] = useState<"Basic" | "Intermediate" | "Advanced">("Intermediate");
+  // Lets a member who already has a course name (and/or specific module names) in mind override
+  // whatever Cora would otherwise invent, without a rigid "course name" field / "module names"
+  // field split — someone may only care about naming the course, only the modules, both, or
+  // neither. Blank means "let Cora choose everything," matching what they asked for.
+  const [customNaming, setCustomNaming] = useState("");
   // Longer generators (PPT Outline's 60-90 slides especially) can genuinely take a few minutes —
   // Claude auto-continues in several sequential calls once it hits the per-call output cap. With
   // no feedback beyond a static "Building..." message, a run that's still legitimately working
@@ -662,7 +668,7 @@ export default function GenerateClient({
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, assetType, mode, courseLevel }),
+        body: JSON.stringify({ projectId, assetType, mode, courseLevel, customNaming }),
       });
       const data = await res.json().catch(() => null);
       // A non-JSON response (data === null) means the platform cut the request off before the
@@ -831,6 +837,24 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             <option value="Intermediate">Intermediate — knows the basics</option>
             <option value="Advanced">Advanced — already competent</option>
           </select>
+
+          <label htmlFor="course-naming" className="mt-3 mb-1 block text-xs font-medium text-muted-foreground">
+            Name the course and/or modules yourself (optional)
+          </label>
+          <p className="mb-1.5 text-xs text-muted-foreground">
+            Already have a course name, or specific module names you want kept exactly as-is? Type
+            them below and Cora will use them instead of inventing her own — name just the course,
+            just the modules, both, or leave this blank and let Cora name everything.
+          </p>
+          <Textarea
+            id="course-naming"
+            value={customNaming}
+            onChange={(e) => setCustomNaming(e.target.value)}
+            disabled={loading}
+            placeholder={`e.g.\nCourse: The Confident Coach Blueprint\nModule 1: Find Your Niche\nModule 2: Package Your Offer`}
+            rows={3}
+            className="w-full max-w-md"
+          />
         </div>
       )}
       <div className="mb-4 flex flex-wrap items-center gap-3">

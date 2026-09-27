@@ -29,8 +29,15 @@ const LEVEL_GUIDANCE: Record<CourseLevel, string> = {
 export function buildCourseOutlinePrompt(
   project: Project,
   priorGenerations: PriorGeneration[] = [],
-  courseLevel: CourseLevel = "Intermediate"
+  courseLevel: CourseLevel = "Intermediate",
+  // Free text a member can type before generating — a course title they've already settled on,
+  // specific module names they want kept exactly as written, or both. Deliberately optional and
+  // deliberately loose (not split into a separate "course name" field vs. "module names" field):
+  // someone may only care about naming the course itself, only the modules, both, or neither and
+  // let Cora invent everything — forcing a rigid shape here would mean guessing which case applies.
+  customNaming?: string
 ): string {
+  const naming = customNaming?.trim();
   return `Build a full module-by-module course outline for the project below — a structured, transformational course that takes someone from where they are now (A) to a specific, stated result (B), one module and lesson at a time.
 
 ${formatDiscoveryBlock(project)}
@@ -38,6 +45,14 @@ ${formatPriorGenerationsBlock(priorGenerations)}
 
 TARGET LEVEL: ${courseLevel}
 ${LEVEL_GUIDANCE[courseLevel]}
+
+${
+  naming
+    ? `NAMING — THE MEMBER ALREADY SUPPLIED THIS, USE IT EXACTLY, DO NOT INVENT A REPLACEMENT:
+"${naming}"
+Read the above carefully: it may specify the course title, specific module names, or both — sometimes only some of them. Use whatever it specifies verbatim, word-for-word, in the matching spot below (the course title in step 1, a named module in its matching slot in step 5, in the same order they were given). Only invent a name yourself for whatever this note did NOT cover — never override something the member explicitly named.`
+    : `NAMING — the member left this blank, so invent the course title and every module name yourself, grounded in this project's actual discovery facts (not a generic template name).`
+}
 
 Produce the outline in this structure:
 

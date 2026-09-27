@@ -59,12 +59,13 @@ export type GeneratorAssetType = Exclude<
 >;
 
 // Every generator's buildPrompt shares this same (project, priorGenerations) shape except
-// Course Outline, which also takes a per-generation level choice (Basic/Intermediate/Advanced —
-// see courseOutline.ts) that isn't a permanent fact about the project the way discovery fields
-// are, since a member may reasonably want a Basic AND an Advanced version of the same course.
-// Declared as a generic optional third param rather than a parallel interface so every other
-// generator's existing (project, prior) => string function stays valid here unchanged.
-type BuildPromptExtra = { courseLevel?: string };
+// Course Outline, which also takes a per-generation level choice (Basic/Intermediate/Advanced)
+// and an optional custom-naming override (a course title and/or module names the member already
+// picked — see courseOutline.ts) — neither is a permanent fact about the project the way
+// discovery fields are, since a member may reasonably want differently-named/leveled versions of
+// the same course. Declared as a generic optional third param rather than a parallel interface so
+// every other generator's existing (project, prior) => string function stays valid here unchanged.
+type BuildPromptExtra = { courseLevel?: string; customNaming?: string };
 
 export interface AssetGenerator {
   assetType: GeneratorAssetType;
@@ -181,12 +182,14 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
     creditCost: COURSE_OUTLINE_CREDIT_COST,
     maxOutputTokens: COURSE_OUTLINE_MAX_OUTPUT_TOKENS,
     // Adapts the generic (project, prior, extra?) shape every other generator ignores into
-    // buildCourseOutlinePrompt's own cleanly-typed CourseLevel param — see BuildPromptExtra above.
+    // buildCourseOutlinePrompt's own cleanly-typed CourseLevel + customNaming params — see
+    // BuildPromptExtra above.
     buildPrompt: (project, priorGenerations, extra) =>
       buildCourseOutlinePrompt(
         project,
         priorGenerations,
-        extra?.courseLevel && isCourseLevel(extra.courseLevel) ? extra.courseLevel : undefined
+        extra?.courseLevel && isCourseLevel(extra.courseLevel) ? extra.courseLevel : undefined,
+        extra?.customNaming
       ),
   },
 };
