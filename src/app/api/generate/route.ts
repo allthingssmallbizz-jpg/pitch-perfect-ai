@@ -41,6 +41,9 @@ const requestSchema = z.object({
   // the member already picked, used verbatim instead of Cora inventing them. Also ignored
   // entirely by every other generator.
   customNaming: z.string().max(2000).optional(),
+  // Build Module Slides' required "which module" input — checked for real below (course_outline
+  // must actually contain a module matching this). Ignored by every other generator.
+  moduleIdentifier: z.string().max(200).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -58,12 +61,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { projectId, assetType, mode, courseLevel, customNaming } = parsed.data as {
+  const { projectId, assetType, mode, courseLevel, customNaming, moduleIdentifier } = parsed.data as {
     projectId: string;
     assetType: keyof typeof ASSET_GENERATORS;
     mode: GenerationMode;
     courseLevel?: string;
     customNaming?: string;
+    moduleIdentifier?: string;
   };
 
   const generator = ASSET_GENERATORS[assetType];
@@ -143,6 +147,34 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Build Module Slides needs (a) which module to build, and (b) the FULL text of an already-
+  // complete Course Outline to find that module inside — fetched here directly (not through the
+  // shared formatPriorGenerationsBlock/priorGenerations mechanism further below, which truncates
+  // prior-generation context to 4000 characters; a real multi-module curriculum routinely exceeds
+  // that, and truncating it would silently cut off any module past the first one or two).
+  let courseOutlineFullContent: string | undefined;
+  if (assetType === "course_module_slides") {
+    if (!moduleIdentifier?.trim()) {
+      return NextResponse.json({ error: "Say which module to build slides for first." }, { status: 400 });
+    }
+    const { data: outline } = await supabase
+      .from("generations")
+      .select("content")
+      .eq("project_id", projectId)
+      .eq("asset_type", "course_outline")
+      .eq("status", "complete")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!outline?.content) {
+      return NextResponse.json(
+        { error: "Generate your Course Outline first — Build Module Slides needs the actual course structure to build from." },
+        { status: 400 }
+      );
+    }
+    courseOutlineFullContent = outline.content;
+  }
+
   const guardrail = await checkGuardrails(user.id, generator.creditCost);
   if (!guardrail.ok) {
     return NextResponse.json({ error: guardrail.message, reason: guardrail.reason }, { status: 429 });
@@ -197,7 +229,12 @@ export async function POST(req: NextRequest) {
       priorGenerations.push({ assetType: row.asset_type, content: row.content! });
     }
 
-    const userPrompt = generator.buildPrompt(project, priorGenerations, { courseLevel, customNaming });
+    const userPrompt = generator.buildPrompt(project, priorGenerations, {
+      courseLevel,
+      customNaming,
+      moduleIdentifier,
+      courseOutlineFullContent,
+    });
 
     const result = await generateCompleteAsset(
       systemPrompt,

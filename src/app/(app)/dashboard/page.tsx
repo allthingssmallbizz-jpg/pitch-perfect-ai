@@ -63,6 +63,7 @@ const DELIVERABLE_TYPES: GeneratorAssetType[] = [
   "ad_copy",
   "offer_ladder",
   "course_outline",
+  "course_module_slides",
 ];
 
 const DELIVERABLE_ICONS: Record<GeneratorAssetType, LucideIcon> = {
@@ -78,6 +79,7 @@ const DELIVERABLE_ICONS: Record<GeneratorAssetType, LucideIcon> = {
   ad_copy: Megaphone,
   offer_ladder: Layers,
   course_outline: GraduationCap,
+  course_module_slides: MonitorPlay,
 };
 
 export default async function DashboardPage() {

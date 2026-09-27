@@ -241,6 +241,20 @@ export default async function GenerateAssetPage({
               View {AGENTS[matchingPage.assetType].name}&apos;s {ASSET_GENERATORS[matchingPage.assetType].label}
             </Link>
           )}
+          {/* Not the same matchingPage mechanism above — Build Module Slides isn't a single 1:1
+              "the other half of this pair" the way Your Webinar/Webinar Script are, since a
+              course can have several module decks (one per module) coexisting at once. This just
+              needs to be reachable the moment there's an outline to build FROM, not gated on a
+              deck already existing (that would make it impossible to ever build the first one). */}
+          {generator.assetType === "course_outline" && pastGenerations.length > 0 && (
+            <Link
+              href={`/projects/${id}/generate/course_module_slides`}
+              className="flex items-center gap-1.5 rounded-full bg-red-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-500"
+            >
+              <MonitorPlay className="h-3.5 w-3.5" />
+              Build Module Slides
+            </Link>
+          )}
         </div>
       </div>
       {/* A bold, colored badge rather than the small muted-gray line this used to be — the plain

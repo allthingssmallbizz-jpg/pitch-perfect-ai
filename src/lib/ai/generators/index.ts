@@ -29,6 +29,11 @@ import {
   COURSE_OUTLINE_MAX_OUTPUT_TOKENS,
   isCourseLevel,
 } from "./courseOutline";
+import {
+  buildCourseModuleSlidesPrompt,
+  COURSE_MODULE_SLIDES_CREDIT_COST,
+  COURSE_MODULE_SLIDES_MAX_OUTPUT_TOKENS,
+} from "./courseModuleSlides";
 export { WEB_PAGE_ASSET_TYPES } from "./htmlPage";
 export { COURSE_LEVELS, isCourseLevel, type CourseLevel } from "./courseOutline";
 
@@ -58,14 +63,23 @@ export type GeneratorAssetType = Exclude<
   | "ihelp_builder"
 >;
 
-// Every generator's buildPrompt shares this same (project, priorGenerations) shape except
-// Course Outline, which also takes a per-generation level choice (Basic/Intermediate/Advanced)
-// and an optional custom-naming override (a course title and/or module names the member already
-// picked — see courseOutline.ts) — neither is a permanent fact about the project the way
-// discovery fields are, since a member may reasonably want differently-named/leveled versions of
-// the same course. Declared as a generic optional third param rather than a parallel interface so
-// every other generator's existing (project, prior) => string function stays valid here unchanged.
-type BuildPromptExtra = { courseLevel?: string; customNaming?: string };
+// Every generator's buildPrompt shares this same (project, priorGenerations) shape except:
+// - Course Outline, which also takes a per-generation level choice (Basic/Intermediate/Advanced)
+//   and an optional custom-naming override (a course title and/or module names the member
+//   already picked — see courseOutline.ts) — neither is a permanent fact about the project the
+//   way discovery fields are, since a member may reasonably want differently-named/leveled
+//   versions of the same course.
+// - Build Module Slides, which needs the FULL text of an existing Course Outline (not the
+//   truncated, generic priorGenerations context every other generator shares — see the dedicated
+//   fetch in the API route) plus which module to build slides for.
+// Declared as a generic optional third param rather than a parallel interface so every other
+// generator's existing (project, prior) => string function stays valid here unchanged.
+type BuildPromptExtra = {
+  courseLevel?: string;
+  customNaming?: string;
+  moduleIdentifier?: string;
+  courseOutlineFullContent?: string;
+};
 
 export interface AssetGenerator {
   assetType: GeneratorAssetType;
@@ -191,6 +205,18 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
         extra?.courseLevel && isCourseLevel(extra.courseLevel) ? extra.courseLevel : undefined,
         extra?.customNaming
       ),
+  },
+  course_module_slides: {
+    assetType: "course_module_slides",
+    label: "Build Module Slides",
+    description: "Turns one module of an existing Course Outline into a real, presentable slide-by-slide teaching deck.",
+    creditCost: COURSE_MODULE_SLIDES_CREDIT_COST,
+    maxOutputTokens: COURSE_MODULE_SLIDES_MAX_OUTPUT_TOKENS,
+    // Ignores the standard priorGenerations entirely — the full course outline text (fetched
+    // directly in the API route, not through the shared truncated-context helper) and which
+    // module to build arrive via extra instead. See BuildPromptExtra above.
+    buildPrompt: (project, _priorGenerations, extra) =>
+      buildCourseModuleSlidesPrompt(project, extra?.courseOutlineFullContent ?? "", extra?.moduleIdentifier ?? ""),
   },
 };
 

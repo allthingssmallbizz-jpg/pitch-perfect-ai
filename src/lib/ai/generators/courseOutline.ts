@@ -2,7 +2,9 @@ import type { Project } from "@/types/database";
 import { formatDiscoveryBlock, formatPriorGenerationsBlock, type PriorGeneration } from "./shared";
 
 export const COURSE_OUTLINE_CREDIT_COST = 6;
-export const COURSE_OUTLINE_MAX_OUTPUT_TOKENS = 10000;
+// Raised from 10000 once modules gained a sub-module layer (Module -> Sub-module -> Lessons,
+// not just Module -> Lessons) — a genuine curriculum, not a flat list, needs the extra room.
+export const COURSE_OUTLINE_MAX_OUTPUT_TOKENS = 12000;
 
 export const COURSE_LEVELS = ["Basic", "Intermediate", "Advanced"] as const;
 export type CourseLevel = (typeof COURSE_LEVELS)[number];
@@ -50,7 +52,7 @@ ${
   naming
     ? `NAMING — THE MEMBER ALREADY SUPPLIED THIS, USE IT EXACTLY, DO NOT INVENT A REPLACEMENT:
 "${naming}"
-Read the above carefully: it may specify the course title, specific module names, or both — sometimes only some of them. Use whatever it specifies verbatim, word-for-word, in the matching spot below (the course title in step 1, a named module in its matching slot in step 5, in the same order they were given). Only invent a name yourself for whatever this note did NOT cover — never override something the member explicitly named.`
+Read the above carefully: it may specify the course title, specific module names, specific sub-module names, or any combination — sometimes only some of them. Use whatever it specifies verbatim, word-for-word, in the matching spot below (the course title in step 1, a named module or sub-module in its matching slot in step 5, in the same order they were given). Only invent a name yourself for whatever this note did NOT cover — never override something the member explicitly named.`
     : `NAMING — the member left this blank, so invent the course title and every module name yourself, grounded in this project's actual discovery facts (not a generic template name).`
 }
 
@@ -64,14 +66,15 @@ Produce the outline in this structure:
 
 4. **Module 0 — Welcome & Orientation**: what to expect across the course, how it's meant to be worked through (in order, at what pace), the one habit or mindset shift that makes the rest of the course actually land, and a small first action that creates immediate momentum before Module 1's real content starts.
 
-5. **One block per course module.** For EACH module, include:
+5. **One block per course module — a real nested curriculum, not a flat list.** Every module breaks down into sub-modules, and every sub-module breaks down into lessons: Module → Sub-module(s) → Lesson(s). For EACH module, include:
    - **Module outcome** — the specific capability or result a student has by the end of this module, not just a topic it "covers."
-   - **Lessons within the module** (2-5 per module) — for each lesson: a title, the core teaching beat (bullet beats, not a full script — this is a skeleton to build a written lesson, video, or live session from), and one specific, completable **action step** that makes the lesson real rather than passively consumed.
+   - **Sub-modules within the module** (2-4 per module) — each one a distinct, named chunk of the module's arc (e.g. Module 3 "Building Your Offer" might break into Sub-module 3.1 "Pricing Psychology" and Sub-module 3.2 "Packaging & Positioning"), each with its own one-line outcome.
+     - **Lessons within each sub-module** (2-4 per sub-module) — for each lesson: a title, the core teaching beat (bullet beats, not a full script — this is a skeleton to build a written lesson, video, or live session from), and one specific, completable **action step** that makes the lesson real rather than passively consumed.
    - **Module milestone** — the concrete checkpoint that proves this module actually landed (a finished deliverable, a specific decision made, a specific skill demonstrated) — not "understands the concepts."
 
 6. **Final module — Integration & Completion**: a capstone action that requires combining everything from earlier modules to prove the full A → B transformation actually happened, plus a natural bridge to what comes next (continuity, community, a done-with-you upsell, or simply "you're done and here's how to keep the result") — whichever fits this project's actual offer ladder/funnel type.
 
 7. **Delivery mechanics** — a short section covering: recommended format (self-paced vs. live cohort with calls), suggested pacing (all-at-once vs. drip-released, and roughly how long the full course should take a student to complete), and the accountability mechanism that keeps completion rates high (a community, check-ins, a progress tracker) — calibrated to the level: Basic students typically need more built-in accountability than Advanced ones.
 
-Keep each lesson to a one-screen block: a one-line objective followed by bullet beats — not full prose script or word-for-word lesson content. This is a skeleton a course creator builds actual lessons, slides, or videos from, not a finished curriculum.`;
+Keep each lesson to a one-screen block: a one-line objective followed by bullet beats — not full prose script or word-for-word lesson content. This is the strategic curriculum skeleton — module and sub-module structure, lesson beats, action steps — that Agent Cora's own "Build Module Slides" step turns into an actual slide-by-slide teaching deck for each module; it is not the finished teaching material itself.`;
 }

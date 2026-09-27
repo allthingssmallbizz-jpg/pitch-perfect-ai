@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import type { AssetType, GenerationMode } from "@/types/database";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Sparkles,
@@ -316,6 +317,11 @@ export default function GenerateClient({
   // field split — someone may only care about naming the course, only the modules, both, or
   // neither. Blank means "let Cora choose everything," matching what they asked for.
   const [customNaming, setCustomNaming] = useState("");
+  // Build Module Slides' required "which module" input — Cora finds this module by name/number
+  // inside the full Course Outline (fetched server-side, see route.ts) and builds slides for it
+  // alone. Required (unlike courseLevel/customNaming above) since there's no sensible default —
+  // "build slides for some module" isn't a real request.
+  const [moduleIdentifier, setModuleIdentifier] = useState("");
   // Longer generators (PPT Outline's 60-90 slides especially) can genuinely take a few minutes —
   // Claude auto-continues in several sequential calls once it hits the per-call output cap. With
   // no feedback beyond a static "Building..." message, a run that's still legitimately working
@@ -662,6 +668,10 @@ export default function GenerateClient({
   }
 
   async function run() {
+    if (assetType === "course_module_slides" && !moduleIdentifier.trim()) {
+      toast.error("Say which module to build slides for first.");
+      return;
+    }
     setLoading(true);
     setElapsedSeconds(0);
     setError(null);
@@ -669,7 +679,7 @@ export default function GenerateClient({
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, assetType, mode, courseLevel, customNaming }),
+        body: JSON.stringify({ projectId, assetType, mode, courseLevel, customNaming, moduleIdentifier }),
       });
       const data = await res.json().catch(() => null);
       // A non-JSON response (data === null) means the platform cut the request off before the
@@ -855,6 +865,26 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             placeholder={`e.g.\nCourse: The Confident Coach Blueprint\nModule 1: Find Your Niche\nModule 2: Package Your Offer`}
             rows={3}
             className="w-full max-w-md"
+          />
+        </div>
+      )}
+      {assetType === "course_module_slides" && (
+        <div className="mb-3">
+          <label htmlFor="module-identifier" className="mb-1 block text-xs font-medium text-muted-foreground">
+            Which module? <span className="text-primary">*</span>
+          </label>
+          <p className="mb-1.5 text-xs text-muted-foreground">
+            Type the module&apos;s number or name exactly as it appears in your Course Outline (e.g.
+            &quot;Module 3&quot; or &quot;Module 3: Building Your Offer&quot;) — Cora will find it and build
+            slides for that module only.
+          </p>
+          <Input
+            id="module-identifier"
+            value={moduleIdentifier}
+            onChange={(e) => setModuleIdentifier(e.target.value)}
+            disabled={loading}
+            placeholder="e.g. Module 3"
+            className="w-full max-w-xs"
           />
         </div>
       )}
