@@ -50,7 +50,20 @@ export default function TextEditPanel({
         body: JSON.stringify({ instruction }),
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error || "Could not apply that update.");
+      // A non-JSON response (data === null) means the platform cut the request off before this
+      // route could reply at all — it always returns JSON, success or failure — most commonly a
+      // hosting-plan function time limit on a longer edit. Previously this fell straight to the
+      // generic "Could not apply that update." fallback below, which reads identically whether
+      // the AI genuinely refused the request or the platform simply never let it finish — reported
+      // as "I hit update and nothing happens" with no way to tell which one it actually was. Same
+      // diagnostic already applied to the main Generate button's run() — this box just hadn't
+      // gotten it yet.
+      if (!data) {
+        throw new Error(
+          `The server didn't respond (HTTP ${res.status}) — this usually means the update ran past your hosting plan's time limit for a single request. Try a shorter, more specific instruction, or this needs that time limit raised.`
+        );
+      }
+      if (!res.ok) throw new Error(data.error || "Could not apply that update.");
 
       onApplied(data.content);
       setInstruction("");
