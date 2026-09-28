@@ -47,7 +47,20 @@ export function formatDiscoveryBlock(project: Project): string {
     field("Primary call to action", project.cta),
     field("Funnel type (what the CTA leads to)", getFunnelTypeLabel(project.funnel_type)),
     "",
-    field("Additional discovery notes", project.discovery_notes),
+    // This used to render as just one more labeled field among ~24 others ("Additional discovery
+    // notes: ..."), indistinguishable from customer-voice flavor text like pain points or
+    // objections. A member reported adding a specific instruction here (a framework name to use,
+    // something the course should cover) and having every generator — including a full
+    // regenerate, which reads this same block fresh every time — simply not act on it. The facts
+    // were present in the prompt the whole time; nothing told the model this particular field
+    // carries instructions it must actually follow rather than background it can take or leave.
+    // This explicit framing is what makes that real.
+    "ADDITIONAL DISCOVERY NOTES — READ CAREFULLY: anything below is a direct instruction from the",
+    "project owner (a specific framework or topic to include, an exact name to use, customer",
+    "language to use verbatim, anything else). Incorporate it into the output below — it is not",
+    "just background context, and if it conflicts with a generic instruction elsewhere in this",
+    "prompt, what's written here wins.",
+    project.discovery_notes?.trim() || "(none provided)",
   ].join("\n");
 }
 
