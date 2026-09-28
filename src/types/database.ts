@@ -149,6 +149,11 @@ export type Project = {
   // generator's branching (see src/lib/funnelType.ts). Empty string means not yet chosen.
   funnel_type: string;
   discovery_notes: string;
+  // Agent Cora's persisted "name the course/modules yourself" override (see
+  // courseOutline.ts buildCourseOutlinePrompt) — a course's own title/module names, distinct
+  // from offer_name (the webinar/offer's own public-facing name) since the two products
+  // routinely have different names. Blank means Cora invents everything itself.
+  course_naming: string;
   // Which of the account's niche bio profiles (see PresenterBioProfile below) this project's
   // generations draw from — set at project creation, not editable afterward in this pass. Null
   // only for a legacy project from before this column existed that somehow missed its backfill;

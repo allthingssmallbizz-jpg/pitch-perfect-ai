@@ -188,6 +188,21 @@ export async function POST(req: NextRequest) {
     courseOutlineFullContent = outline.content;
   }
 
+  // Persist whatever's currently in the "name the course/modules yourself" box back onto the
+  // project itself — a course's own name is routinely different from whatever webinar/offer it's
+  // based on, and retyping it on every single Regenerate (the previous behavior) was the reported
+  // problem this fixes. Best-effort: a failed save here shouldn't block the actual generation the
+  // member is waiting on, and it's harmless to just try again next time. See
+  // 0040_course_naming.sql and GenerateClient.tsx's customNaming state.
+  if (assetType === "course_outline") {
+    const { error: namingError } = await supabase
+      .from("projects")
+      .update({ course_naming: customNaming ?? "" })
+      .eq("id", projectId)
+      .eq("user_id", user.id);
+    if (namingError) console.error("generate: failed to persist course_naming", namingError);
+  }
+
   const guardrail = await checkGuardrails(user.id, generator.creditCost);
   if (!guardrail.ok) {
     return NextResponse.json({ error: guardrail.message, reason: guardrail.reason }, { status: 429 });

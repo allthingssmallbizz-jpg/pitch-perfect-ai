@@ -365,6 +365,7 @@ export default async function GenerateAssetPage({
         courseModules={courseModules}
         initialCompletedGenerations={completedGenerations}
         projectName={project.name}
+        initialCourseNaming={project.course_naming}
       />
     </div>
   );

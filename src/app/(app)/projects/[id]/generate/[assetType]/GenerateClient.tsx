@@ -301,6 +301,7 @@ export default function GenerateClient({
   courseModules,
   initialCompletedGenerations,
   projectName,
+  initialCourseNaming,
 }: {
   projectId: string;
   assetType: AssetType;
@@ -332,6 +333,10 @@ export default function GenerateClient({
   // The project's own name — this IS "the course," used to label each Completed entry alongside
   // its module (e.g. "The Confident Coach Blueprint — Module 3: Building Your Offer").
   projectName: string;
+  // Course Outline only — the project's persisted course title/module-names override (see
+  // courseModules field customNaming above and 0040_course_naming.sql). Empty string on every
+  // other agent's page, which never reads it.
+  initialCourseNaming: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -358,8 +363,13 @@ export default function GenerateClient({
   // Lets a member who already has a course name (and/or specific module names) in mind override
   // whatever Cora would otherwise invent, without a rigid "course name" field / "module names"
   // field split — someone may only care about naming the course, only the modules, both, or
-  // neither. Blank means "let Cora choose everything," matching what they asked for.
-  const [customNaming, setCustomNaming] = useState("");
+  // neither. Blank means "let Cora choose everything," matching what they asked for. Initialized
+  // from the project's own persisted value (project.course_naming — see 0040_course_naming.sql)
+  // rather than always starting blank: a course's name is routinely different from whatever
+  // webinar/offer it's based on, and having to retype it on every single Regenerate was the
+  // reported problem this persistence fixes. run() below saves whatever's here back to the
+  // project on every course_outline generation, so it's always remembered next time.
+  const [customNaming, setCustomNaming] = useState(initialCourseNaming);
   // Build Module Slides' required "which module" input — Cora finds this module by name/number
   // inside the full Course Outline (fetched server-side, see route.ts) and builds slides for it
   // alone. Required (unlike courseLevel/customNaming above) since there's no sensible default —
@@ -1005,7 +1015,10 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           <p className="mb-1.5 text-xs text-muted-foreground">
             Already have a course name, or specific module names you want kept exactly as-is? Type
             them below and Cora will use them instead of inventing her own — name just the course,
-            just the modules, both, or leave this blank and let Cora name everything.
+            just the modules, both, or leave this blank and let Cora name everything. Your course&apos;s
+            name is its own thing, separate from any webinar or offer name elsewhere in this
+            project — they don&apos;t need to match. This saves to this project automatically on
+            Generate, so you only ever have to type it once, not on every regenerate.
           </p>
           <Textarea
             id="course-naming"
