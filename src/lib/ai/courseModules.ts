@@ -1,3 +1,15 @@
+import type { AssetType } from "@/types/database";
+
+// Agent Cora's four asset types, in one place — used to gate the Completed Courses feature
+// (approve/unapprove, the Completed section itself) to just these, the same way
+// SLIDE_MEDIA_ASSET_TYPES gates the slide-image/chart feature to just course_module_slides.
+export const COURSE_ASSET_TYPES: AssetType[] = [
+  "course_outline",
+  "course_module_slides",
+  "course_module_quiz",
+  "course_module_workbook",
+];
+
 // Pulls the real, member-facing list of modules out of an already-generated Course Outline
 // (course_outline) — used to replace the free-text "which module?" input on Cora's Build Module
 // Slides/Quiz/Workbook pages with a dropdown of the course's actual modules, and to figure out

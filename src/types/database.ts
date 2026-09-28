@@ -203,6 +203,12 @@ export type Generation = {
   // link never silently changes; published_at null means "not currently live."
   publish_slug: string | null;
   published_at: string | null;
+  // Agent Cora's Completed Courses feature — see 0039_course_completed.sql. approved_at set
+  // means this generation sits in the Completed section instead of the ordinary Past
+  // generations list; module_identifier labels which module it was for (course_module_slides/
+  // quiz/workbook only, null for course_outline and every other asset type).
+  approved_at: string | null;
+  module_identifier: string | null;
 };
 
 export type GenerationVersionSource = "generate" | "edit" | "snapshot";

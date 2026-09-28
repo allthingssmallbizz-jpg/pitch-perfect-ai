@@ -204,6 +204,11 @@ export async function POST(req: NextRequest) {
       mode,
       status: "pending",
       credits_charged: generator.creditCost,
+      // Persisted (not just used transiently to build the prompt) so a module-scoped generation
+      // can be labeled with which module it was for later — see Agent Cora's Completed Courses
+      // section (0039_course_completed.sql). Null for every other asset type, course_outline
+      // included (a course has one outline, not one per module).
+      module_identifier: moduleScoped ? moduleIdentifier : null,
     })
     .select("id")
     .single();

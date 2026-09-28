@@ -8,7 +8,7 @@ import { projectNeedsDiscovery, REQUIRED_DISCOVERY_FIELDS } from "@/lib/projects
 import { isPresenterBioIncomplete } from "@/lib/ai/presenterBio";
 import { isRestrictionBypassActive } from "@/lib/adminBypass";
 import { getPageStats, type PageStats } from "@/lib/analytics";
-import { parseCourseModuleList, type CourseModuleRef } from "@/lib/ai/courseModules";
+import { parseCourseModuleList, COURSE_ASSET_TYPES, type CourseModuleRef } from "@/lib/ai/courseModules";
 import AgentBadge from "@/components/AgentBadge";
 import BioBlockedDialog from "@/components/BioBlockedDialog";
 import DiscoveryBlockedDialog from "@/components/DiscoveryBlockedDialog";
@@ -134,7 +134,7 @@ export default async function GenerateAssetPage({
   // draft doesn't mean backing out to the project page and hunting for it.
   const { data: pastGenerationRows } = await supabase
     .from("generations")
-    .select("id, content, status, created_at")
+    .select("id, content, status, created_at, approved_at, module_identifier")
     .eq("project_id", id)
     .eq("asset_type", generator.assetType)
     .eq("status", "complete")
@@ -143,15 +143,29 @@ export default async function GenerateAssetPage({
 
   // Landing Page's content is a real HTML document — raw tags would otherwise show up as
   // literal text in this preview snippet instead of readable copy.
-  const pastGenerations = (pastGenerationRows ?? []).map((g) => {
+  function toPastGeneration(g: NonNullable<typeof pastGenerationRows>[number]) {
     const raw = g.content ?? "";
     const cleaned = generator.assetType === "landing_page" ? raw.replace(/<[^>]*>/g, " ") : raw;
     return {
       id: g.id,
       createdAt: g.created_at,
       preview: cleaned.replace(/\s+/g, " ").trim().slice(0, 120),
+      moduleIdentifier: g.module_identifier,
     };
-  });
+  }
+
+  // Agent Cora's Completed Courses feature (see 0039_course_completed.sql) — a course/module
+  // generation a member has explicitly approved moves out of the ordinary chronological list
+  // below into its own labeled section instead, so it's a click away without hunting through
+  // drafts. Every other asset type simply never has approved_at set, so this split is a no-op
+  // for them — pastGenerations ends up holding everything, same as before.
+  const isCourseAsset = COURSE_ASSET_TYPES.includes(generator.assetType);
+  const pastGenerations = (pastGenerationRows ?? []).filter((g) => !g.approved_at).map(toPastGeneration);
+  const completedGenerations = isCourseAsset
+    ? (pastGenerationRows ?? [])
+        .filter((g) => g.approved_at)
+        .map((g) => ({ ...toPastGeneration(g), approvedAt: g.approved_at as string }))
+    : [];
 
   // The "other half" of this generator's pair in the same project — lets the toggle below jump
   // straight to it without backing out to the project page and hunting for it, since each pair is
@@ -349,6 +363,8 @@ export default async function GenerateAssetPage({
         initialStats={initialStats}
         initialPastGenerations={pastGenerations}
         courseModules={courseModules}
+        initialCompletedGenerations={completedGenerations}
+        projectName={project.name}
       />
     </div>
   );

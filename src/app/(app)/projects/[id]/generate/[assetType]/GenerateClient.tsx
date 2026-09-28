@@ -28,6 +28,8 @@ import {
   BarChart3,
   RefreshCw,
   Wand2,
+  CheckCircle2,
+  Undo,
 } from "lucide-react";
 import {
   Dialog,
@@ -53,13 +55,19 @@ import {
 import { downloadHtmlFile, openInBrowserTab } from "@/lib/browserFile";
 import { getPublicSiteUrl } from "@/lib/publishing";
 import type { PageStats } from "@/lib/analytics";
-import type { CourseModuleRef } from "@/lib/ai/courseModules";
+import { COURSE_ASSET_TYPES, type CourseModuleRef } from "@/lib/ai/courseModules";
 import PageEditPanel from "./PageEditPanel";
 import TextEditPanel from "./TextEditPanel";
 import SlidePreview from "./SlidePreview";
 import { SLIDE_MEDIA_ASSET_TYPES } from "@/lib/ai/generators/slideMedia";
 
-export type PastGeneration = { id: string; createdAt: string; preview: string };
+// moduleIdentifier: which module this generation was built for (course_module_slides/quiz/
+// workbook only, from the persisted column — see 0039_course_completed.sql). Null for
+// course_outline and every non-Cora asset type.
+export type PastGeneration = { id: string; createdAt: string; preview: string; moduleIdentifier: string | null };
+// A generation a member has explicitly marked "Completed" (Agent Cora's Completed Courses
+// section) — same shape as PastGeneration plus when it was approved.
+export type CompletedGeneration = PastGeneration & { approvedAt: string };
 
 // Cora's three "one module at a time" generators — each needs a "which module?" input before it
 // can run at all (see moduleIdentifier state below), unlike every other agent's plain Generate.
@@ -291,6 +299,8 @@ export default function GenerateClient({
   initialStats,
   initialPastGenerations,
   courseModules,
+  initialCompletedGenerations,
+  projectName,
 }: {
   projectId: string;
   assetType: AssetType;
@@ -316,6 +326,12 @@ export default function GenerateClient({
   // actual modules and powering "Build the next module" below. Empty for every other agent, and
   // for a module-scoped one whose outline hasn't been generated yet or didn't parse.
   courseModules: CourseModuleRef[];
+  // Agent Cora's Completed Courses section — generations already marked "Completed," excluded
+  // from initialPastGenerations above (see page.tsx's split). Empty for every non-Cora agent.
+  initialCompletedGenerations: CompletedGeneration[];
+  // The project's own name — this IS "the course," used to label each Completed entry alongside
+  // its module (e.g. "The Confident Coach Blueprint — Module 3: Building Your Offer").
+  projectName: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -390,7 +406,10 @@ export default function GenerateClient({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [pastGenerations, setPastGenerations] = useState<PastGeneration[]>(initialPastGenerations);
+  const [completedGenerations, setCompletedGenerations] = useState<CompletedGeneration[]>(initialCompletedGenerations);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const isCourseAsset = COURSE_ASSET_TYPES.includes(assetType);
   // Web-page assets' content is a real HTML document — default to seeing it rendered as an
   // actual page. "inline" is a live, click-to-edit rendering of that same page (see
   // buildEditableHtml); "html" is the raw-source textarea, the power-user fallback.
@@ -762,7 +781,12 @@ export default function GenerateClient({
         setPublishedAt(null);
         const previewSource = isWebPageAsset ? stripHtmlTags(String(data.content)) : String(data.content).replace(/\s+/g, " ").trim();
         setPastGenerations((prev) => [
-          { id: data.generationId, createdAt: new Date().toISOString(), preview: previewSource.slice(0, 120) },
+          {
+            id: data.generationId,
+            createdAt: new Date().toISOString(),
+            preview: previewSource.slice(0, 120),
+            moduleIdentifier: MODULE_SCOPED_ASSET_TYPES.includes(assetType) ? effectiveModuleIdentifier.trim() || null : null,
+          },
           ...prev,
         ]);
         // A plain browser History API call, not router.replace() — this page reads searchParams
@@ -812,6 +836,13 @@ export default function GenerateClient({
     router.push(urlWithGeneration(pastId));
   }
 
+  // The Completed Courses section's direct download link — course_module_slides gets the real
+  // designed .pptx deck (same as its own "Export .pptx" button above), everything else Cora
+  // produces is plain markdown, so PDF (a generic export with no asset-type restriction).
+  function completedDownloadHref(genId: string) {
+    return assetType === "course_module_slides" ? `/api/export/pptx?generationId=${genId}` : `/api/export/pdf?generationId=${genId}`;
+  }
+
   async function deletePast(pastId: string) {
     if (!window.confirm("Delete this generation? This can't be undone.")) return;
     setDeletingId(pastId);
@@ -821,7 +852,10 @@ export default function GenerateClient({
         const data = await res.json().catch(() => null);
         throw new Error(data?.error || "Could not delete.");
       }
+      // Could be sitting in either list — a Completed generation is still just a generation,
+      // deletable the same way an ordinary past one is.
       setPastGenerations((prev) => prev.filter((g) => g.id !== pastId));
+      setCompletedGenerations((prev) => prev.filter((g) => g.id !== pastId));
       if (generationId === pastId) {
         setContent(null);
         setGenerationId(null);
@@ -834,6 +868,44 @@ export default function GenerateClient({
       toast.error(e instanceof Error ? e.message : "Could not delete.");
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  // Marks a generation "Completed" — moves it out of the ordinary Past generations list into its
+  // own Completed section (see the render below), labeled with the course/module it belongs to.
+  // No AI call, no credits — pure metadata, so there's nothing to await beyond the save itself.
+  async function approveGeneration(target: PastGeneration) {
+    setApprovingId(target.id);
+    try {
+      const res = await fetch(`/api/generations/${target.id}/approve`, { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "Could not mark this as completed.");
+      setPastGenerations((prev) => prev.filter((g) => g.id !== target.id));
+      setCompletedGenerations((prev) => [{ ...target, approvedAt: new Date().toISOString() }, ...prev]);
+      toast.success("Marked as completed!");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not mark this as completed.");
+    } finally {
+      setApprovingId(null);
+    }
+  }
+
+  async function unapproveGeneration(target: CompletedGeneration) {
+    setApprovingId(target.id);
+    try {
+      const res = await fetch(`/api/generations/${target.id}/approve`, { method: "DELETE" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "Could not undo that.");
+      setCompletedGenerations((prev) => prev.filter((g) => g.id !== target.id));
+      setPastGenerations((prev) => [
+        { id: target.id, createdAt: target.createdAt, preview: target.preview, moduleIdentifier: target.moduleIdentifier },
+        ...prev,
+      ]);
+      toast.success("Moved back to Past generations");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not undo that.");
+    } finally {
+      setApprovingId(null);
     }
   }
 
@@ -1037,6 +1109,34 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
                   {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                   {saved ? "Saved!" : "Save"}
                 </Button>
+                {isCourseAsset &&
+                  (completedGenerations.some((g) => g.id === generationId) ? (
+                    <span className="flex items-center gap-1.5 rounded-full bg-blue-500/15 px-3 py-1.5 text-sm font-medium text-blue-500">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Completed
+                    </span>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      disabled={approvingId === generationId}
+                      onClick={() => {
+                        const target: PastGeneration = pastGenerations.find((g) => g.id === generationId) ?? {
+                          id: generationId,
+                          createdAt: new Date().toISOString(),
+                          preview: content.replace(/\s+/g, " ").trim().slice(0, 120),
+                          moduleIdentifier: MODULE_SCOPED_ASSET_TYPES.includes(assetType) ? moduleIdentifier.trim() || null : null,
+                        };
+                        approveGeneration(target);
+                      }}
+                    >
+                      {approvingId === generationId ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                      )}
+                      Mark as Completed
+                    </Button>
+                  ))}
                 <VersionHistory
                   generationId={generationId}
                   currentContent={content}
@@ -1292,6 +1392,51 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
         </DialogContent>
       </Dialog>
 
+      {isCourseAsset && completedGenerations.length > 0 && (
+        <details className="mb-4 rounded-xl border border-blue-500/30 bg-blue-500/5" open>
+          <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-blue-500 hover:text-blue-400">
+            <CheckCircle2 className="mr-1.5 inline h-4 w-4" />
+            Completed Courses ({completedGenerations.length})
+          </summary>
+          <ul className="divide-y divide-blue-500/20 border-t border-blue-500/20">
+            {completedGenerations.map((g) => (
+              <li
+                key={g.id}
+                className={`flex items-center gap-3 px-4 py-2.5 text-sm ${g.id === generationId ? "bg-blue-500/10" : ""}`}
+              >
+                <button onClick={() => openPast(g.id)} className="min-w-0 flex-1 text-left">
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0 rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-500">
+                      Completed
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{formatWhen(g.approvedAt)}</span>
+                  </div>
+                  <div className="mt-0.5 truncate font-medium">
+                    {projectName}
+                    {g.moduleIdentifier ? ` — ${g.moduleIdentifier}` : ""}
+                  </div>
+                </button>
+                <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-foreground" asChild>
+                  <a href={completedDownloadHref(g.id)} title="Download">
+                    <FileDown className="h-4 w-4" />
+                  </a>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  disabled={approvingId === g.id}
+                  onClick={() => unapproveGeneration(g)}
+                  title="Move back to Past generations"
+                >
+                  {approvingId === g.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Undo className="h-4 w-4" />}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
       {pastGenerations.length > 0 && (
         <details className="mb-4 rounded-xl border border-border bg-card/30" open={pastGenerations.length <= 3}>
           <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground">
@@ -1315,6 +1460,18 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
                   </div>
                   <div className="mt-0.5 truncate text-muted-foreground">{g.preview || "(empty)"}</div>
                 </button>
+                {isCourseAsset && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 text-muted-foreground hover:text-blue-500"
+                    disabled={approvingId === g.id}
+                    onClick={() => approveGeneration(g)}
+                    title="Mark as Completed"
+                  >
+                    {approvingId === g.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
