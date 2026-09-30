@@ -2,16 +2,23 @@ import Link from "next/link";
 import { AGENTS, type AgentAssetType } from "@/lib/agents/config";
 import AgentBadge from "@/components/AgentBadge";
 
+// One card per distinct agent identity (see src/lib/agents/config.ts) — an agent that produces
+// several asset types (Polly: ppt_outline + webinar_script; Cora: course_outline +
+// course_module_slides/quiz/workbook) is represented once here by its primary/entry asset type,
+// not once per asset type, so this doesn't turn into 15+ near-duplicate cards for 12 actual
+// agents. thank_you_page (Tessa) and course_outline (Cora) were missing entirely — added below.
 const AGENT_ORDER: AgentAssetType[] = [
   "webinar_outline",
   "vsl_script",
   "challenge_outline",
   "sales_page",
   "landing_page",
+  "thank_you_page",
   "email_sequence",
   "ppt_outline",
   "ad_copy",
   "offer_ladder",
+  "course_outline",
   "presentation_analysis",
 ];
 
