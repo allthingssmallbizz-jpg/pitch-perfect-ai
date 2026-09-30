@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AGENTS, type AgentAssetType } from "@/lib/agents/config";
 import AgentBadge from "@/components/AgentBadge";
+import CreatorTag from "@/components/CreatorTag";
 
 // One card per distinct agent identity (see src/lib/agents/config.ts) — an agent that produces
 // several asset types (Polly: ppt_outline + webinar_script; Cora: course_outline +
@@ -25,6 +26,7 @@ const AGENT_ORDER: AgentAssetType[] = [
 export default function Home() {
   return (
     <div>
+      <CreatorTag />
       <section className="mx-auto max-w-4xl px-4 py-24 text-center">
         <h1 className="font-display text-4xl font-bold tracking-tight text-gradient-silver sm:text-5xl">
           Turn your offer into a webinar, VSL, and launch sequence — in minutes.
