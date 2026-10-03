@@ -216,6 +216,16 @@ export const DISCOVERY_FIELD_GUIDANCE: Record<string, FieldGuidance> = {
     avoid: "A humble-brag disguised as a setback ('my only flaw is I work too hard'). This needs a real, uncomfortable low point to do its job.",
     exemplar: "My first launch made $340 after three months of work — I'd built the whole thing around what I thought was smart instead of what my actual audience needed. I almost shut it down. What changed it was finally interviewing 20 past clients instead of guessing, and rebuilding the offer from what they actually said.",
   },
+  presenter_epiphany_moment: {
+    whatThisFieldIs:
+      "The exact moment or insight that changed everything — the specific realization that broke through whatever wall (external, internal, or a wrong belief) the setback above represents. This is the Epiphany beat of the Epiphany Bridge story structure: the belief shift itself, stated as something discovered in the moment, not a lesson being taught.",
+    whatGreatLooksLike:
+      "- One specific moment or line of realization, not a general summary of 'what I learned'\n- Phrase it as a discovery ('it hit me that...', 'I realized...'), not a teaching point ('the lesson is...')\n- Should connect directly to the setback story above — this is the turn, not a separate story",
+    avoid:
+      "A vague 'and then everything clicked' with no actual content. The reader should be able to repeat the specific realization back in one sentence after reading it.",
+    exemplar:
+      "Reading those 20 client interviews back to back, it hit me: every single person already knew WHAT to do. Not one was missing information. What they were all missing was the same thing — a forced cadence that didn't depend on willpower.",
+  },
   presenter_income_goal_6mo: {
     whatThisFieldIs: "The presenter's own personal income goal for the next 6 months — internal context, not customer-facing copy.",
     whatGreatLooksLike: "- A specific number with a timeframe/unit\n- Realistic enough to be usable for authentic vision-casting if a generator ever references it",

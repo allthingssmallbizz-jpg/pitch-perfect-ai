@@ -1,5 +1,5 @@
 import type { GeneratorAssetType } from "@/lib/ai/generators";
-import type { PresenterBio, Project } from "@/types/database";
+import type { PresenterBioProfile, Project } from "@/types/database";
 
 // Swipe-file templates for the /templates page — pre-filled example briefs so a new user can
 // clone one, tweak the details, and generate immediately instead of starting from a blank
@@ -22,7 +22,11 @@ export type Template = {
   // createProjectFromTemplate only seeds this into presenter_bios when the user's own bio is
   // still completely empty — never overwriting a real bio they've already filled in, same rule
   // Website Import and Offer Builder already follow for existing discovery fields.
-  presenterBio: Partial<PresenterBio>;
+  // Spread straight into an insert against presenter_bio_profiles (see createProjectFromTemplate
+  // in actions/projects.ts) — this was previously (incorrectly) typed against the deprecated
+  // PresenterBio shape, which happened to overlap enough not to matter until a field was added
+  // to one and not the other.
+  presenterBio: Partial<PresenterBioProfile>;
 };
 
 export const TEMPLATES: Template[] = [
@@ -87,6 +91,8 @@ export const TEMPLATES: Template[] = [
         "A client named Marcus came to me working 70-hour weeks and about to turn down a promotion out of sheer exhaustion. Eight weeks later he'd cut his hours to 45, took the promotion, and told me it was the first time work felt 'winnable' instead of endless.",
       presenter_setback_story:
         "My first attempt at this business was a $47 course that sold 6 copies in 4 months. I'd built it around what I thought sounded smart instead of what actually got a client unstuck. I nearly shut it down — what turned it around was interviewing 20 past clients and rebuilding everything around the one thing they all had in common: no cadence, just chaos.",
+      presenter_epiphany_moment:
+        "Reading those 20 interview transcripts back to back, it hit me: every single person already knew WHAT to do. Not one of them was missing information. What they were all missing was the same thing — a forced cadence that didn't depend on willpower.",
       presenter_income_goal_6mo: "$30k/month",
       presenter_income_goal_12mo: "$60k/month, with a second coach licensed to run cohorts",
       presenter_mission_why:
@@ -156,6 +162,8 @@ export const TEMPLATES: Template[] = [
         "A 22-person engineering team at a fintech startup cut their meeting load from 6 hours/week to 45 minutes/week in their first month using Loop, and their eng lead told me it was the first quarter in two years they shipped everything on the roadmap.",
       presenter_setback_story:
         "We spent our first 8 months building a full video-call replacement platform — nobody wanted it, because the problem was never 'no video,' it was 'no time.' We nearly ran out of runway before we scrapped 80% of the product and rebuilt around async summarization alone.",
+      presenter_epiphany_moment:
+        "Re-reading our own churn interview notes, I realized not one person who canceled ever said 'I wish we had better video calls' — they all said some version of 'I just need to know what's blocking us.' We'd spent 8 months solving a problem nobody actually had.",
       presenter_income_goal_6mo: "$150k MRR",
       presenter_income_goal_12mo: "$400k MRR, Series A closed",
       presenter_mission_why:
@@ -226,6 +234,8 @@ export const TEMPLATES: Template[] = [
         "A course creator with a 'dead' list of 8,000 subscribers used the formula on a single re-engagement send and got a 44% open rate and $3,200 in sales from a list she'd almost given up on.",
       presenter_setback_story:
         "My first product was a $997 'complete email marketing system' that sold 4 copies in its first launch. It was too expensive and too broad for someone who'd never had a good open rate in their life. I rebuilt it as a $27 single-formula product and it's sold over 1,200 copies since.",
+      presenter_epiphany_moment:
+        "Talking to the handful of people who'd bought the $997 course and never finished it, I kept hearing the same thing: they didn't need a whole system, they needed ONE thing that worked today. That's the moment I realized I'd been selling comprehensiveness when what they actually wanted was relief.",
       presenter_income_goal_6mo: "$15k/month",
       presenter_income_goal_12mo: "$35k/month with the upsell funnel fully automated",
       presenter_mission_why:
@@ -296,6 +306,8 @@ export const TEMPLATES: Template[] = [
         "A $4M/year skincare brand came to us assuming they needed more ad spend. The Growth Diagnostic found their real problem was a 22% return rate quietly eating their margins — fixing packaging and PDP copy alone added $340k in a single quarter, before we touched their media buying.",
       presenter_setback_story:
         "In year 2 we took on a client 3x bigger than anything we'd handled and nearly lost the account — and our reputation — because we didn't have the systems to manage that scale yet. We had to rebuild our entire onboarding and reporting process from scratch under pressure, but it's the reason we can handle 7-figure brands confidently today.",
+      presenter_epiphany_moment:
+        "Sitting in that near-disaster review meeting, watching the client ask 'but WHY did this actually work,' I realized nobody on our side could answer. We'd been selling activity, not understanding — and diagnosis had to come before any spend, every single time, from that meeting on.",
       presenter_income_goal_6mo: "$180k/month agency revenue",
       presenter_income_goal_12mo: "$350k/month, launching a productized audit-only tier",
       presenter_mission_why:
@@ -367,6 +379,8 @@ export const TEMPLATES: Template[] = [
         "A founder joined stuck at $3M in revenue for two straight years, convinced he'd hit his ceiling. Eighteen months in the room later, he'd restructured his leadership team, added $2.4M in annual revenue, and told me it was the first year running his company didn't feel lonely.",
       presenter_setback_story:
         "The first version of this mastermind was 80 members and felt like a networking event, not a real room — members stopped renewing because nobody actually knew each other. I cut it down to 40 max and rebuilt around real intimacy, and renewal rates went from 60% to 94%.",
+      presenter_epiphany_moment:
+        "Looking at who was actually canceling, I realized it wasn't the members getting the least value — it was the ones who never got to really know anyone else in the room. We'd built a room full of strangers and called it community. Size itself was the entire problem.",
       presenter_income_goal_6mo: "$850k/quarter across the membership",
       presenter_income_goal_12mo:
         "$4M/year, with a second cohort tier launched for founders at the $500k-$1M stage",
@@ -438,6 +452,8 @@ export const TEMPLATES: Template[] = [
         "A customer wrote in after 15 years of chronic neck pain and said Nightshift was the first pillow that let her sleep through a full night without waking up to reposition — she'd tried 11 other pillows first.",
       presenter_setback_story:
         "Our first product run had a manufacturing defect that caused the cooling layer to break down after 2 months, and we ate the cost of replacing every unit sold that quarter — nearly $80k we didn't have. It was terrifying, but it's why our current QA process tests every batch three separate times before it ships.",
+      presenter_epiphany_moment:
+        "Lying awake yet again testing a brand-new 'premium' pillow, it hit me that every pillow I'd ever tried was optimized for softness — and softness had never once been my actual problem. Nobody was solving for temperature or neck alignment because nobody had bothered to ask a sleep neurologist what was actually happening.",
       presenter_income_goal_6mo: "$400k/month in revenue",
       presenter_income_goal_12mo: "$900k/month, expanding into a full sleep system (pillow + mattress topper)",
       presenter_mission_why:
@@ -513,6 +529,8 @@ export const TEMPLATES: Template[] = [
         "The Marshall family had their home sitting unsold for 4 months with another agent before switching to me. Using the Pre-Market Positioning phase, we had 3 competing offers within 9 days and closed $31,000 over their original asking price.",
       presenter_setback_story:
         "In my second year, I listed a home the same way every other agent in town did — MLS and a sign — and it sat for 97 days before selling under asking. I was mortified calling the sellers with updates that were really just 'still nothing.' That's the listing that made me rebuild my entire process around creating demand before a home ever goes live, instead of waiting for a buyer to find it.",
+      presenter_epiphany_moment:
+        "Hanging up after telling them 'still nothing' for the third week running, it hit me that I was marketing that house exactly the way every agent I'd ever criticized did — list it and wait. Every home I'd seen sell fast and high had competition built in BEFORE it ever touched the MLS.",
       presenter_income_goal_6mo: "$45,000/month in gross commission income",
       presenter_income_goal_12mo: "$90,000/month in gross commission income, with a licensed buyer's agent added to the team",
       presenter_mission_why:

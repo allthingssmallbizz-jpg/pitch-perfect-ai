@@ -297,6 +297,9 @@ export type PresenterBio = {
   created_at: string;
   updated_at: string;
 };
+// NOTE: PresenterBio above is the deprecated table (do not use in new code — see its own
+// comment) and deliberately does NOT get presenter_epiphany_moment; only PresenterBioProfile
+// below does.
 
 // Many rows per user (table presenter_bio_profiles, 0031_niche_bio_profiles.sql) — a member
 // running genuinely different businesses under one account (a travel agent who also coaches
@@ -325,6 +328,10 @@ export type PresenterBioProfile = {
   presenter_origin_story: string;
   presenter_signature_win: string;
   presenter_setback_story: string;
+  // The specific realization/insight that changed everything — the Epiphany beat of the
+  // Epiphany Bridge story structure (see knowledge/10-epiphany-bridge.md and
+  // 0041_presenter_epiphany_moment.sql). Optional, same reasoning as signature_win/setback_story.
+  presenter_epiphany_moment: string;
   presenter_income_goal_6mo: string;
   presenter_income_goal_12mo: string;
   presenter_mission_why: string;

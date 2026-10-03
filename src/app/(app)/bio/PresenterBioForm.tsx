@@ -29,6 +29,7 @@ const FIELD_NAMES = [
   "presenter_origin_story",
   "presenter_signature_win",
   "presenter_setback_story",
+  "presenter_epiphany_moment",
   "presenter_income_goal_6mo",
   "presenter_income_goal_12mo",
   "presenter_mission_why",
@@ -390,6 +391,14 @@ export default function PresenterBioForm({
         defaultValue={bio?.presenter_setback_story ?? ""}
         placeholder="Struggled, failed, or hit a wall trying to build this? Tell it honestly."
         hint="A real setback, told honestly, builds more trust than a highlight reel — it's exactly what makes an Opening Story land. Leave blank if this hasn't happened for this business yet."
+        onAssist={setAssistTarget}
+      />
+      <Field
+        label="The exact moment everything changed for you"
+        name="presenter_epiphany_moment"
+        defaultValue={bio?.presenter_epiphany_moment ?? ""}
+        placeholder="The specific realization or insight — not just 'then I figured it out.'"
+        hint="This is the one line a whole Opening Story can hinge on — the exact belief-shift moment, stated as something you realized in the moment, not a lesson you're teaching. Leave blank if you haven't had this moment yet for this business."
         onAssist={setAssistTarget}
       />
       <Field
