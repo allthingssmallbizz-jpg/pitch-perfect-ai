@@ -14,6 +14,7 @@ const KNOWLEDGE_FILES = [
   "06-value-proposition.md",
   "08-offer-creation.md",
   "09-campaign-architecture.md",
+  "10-epiphany-bridge.md",
   "03-webinar.md",
   "04-sales-presentation.md",
 ];

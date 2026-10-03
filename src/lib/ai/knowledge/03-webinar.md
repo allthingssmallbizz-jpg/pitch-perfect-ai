@@ -7,8 +7,8 @@ Webinars run PPOS live, with more room for teaching, proof, and interaction. App
 | Phase | Audience question | Objective |
 |---|---|---|
 | 1. Capture Attention™ | "Is this worth my time?" | Welcome, Big Promise (outcome not topic), light agenda, immediate engagement trigger (poll/chat) |
-| 2. Build Relevance™ | "Is this about someone like me?" | Audience identification, opportunity framing, shared-experience story, interactive reflection |
-| 3. Create New Beliefs™ | "Could there be a better way?" | One Belief Method™, strategic teaching (why not how), false-belief removal ("many people naturally assume... but"), named framework introduction, micro-commitments ("does this make sense?") |
+| 2. Build Relevance™ | "Is this about someone like me?" | Audience identification, opportunity framing, shared-experience story (Epiphany Bridge™ — Playbook 10), interactive reflection |
+| 3. Create New Beliefs™ | "Could there be a better way?" | One Belief Method™ / Big Domino™ (Playbook 10), delivered via Epiphany Bridge story where a real one exists, strategic teaching (why not how), false-belief removal ("many people naturally assume... but"), named framework introduction, micro-commitments ("does this make sense?") |
 | 4. Build Certainty™ | "Can I trust this approach?" | Demonstrations, case studies, testimonials (each answers a different objection), live examples |
 | 5. Present the Solution™ | "Is this the solution I've been looking for?" | Introduce offer as logical conclusion; Unique Method™; future pacing 30/90/365 days |
 | 6. Maximize Value™ | "Is this worth the investment?" | Core offer, implementation roadmap, bonus stack (each removes an objection), investment framing before price, guarantee |

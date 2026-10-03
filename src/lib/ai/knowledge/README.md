@@ -21,11 +21,13 @@ Currently encoded:
   (PPOS-Offer)
 - `09-campaign-architecture.md` — Playbook 12: The Ultimate Campaign Architecture
   Operating Manual (PPCOS — cross-asset consistency)
+- `10-epiphany-bridge.md` — Playbook 10: The Epiphany Bridge & Big Domino Operating Manual
+  (how PPOS Phase 3's belief shift actually gets delivered — via story, not lecture)
 
-`KNOWLEDGE_FILES` in `systemPrompt.ts` currently loads 00, 01, 02, 06, 07, 08, 09, 03, 04 on
+`KNOWLEDGE_FILES` in `systemPrompt.ts` currently loads 00, 01, 02, 06, 07, 08, 09, 10, 03, 04 on
 every generation (the universal strategic layers, in the order the playbooks say they should
-happen — Discovery → Awareness → Value → Offer → Campaign — followed by the two
-format-specific frameworks currently in use). `05-vsl-25-part.md` is loaded only inside
+happen — Discovery → Awareness → Value → Offer → Campaign → Epiphany Bridge — followed by the
+two format-specific frameworks currently in use). `05-vsl-25-part.md` is loaded only inside
 `src/lib/ai/generators/vslScript.ts` via `getKnowledgeFile()`, since it's only relevant to one
 asset type — see "Per-generator files" below.
 
