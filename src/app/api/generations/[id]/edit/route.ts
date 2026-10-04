@@ -13,8 +13,10 @@ import { parseVideoEmbedUrl, upsertVideoEmbed, removeVideoEmbed } from "@/lib/vi
 // every asset in WEB_PAGE_ASSET_TYPES already had) — an explicit allowlist rather than "anything
 // not a web page," since some markdown generators (a structured JSON-ish output, a very short
 // asset) might not be a good fit for a freeform "add/remove" edit without more thought. Course
-// Outline is the first; nothing structural stops adding another generator here later.
-const TEXT_EDITABLE_ASSET_TYPES = ["course_outline"];
+// Outline was the first; Cora's three module-scoped tools followed — a member marking a module's
+// slides/quiz/workbook "Completed" still needs to be able to fix a wrong speaker note or a bad
+// question without a full Regenerate blowing away everything else they liked about it.
+const TEXT_EDITABLE_ASSET_TYPES = ["course_outline", "course_module_slides", "course_module_quiz", "course_module_workbook"];
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
