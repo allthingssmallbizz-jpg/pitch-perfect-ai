@@ -19,7 +19,13 @@ import { parseVideoEmbedUrl, upsertVideoEmbed, removeVideoEmbed } from "@/lib/vi
 const TEXT_EDITABLE_ASSET_TYPES = ["course_outline", "course_module_slides", "course_module_quiz", "course_module_workbook"];
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+// The text-edit path has to echo back the ENTIRE document with the change applied, not just a
+// fragment — for a large Course Outline that's the same size output as /api/generate's own
+// original generation (which already needs maxDuration = 300 for exactly this reason). 120 was
+// too tight for that case and surfaced as a real 504 on a long, many-module course outline.
+// Matches /api/generate's value and the same caveat: 300s only actually applies on a plan that
+// allows it (Vercel Pro or above) — see that route's comment.
+export const maxDuration = 300;
 
 const requestSchema = z
   .object({
