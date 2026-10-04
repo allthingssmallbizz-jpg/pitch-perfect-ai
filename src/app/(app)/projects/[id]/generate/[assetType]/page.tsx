@@ -114,11 +114,33 @@ export default async function GenerateAssetPage({
   let initialPublishSlug: string | null = null;
   let initialPublishedAt: string | null = null;
 
-  if (generationId) {
+  // If no specific generation is requested in the URL, fall back to the most recent complete one
+  // for this project+assetType — so landing on an agent's page after it already has finished
+  // work shows that work immediately instead of an empty "nothing generated yet" state. Same
+  // "pick up where you left off" reasoning the dashboard's own latestGeneration lookup already
+  // uses for its project cards, just applied here too so it's consistent no matter how this page
+  // was reached (a bare agent link, an intent-redirect from the roadmap, a direct URL). Reported
+  // as: a member with already-built courses clicking back into Cora landed on a blank page and
+  // had to hunt through Past Generations to find what they'd already made.
+  let effectiveGenerationId = generationId;
+  if (!effectiveGenerationId) {
+    const { data: latest } = await supabase
+      .from("generations")
+      .select("id")
+      .eq("project_id", id)
+      .eq("asset_type", generator.assetType)
+      .eq("status", "complete")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    effectiveGenerationId = latest?.id;
+  }
+
+  if (effectiveGenerationId) {
     const { data: generation } = await supabase
       .from("generations")
       .select("*")
-      .eq("id", generationId)
+      .eq("id", effectiveGenerationId)
       .eq("project_id", id)
       .single();
     if (generation) {
