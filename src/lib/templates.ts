@@ -91,8 +91,12 @@ export const TEMPLATES: Template[] = [
         "A client named Marcus came to me working 70-hour weeks and about to turn down a promotion out of sheer exhaustion. Eight weeks later he'd cut his hours to 45, took the promotion, and told me it was the first time work felt 'winnable' instead of endless.",
       presenter_setback_story:
         "My first attempt at this business was a $47 course that sold 6 copies in 4 months. I'd built it around what I thought sounded smart instead of what actually got a client unstuck. I nearly shut it down — what turned it around was interviewing 20 past clients and rebuilding everything around the one thing they all had in common: no cadence, just chaos.",
+      presenter_mentor:
+        "My old boss's executive coach, who I'd been assigned once as a 'perk.' In our only session she asked me to write out my week hour by hour, then circled the 9 hours that didn't move anything forward and said, 'You don't have a time problem — you have a rhythm problem.' I didn't get it then. I got it rereading those 20 client interviews.",
       presenter_epiphany_moment:
         "Reading those 20 interview transcripts back to back, it hit me: every single person already knew WHAT to do. Not one of them was missing information. What they were all missing was the same thing — a forced cadence that didn't depend on willpower.",
+      presenter_conflict_story:
+        "The first cohort I ran on the new weekly cadence, 4 of 11 people dropped out by week 3 and two asked for refunds — the exact 'coaching that didn't stick' I was trying to fix. I seriously considered going back to the old course. Instead I called every person who stayed and asked what kept them in. Every answer was the same: the Monday check-in. I rebuilt weeks 1-3 around it, and the next cohort finished 10 of 11.",
       presenter_income_goal_6mo: "$30k/month",
       presenter_income_goal_12mo: "$60k/month, with a second coach licensed to run cohorts",
       presenter_mission_why:
@@ -162,8 +166,12 @@ export const TEMPLATES: Template[] = [
         "A 22-person engineering team at a fintech startup cut their meeting load from 6 hours/week to 45 minutes/week in their first month using Loop, and their eng lead told me it was the first quarter in two years they shipped everything on the roadmap.",
       presenter_setback_story:
         "We spent our first 8 months building a full video-call replacement platform — nobody wanted it, because the problem was never 'no video,' it was 'no time.' We nearly ran out of runway before we scrapped 80% of the product and rebuilt around async summarization alone.",
+      presenter_mentor:
+        "Honestly, no single mentor — it was our own churn data. I'd been ignoring the exit-survey spreadsheet for months because I thought it was just noise. A part-time customer success hire sorted it by keyword on a slow Friday and dropped it in Slack with one line: 'Nobody here is asking for video.'",
       presenter_epiphany_moment:
         "Re-reading our own churn interview notes, I realized not one person who canceled ever said 'I wish we had better video calls' — they all said some version of 'I just need to know what's blocking us.' We'd spent 8 months solving a problem nobody actually had.",
+      presenter_conflict_story:
+        "When we stripped the product down to async summaries, three of our biggest paying teams canceled within a month because 'the calls were the point.' Revenue dropped 30% and our lead investor asked if we'd just killed the company. We held our nerve, onboarded 40 new teams on the stripped-down version for free, and their 30-day retention came back at 89% — the number that saved our seed extension.",
       presenter_income_goal_6mo: "$150k MRR",
       presenter_income_goal_12mo: "$400k MRR, Series A closed",
       presenter_mission_why:
@@ -234,8 +242,12 @@ export const TEMPLATES: Template[] = [
         "A course creator with a 'dead' list of 8,000 subscribers used the formula on a single re-engagement send and got a 44% open rate and $3,200 in sales from a list she'd almost given up on.",
       presenter_setback_story:
         "My first product was a $997 'complete email marketing system' that sold 4 copies in its first launch. It was too expensive and too broad for someone who'd never had a good open rate in their life. I rebuilt it as a $27 single-formula product and it's sold over 1,200 copies since.",
+      presenter_mentor:
+        "A creator I'd ghostwritten for, who'd bought the $997 course to support me, told me on a call: 'I love you, but I only ever used the one opener from module 2.' She was the first person to say out loud what everyone else's silence was already telling me.",
       presenter_epiphany_moment:
         "Talking to the handful of people who'd bought the $997 course and never finished it, I kept hearing the same thing: they didn't need a whole system, they needed ONE thing that worked today. That's the moment I realized I'd been selling comprehensiveness when what they actually wanted was relief.",
+      presenter_conflict_story:
+        "My first $27 launch went out to my own list and barely broke even on ad spend — people assumed something that cheap couldn't be any good, the exact objection I'd been warned about. I nearly raised the price back up. Instead I added the 'send 10 emails' guarantee and 12 real before/after open-rate screenshots to the page, and the next launch sold 300 copies in a week.",
       presenter_income_goal_6mo: "$15k/month",
       presenter_income_goal_12mo: "$35k/month with the upsell funnel fully automated",
       presenter_mission_why:
@@ -306,8 +318,12 @@ export const TEMPLATES: Template[] = [
         "A $4M/year skincare brand came to us assuming they needed more ad spend. The Growth Diagnostic found their real problem was a 22% return rate quietly eating their margins — fixing packaging and PDP copy alone added $340k in a single quarter, before we touched their media buying.",
       presenter_setback_story:
         "In year 2 we took on a client 3x bigger than anything we'd handled and nearly lost the account — and our reputation — because we didn't have the systems to manage that scale yet. We had to rebuild our entire onboarding and reporting process from scratch under pressure, but it's the reason we can handle 7-figure brands confidently today.",
+      presenter_mentor:
+        "The client's CFO, of all people. In that review meeting she pulled up her own return-rate report and said, 'You've been optimizing ads for a product a fifth of people send back.' Nobody on my team had ever asked to see that report.",
       presenter_epiphany_moment:
         "Sitting in that near-disaster review meeting, watching the client ask 'but WHY did this actually work,' I realized nobody on our side could answer. We'd been selling activity, not understanding — and diagnosis had to come before any spend, every single time, from that meeting on.",
+      presenter_conflict_story:
+        "The first three clients we ran through the diagnostic-first process all pushed back hard — they'd hired an agency to run ads, not to hear their packaging or PDP copy was broken. One fired us in week 2. I almost went back to just running media. We kept the process, but started opening every audit with the ONE number that was costing them the most money — and the next two clients signed retainers on the spot.",
       presenter_income_goal_6mo: "$180k/month agency revenue",
       presenter_income_goal_12mo: "$350k/month, launching a productized audit-only tier",
       presenter_mission_why:
@@ -379,8 +395,12 @@ export const TEMPLATES: Template[] = [
         "A founder joined stuck at $3M in revenue for two straight years, convinced he'd hit his ceiling. Eighteen months in the room later, he'd restructured his leadership team, added $2.4M in annual revenue, and told me it was the first year running his company didn't feel lonely.",
       presenter_setback_story:
         "The first version of this mastermind was 80 members and felt like a networking event, not a real room — members stopped renewing because nobody actually knew each other. I cut it down to 40 max and rebuilt around real intimacy, and renewal rates went from 60% to 94%.",
+      presenter_mentor:
+        "A founder I'd known for 10 years who'd quietly quit the mastermind. Over dinner she told me, 'I paid $25k to sit in a room with 80 people and I couldn't name five of them.' That one sentence is what sent me back to the cancellation list.",
       presenter_epiphany_moment:
         "Looking at who was actually canceling, I realized it wasn't the members getting the least value — it was the ones who never got to really know anyone else in the room. We'd built a room full of strangers and called it community. Size itself was the entire problem.",
+      presenter_conflict_story:
+        "Cutting from 80 members to 40 meant telling half of a paying room they weren't coming back — about $1M in annual revenue gone, on a hunch. Two members publicly called it elitist, and for one quarter the business was smaller and quieter than it had been in years. I stuck with it, put every member through a real in-person intensive in the first 60 days, and renewals came in at 94% that year.",
       presenter_income_goal_6mo: "$850k/quarter across the membership",
       presenter_income_goal_12mo:
         "$4M/year, with a second cohort tier launched for founders at the $500k-$1M stage",
@@ -452,8 +472,12 @@ export const TEMPLATES: Template[] = [
         "A customer wrote in after 15 years of chronic neck pain and said Nightshift was the first pillow that let her sleep through a full night without waking up to reposition — she'd tried 11 other pillows first.",
       presenter_setback_story:
         "Our first product run had a manufacturing defect that caused the cooling layer to break down after 2 months, and we ate the cost of replacing every unit sold that quarter — nearly $80k we didn't have. It was terrifying, but it's why our current QA process tests every batch three separate times before it ships.",
+      presenter_mentor:
+        "A sleep neurologist I booked purely as a patient, out of desperation. Five minutes into the appointment she said, 'Your pillow is keeping your head too hot and your neck out of line — softness has nothing to do with it.' I asked her that day if she'd help me design one.",
       presenter_epiphany_moment:
         "Lying awake yet again testing a brand-new 'premium' pillow, it hit me that every pillow I'd ever tried was optimized for softness — and softness had never once been my actual problem. Nobody was solving for temperature or neck alignment because nobody had bothered to ask a sleep neurologist what was actually happening.",
+      presenter_conflict_story:
+        "Even after the neurologist signed on, the first 30 prototypes were either cool or supportive, never both — the cooling gel collapsed under neck pressure every time. Fourteen months in, with savings almost gone, three factories turned down the dual-layer design as 'not manufacturable.' The fourth agreed to try it, and prototype 31 was the one that went into the clinical study.",
       presenter_income_goal_6mo: "$400k/month in revenue",
       presenter_income_goal_12mo: "$900k/month, expanding into a full sleep system (pillow + mattress topper)",
       presenter_mission_why:
@@ -529,8 +553,12 @@ export const TEMPLATES: Template[] = [
         "The Marshall family had their home sitting unsold for 4 months with another agent before switching to me. Using the Pre-Market Positioning phase, we had 3 competing offers within 9 days and closed $31,000 over their original asking price.",
       presenter_setback_story:
         "In my second year, I listed a home the same way every other agent in town did — MLS and a sign — and it sat for 97 days before selling under asking. I was mortified calling the sellers with updates that were really just 'still nothing.' That's the listing that made me rebuild my entire process around creating demand before a home ever goes live, instead of waiting for a buyer to find it.",
+      presenter_mentor:
+        "My broker at the time, Linda, who'd been selling in our market for 25 years. I asked her how her listings kept closing in under two weeks and she said, 'I never list a house until I already have three buyers waiting for it.' Nobody had ever said that to me in licensing class.",
       presenter_epiphany_moment:
         "Hanging up after telling them 'still nothing' for the third week running, it hit me that I was marketing that house exactly the way every agent I'd ever criticized did — list it and wait. Every home I'd seen sell fast and high had competition built in BEFORE it ever touched the MLS.",
+      presenter_conflict_story:
+        "The first listing I ran through the pre-market process, the sellers got cold feet and wanted it on the MLS immediately — they thought the 10-day pre-market push meant I was stalling. I almost caved. Instead I showed them the list of 23 buyers I'd already contacted, held the line for one more week, and it went live with 2 offers already in hand and closed $14,000 over asking.",
       presenter_income_goal_6mo: "$45,000/month in gross commission income",
       presenter_income_goal_12mo: "$90,000/month in gross commission income, with a licensed buyer's agent added to the team",
       presenter_mission_why:
