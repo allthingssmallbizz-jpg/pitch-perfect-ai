@@ -34,6 +34,8 @@ export async function updatePresenterBio(_prevState: unknown, formData: FormData
     presenter_signature_win: text("presenter_signature_win"),
     presenter_setback_story: text("presenter_setback_story"),
     presenter_epiphany_moment: text("presenter_epiphany_moment"),
+    presenter_mentor: text("presenter_mentor"),
+    presenter_conflict_story: text("presenter_conflict_story"),
     presenter_income_goal_6mo: text("presenter_income_goal_6mo"),
     presenter_income_goal_12mo: text("presenter_income_goal_12mo"),
     presenter_mission_why: text("presenter_mission_why"),

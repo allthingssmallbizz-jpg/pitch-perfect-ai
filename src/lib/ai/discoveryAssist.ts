@@ -226,6 +226,26 @@ export const DISCOVERY_FIELD_GUIDANCE: Record<string, FieldGuidance> = {
     exemplar:
       "Reading those 20 client interviews back to back, it hit me: every single person already knew WHAT to do. Not one was missing information. What they were all missing was the same thing — a forced cadence that didn't depend on willpower.",
   },
+  presenter_mentor: {
+    whatThisFieldIs:
+      "What or who helped the presenter break through the wall in their setback story — the Mentor beat of the Epiphany Bridge story structure. A person, a book, a data point, a client's offhand comment, or honestly 'no one, I figured it out alone.'",
+    whatGreatLooksLike:
+      "- Names ONE specific source (a person, a book title, a number, a conversation) — not 'I did a lot of research'\n- Says what that source showed or said, in a sentence\n- If no one helped, say so plainly and name what they noticed on their own",
+    avoid:
+      "Name-dropping a famous guru for credibility when they weren't actually the turning point. The audience needs the real source, even if it's humble.",
+    exemplar:
+      "A past client I'd lost touch with emailed me out of the blue and said, 'You were the only coach who ever made me do the work every week.' That one line sent me back to interview 20 more past clients.",
+  },
+  presenter_conflict_story: {
+    whatThisFieldIs:
+      "The real obstacle the presenter's NEW plan still hit after they committed to it — the Conflict (Ordeal) beat of the Epiphany Bridge story structure. This is different from the setback story: the setback is what went wrong with the OLD way; this is what went wrong while trying the NEW way, right before it worked.",
+    whatGreatLooksLike:
+      "- A specific moment of doubt, pushback, or early failure after switching to the new approach\n- Shows what it cost or almost cost them (money, a client, their confidence)\n- Ends with how they pushed through — which sets up the Achievement",
+    avoid:
+      "Repeating the setback story, or a throwaway line like 'it wasn't easy at first.' Without a real struggle here, the result sounds too convenient to believe.",
+    exemplar:
+      "The first cohort I ran on the new weekly cadence, 4 of 11 people dropped out by week 3 and two asked for refunds. I seriously thought about going back to the old way. Instead I called every person who stayed and asked what was keeping them in — and built week 3 around their answers.",
+  },
   presenter_income_goal_6mo: {
     whatThisFieldIs: "The presenter's own personal income goal for the next 6 months — internal context, not customer-facing copy.",
     whatGreatLooksLike: "- A specific number with a timeframe/unit\n- Realistic enough to be usable for authentic vision-casting if a generator ever references it",

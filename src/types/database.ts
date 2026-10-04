@@ -332,6 +332,10 @@ export type PresenterBioProfile = {
   // Epiphany Bridge story structure (see knowledge/10-epiphany-bridge.md and
   // 0041_presenter_epiphany_moment.sql). Optional, same reasoning as signature_win/setback_story.
   presenter_epiphany_moment: string;
+  // The Mentor (beat 4) and The Conflict (beat 7) of the Epiphany Bridge — see
+  // 0042_presenter_mentor_and_conflict.sql. Optional, same reasoning as epiphany_moment.
+  presenter_mentor: string;
+  presenter_conflict_story: string;
   presenter_income_goal_6mo: string;
   presenter_income_goal_12mo: string;
   presenter_mission_why: string;

@@ -35,7 +35,9 @@ export async function getPresenterBioBlock(
     field("How they got into this industry", data.presenter_origin_story),
     field("Greatest client transformation", data.presenter_signature_win),
     field("A major setback and how they turned it around", data.presenter_setback_story),
+    field("What or who helped them break through (the Mentor beat)", data.presenter_mentor),
     field("The exact moment/insight that changed everything for them", data.presenter_epiphany_moment),
+    field("What still went wrong after they committed to the new way (the Conflict beat)", data.presenter_conflict_story),
     field("Personal 'why'", data.presenter_mission_why),
     field("Media, speaking, or industry recognition", data.presenter_recognition),
     field("A relatable, human detail", data.presenter_relatable_detail),
@@ -77,6 +79,8 @@ type PresenterBioFields = {
   presenter_signature_win: string;
   presenter_setback_story: string;
   presenter_epiphany_moment: string;
+  presenter_mentor: string;
+  presenter_conflict_story: string;
   presenter_income_goal_6mo: string;
   presenter_income_goal_12mo: string;
   presenter_mission_why: string;
