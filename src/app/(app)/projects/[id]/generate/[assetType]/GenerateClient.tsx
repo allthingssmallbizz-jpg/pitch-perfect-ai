@@ -1361,11 +1361,10 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
         </DialogContent>
       </Dialog>
 
-      {/* Your Signature Webinar's own speaker notes are already a full word-for-word script per
-          slide (see pptOutline.ts) — this is a separate, standalone rehearsal/leave-behind
-          script document a presenter can read start-to-finish without opening the slides,
-          aligned 1:1 to the exact deck that already exists. Same real-button-plus-auto-popup
-          pattern as the blueprint-to-deck step above. */}
+      {/* One step further: Your Signature Webinar's own speaker notes are short (1-3 sentences, meant for
+          a Notes-pane glance) — this is the fuller, standalone talk-track for "so what do I
+          actually say on each slide?", aligned 1:1 to the exact deck that already exists. Same
+          real-button-plus-auto-popup pattern as the blueprint-to-deck step above. */}
       {assetType === "ppt_outline" && content && (
         <div className="mb-4 -mt-2">
           <Button onClick={createScriptNow} disabled={generatingScript}>
@@ -1378,7 +1377,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
                 ? "Still working — a full script for a 60-90 slide deck can take a few minutes. Feel free to click into another agent or project — we'll notify you the moment it's ready, wherever you are."
                 : elapsedSeconds >= 15
                   ? "This can take a little while for a full-length script. Feel free to keep going elsewhere — we'll notify you when it's done."
-                  : "Agent Polly is writing your standalone rehearsal script..."}
+                  : "Agent Polly is writing what to say on every slide..."}
             </p>
           )}
         </div>
@@ -1389,9 +1388,9 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           <DialogHeader>
             <DialogTitle>Your signature webinar is built!</DialogTitle>
             <DialogDescription>
-              Every slide already has a full word-for-word script in its speaker notes. Want a
-              separate, standalone script document too — one you can read start-to-finish for
-              rehearsal, without opening the slides at all?
+              Now that your slides are ready, let&apos;s create your script — the exact words to
+              say on every slide, aligned to the deck you just built, so you know exactly how to
+              deliver it.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">

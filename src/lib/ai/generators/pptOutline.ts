@@ -6,15 +6,17 @@ import { parsePptOutline } from "../pptxParser";
 // per generation (see PPT_OUTLINE_MAX_OUTPUT_TOKENS), so the credit price members pay was
 // bumped to match and keep this in line with the margin math.
 export const PPT_OUTLINE_CREDIT_COST = 10;
-// Raised from 3500, then 8000, then 16000, then 24000 — each previous raise assumed short,
-// 1-3-sentence speaker notes (~200 tokens/slide); members reported those notes read as "a
-// generalization" that left a beginner presenter to improvise their own words, not a real script
-// to read from. Speaker notes are now a full word-for-word script per slide (see the prompt
-// below), which roughly doubles real per-slide output — 90 slides at that depth needs ~35-40,000
-// tokens. 48000 gives the great majority of full-length decks room to finish in one shot; still
-// not unlimited, generateCompleteAsset automatically continues past this if a deck genuinely
-// needs more room, exactly as before.
-export const PPT_OUTLINE_MAX_OUTPUT_TOKENS = 48000;
+// Raised from 3500, then 8000, then 16000 — a real test run at 8000 tokens still cut off
+// mid-slide around slide 40 of the required 60-90 (roughly 200 tokens/slide in practice, so 90
+// slides needs ~18,000), and 16000 itself still left many full-length decks needing at least one
+// continuation call. Each continuation is a full extra request round-trip on top of an already
+// multi-minute generation — real wall-clock time a member waits through live during a demo — so
+// now that anthropic.ts streams every call (removing the response-timeout ceiling that kept this
+// conservative), 24000 gives the great majority of decks enough room to finish in one shot
+// instead of needing a second call at all. Still not unlimited: generateCompleteAsset
+// automatically continues past this if a deck genuinely needs more room, exactly as before —
+// this only shrinks how often that happens, never what a deck is allowed to contain.
+export const PPT_OUTLINE_MAX_OUTPUT_TOKENS = 24000;
 
 // A real generation came back with only 7-8 slides instead of the required 60-90 — Claude had
 // stopped on its own (stop_reason "end_turn", not "max_tokens"), having compressed each phase of
@@ -45,7 +47,7 @@ If a Webinar Outline already exists above for this project, build these slides d
 For each slide output:
 - **Slide #: Title**
 - **On-slide content**: 2-4 bullets, EVERY one a complete, specific, substantive point — a real claim, number, benefit, or insight a viewer could read on its own and understand, not a bare fragment or vague label. "Turn 20 years of industry knowledge into a $10K/month coaching offer" is a real bullet; "Our Solution" or "Knowledge → Income" is not — it forces the audience to guess what you mean instead of landing the point. A new presenter reading only what's on screen (no narration at all) should still walk away understanding the point of that slide. Still a deck, not a document: each bullet is one tight, complete phrase or short sentence — not a paragraph, and never the actual spoken script.
-- **Speaker notes**: A FULL, word-for-word script of what the presenter actually SAYS out loud for this slide — not a summary, not a one-line gesture at the point, a complete run of natural spoken sentences (typically 3-6) a total beginner could read straight off the screen and still sound confident, not like they're reading. Open the point, explain/teach it, bridge from what was just said, and set up what's next — hit the real emotional beat this slide exists for (curiosity, belief-shift, credibility, urgency, the ask), not just describe what's visible on screen. This is for the presenter's eyes only and must never just repeat the on-slide bullets verbatim, but it needs to be long and complete enough that someone with zero public-speaking experience and zero prep could deliver this slide well using only these notes — never a generalization they'd have to improvise around.
+- **Speaker notes**: 1-3 concise sentences — what the presenter actually SAYS out loud while this slide is up. This is for the presenter's eyes only; it must never repeat, duplicate, or expand into the on-slide bullets above, and the on-slide bullets must never be a shortened copy of the speaker notes. Keep the two doing genuinely different jobs: bullets are what the audience reads, notes are what the presenter says — related, but not the same words twice.
 
 This needs to be a full-length, effective webinar deck, not a summary outline: produce **60-90 slides** (err toward 75+ when the discovery brief supports it). Break every phase of the arc — opener/hook, credibility, each teaching point, transition, offer stack, guarantee, urgency, close/CTA — into real slide-by-slide pacing instead of compressing a phase into one or two slides. A slide with only one bare bullet, or a bullet that's just a topic label, is a failure to fix — every slide earns its place with real content, not a placeholder. Keep the deck non-repetitive across its full length (each slide's specific claim, not the same point restated) so the length comes from genuinely thorough pacing across the whole arc, not padding.`;
 }
