@@ -17,12 +17,21 @@ export function isCourseLevel(value: string): value is CourseLevel {
 
 const LEVEL_GUIDANCE: Record<CourseLevel, string> = {
   Basic:
-    "BASIC — assume zero prior knowledge or experience. Define every term the first time it's used, over-explain rather than under-explain, and keep each lesson's action step small enough that a true beginner can't get stuck. Favor more modules with a narrower scope each over fewer modules that skip steps.",
+    "BASIC — assume zero prior knowledge or experience. Define every term the first time it's used, over-explain rather than under-explain, and keep each lesson's action step small enough that a true beginner can't get stuck. Favor more modules with a narrower scope each over fewer modules that skip steps. If this niche has its own core tool, platform, or system the student will use throughout the course (a government-contracting course needs SAM.gov; a real estate course needs the MLS; a bookkeeping course needs the actual software), teach how to access and navigate THAT specific thing — opening it, finding things in it, saving/recording what you find — as its own early, dedicated lesson, before any later lesson's action step assumes the student can already use it.",
   Intermediate:
     "INTERMEDIATE — assume the basic vocabulary and concepts of this niche are already familiar; don't re-teach fundamentals. Move faster into real application, judgment calls, and putting pieces together, not just defining them.",
   Advanced:
     "ADVANCED — assume real working competence already exists. Skip fundamentals entirely and focus on nuance, edge cases, optimization, troubleshooting what goes wrong, and the judgment calls that separate someone competent from someone excellent at this.",
 };
+
+// Root-caused from a real Basic-level course: Module 1's own action step told a true beginner to
+// "go find a live federal solicitation" and save it — before any lesson had taught them SAM.gov
+// even exists, let alone how to search or open one in it. The level guidance above said "assume
+// zero prior knowledge," but nothing checked that every individual action step actually honored
+// that across the whole sequence, not just in its own module's framing. This rule is the explicit
+// check: stated once, applied to every level (sharpest at Basic, but a sequencing bug either way).
+const PREREQUISITE_SEQUENCING_RULE =
+  "PREREQUISITE SEQUENCING (check this for every level, enforced hardest at Basic): nothing in this course — a lesson's teaching, an action step, or a module milestone — may require a skill, tool, platform, or piece of vocabulary the student hasn't already been taught in an EARLIER lesson of this same course. If an action step says \"go do X using Y,\" lesson(s) teaching how to actually access and use Y must come BEFORE it in the sequence — never assumed as something the student already knows. Before finalizing the module order, test every action step against this: could a student who has done nothing but complete the lessons before it actually complete this step right now? If not, move a lesson teaching that missing piece earlier, even if that means adding a lesson or reordering sub-modules. This applies to Module 1's own first action too — it must be achievable with nothing but orientation-level knowledge, never a real task that secretly depends on a skill the course only teaches later.";
 
 // A course is a different shape of transformation asset than a Webinar or Challenge: not one
 // sitting/live event, but a structured, self-paced (or cohort-paced) journey from a stated
@@ -50,6 +59,8 @@ ${formatPriorGenerationsBlock(priorGenerations)}
 TARGET LEVEL: ${courseLevel}
 ${LEVEL_GUIDANCE[courseLevel]}
 
+${PREREQUISITE_SEQUENCING_RULE}
+
 ${
   naming
     ? `NAMING — THE MEMBER ALREADY SUPPLIED THIS, USE IT EXACTLY, DO NOT INVENT A REPLACEMENT:
@@ -68,7 +79,7 @@ Produce the outline in this structure:
 
 3. **Course map** — decide the right number of CONTENT modules for this transformation and level (typically 4-8 beyond the two fixed modules below; fewer, deeper modules for a narrow/Advanced transformation, more, smaller modules for a broad/Basic one) and list the full sequence — Module 1 Welcome, Module 2 Mindset, then every content module, then the final Integration module — as a one-line-each table of contents before the detailed breakdown, so the whole arc is visible at a glance. Format every line in this table of contents EXACTLY as \`Module #: Title\` (e.g. \`Module 3: Building Your Offer\`) — one module per line, nothing else on the line. A member later picks from this exact list when telling Cora which module to build slides/a quiz/a workbook for, so it has to be a clean, literal list, not a prose sentence.
 
-4. **Module 1 — Welcome & Orientation**: what to expect across the course, how it's meant to be worked through (in order, at what pace), and a small first action that creates immediate momentum before Module 2 starts.
+4. **Module 1 — Welcome & Orientation**: what to expect across the course, how it's meant to be worked through (in order, at what pace), and a small first action that creates immediate momentum before Module 2 starts — this action must be doable with ONLY orientation-level knowledge (filling in something they already know about themselves, making a simple decision, setting up a basic tracking doc/folder), never a real-world task in this niche that quietly requires a skill, tool, or platform the course hasn't taught yet (see PREREQUISITE SEQUENCING above).
 
 5. **Module 2 — Mindset (REQUIRED ON EVERY COURSE, NO EXCEPTIONS)**: before any real content, every course this generates must build the specific mindset someone needs to actually execute and finish THIS transformation — not a generic "believe in yourself" module, but one written directly to this project's actual niche and audience (a real estate agent's mindset module talks about real estate rejection and slow-close months; a government-contractor course talks about bureaucratic delay and losing bids; whatever this project's discovery facts say the student is actually pursuing). Cover, grounded in that specific pursuit:
    - the specific roadblocks, setbacks, and slow patches someone in THIS pursuit predictably hits, named concretely, not abstractly
