@@ -77,10 +77,16 @@ export default function SlidePreview({
   markdown,
   generationId,
   mediaEnabled,
+  scriptBySlideNumber,
 }: {
   markdown: string;
   generationId: string | null;
   mediaEnabled: boolean;
+  // ppt_outline only — when a full Webinar Script exists for this project, its per-slide text
+  // stands in for the deck's own short speaker notes here, matching what the .pptx export and
+  // Copy for Gamma also show. Null for every other asset type, and for ppt_outline itself until
+  // a script has been created.
+  scriptBySlideNumber: Map<number, string> | null;
 }) {
   const slides = parsePptOutline(markdown);
   const total = slides.length;
@@ -225,6 +231,8 @@ export default function SlidePreview({
           const media = mediaBySlideNumber.get(slide.number);
           const showMediaControls = mediaEnabled && layout === "content" && generationId;
           const draft = chartDrafts[slide.number];
+          const notes = scriptBySlideNumber?.get(slide.number) || slide.notes;
+          const notesAreFullScript = Boolean(scriptBySlideNumber?.get(slide.number));
 
           return (
             <div
@@ -377,12 +385,12 @@ export default function SlidePreview({
                 </div>
               )}
 
-              {slide.notes && (
-                <details className="border-t border-border/60 bg-card/40 px-3 py-2">
+              {notes && (
+                <details className="border-t border-border/60 bg-card/40 px-3 py-2" open={notesAreFullScript}>
                   <summary className="cursor-pointer select-none text-[11px] font-medium text-muted-foreground hover:text-foreground">
-                    Speaker notes
+                    Speaker notes{notesAreFullScript ? " (full script)" : ""}
                   </summary>
-                  <p className="mt-1.5 text-xs text-muted-foreground">{slide.notes}</p>
+                  <p className="mt-1.5 whitespace-pre-line text-xs text-muted-foreground">{notes}</p>
                 </details>
               )}
             </div>

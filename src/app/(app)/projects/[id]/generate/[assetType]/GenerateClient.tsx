@@ -56,6 +56,7 @@ import { downloadHtmlFile, openInBrowserTab } from "@/lib/browserFile";
 import { getPublicSiteUrl } from "@/lib/publishing";
 import type { PageStats } from "@/lib/analytics";
 import { COURSE_ASSET_TYPES, type CourseModuleRef } from "@/lib/ai/courseModules";
+import { parsePptOutline, parseWebinarScriptBySlideNumber } from "@/lib/ai/pptxParser";
 import PageEditPanel from "./PageEditPanel";
 import TextEditPanel from "./TextEditPanel";
 import SlidePreview from "./SlidePreview";
@@ -302,6 +303,7 @@ export default function GenerateClient({
   initialCompletedGenerations,
   projectName,
   initialCourseNaming,
+  webinarScriptContent,
 }: {
   projectId: string;
   assetType: AssetType;
@@ -337,6 +339,13 @@ export default function GenerateClient({
   // courseModules field customNaming above and 0040_course_naming.sql). Empty string on every
   // other agent's page, which never reads it.
   initialCourseNaming: string;
+  // ppt_outline only — the most recent completed Webinar Script's content for this project, if
+  // one exists (see page.tsx's matchingPage lookup). Your Signature Webinar's own speaker notes
+  // are deliberately short; wherever a full script exists, its per-slide text should stand in
+  // for those notes automatically (Copy for Gamma, the in-app slide preview) — the same upgrade
+  // the .pptx export already does. Null for every other agent, and for ppt_outline itself until
+  // a script has been created.
+  webinarScriptContent: string | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -345,6 +354,15 @@ export default function GenerateClient({
   }
   const isWebPageAsset = WEB_PAGE_ASSET_TYPES.includes(assetType);
   const isSlideDeckAsset = SLIDE_DECK_ASSET_TYPES.includes(assetType);
+  const hasWebinarScript = webinarScriptContent !== null;
+  const scriptActionLabel = hasWebinarScript ? "Update Script" : "Create Script";
+  // Per-slide full script text, keyed by slide number — stands in for the deck's own short
+  // speaker notes wherever this deck's content is read for presenting. Recomputed only when the
+  // script content actually changes (a fresh page load, or after "Update Script" below).
+  const scriptBySlideNumber = useMemo(
+    () => (webinarScriptContent ? parseWebinarScriptBySlideNumber(webinarScriptContent) : null),
+    [webinarScriptContent]
+  );
   const downloadFilename = assetType === "thank_you_page" ? "thank-you-page.html" : "landing-page.html";
   const [content, setContent] = useState<string | null>(initialContent);
   // Forces RichTextEditor to fully remount from fresh content after an AI edit is applied — see
@@ -968,6 +986,26 @@ export default function GenerateClient({
     setTimeout(() => setCopied(false), 1500);
   }
 
+  // Rebuilds the deck's markdown with each slide's short speaker notes swapped out for the full
+  // Webinar Script text where one exists for that slide number — same upgrade the .pptx export
+  // already does (see parseWebinarScriptBySlideNumber's own use in /api/export/pptx). Only
+  // actually changes anything when scriptBySlideNumber is non-null; otherwise this is just a
+  // round-trip through parsePptOutline, equivalent to the original text.
+  function withFullScriptNotes(rawContent: string): string {
+    if (!scriptBySlideNumber) return rawContent;
+    return parsePptOutline(rawContent)
+      .map((slide) => {
+        const notes = scriptBySlideNumber.get(slide.number) || slide.notes;
+        const lines = [`**Slide ${slide.number}: ${slide.title}**`];
+        if (slide.bullets.length > 0) {
+          lines.push("**On-slide content**:", ...slide.bullets.map((b) => `- ${b}`));
+        }
+        if (notes) lines.push(`**Speaker notes**: ${notes}`);
+        return lines.join("\n");
+      })
+      .join("\n\n---\n\n");
+  }
+
   // For members who take this deck into Gamma (or any other AI presentation tool) instead of
   // exporting a .pptx directly — Gamma reads whatever text it's given and has no built-in idea
   // that "Speaker notes" here means presenter-only text, so left alone it happily designs those
@@ -985,7 +1023,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
 ============================================================
 
 `;
-    await navigator.clipboard.writeText(instructions + content);
+    await navigator.clipboard.writeText(instructions + withFullScriptNotes(content));
     setCopiedForGamma(true);
     setTimeout(() => setCopiedForGamma(false), 1500);
   }
@@ -1364,12 +1402,18 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
       {/* One step further: Your Signature Webinar's own speaker notes are short (1-3 sentences, meant for
           a Notes-pane glance) — this is the fuller, standalone talk-track for "so what do I
           actually say on each slide?", aligned 1:1 to the exact deck that already exists. Same
-          real-button-plus-auto-popup pattern as the blueprint-to-deck step above. */}
+          real-button-plus-auto-popup pattern as the blueprint-to-deck step above.
+          Always reusable, not just a one-time "next step" — clicking it again only ever creates a
+          fresh script generation (see createScriptNow), it never touches or regenerates the deck
+          itself. Labeled "Update Script" once one already exists (hasWebinarScript) specifically
+          so that's unambiguous: a member who likes their slides but whose script came out wrong,
+          or whose deck has since changed, can fix just the script without hitting Regenerate on
+          the presentation they want to keep. */}
       {assetType === "ppt_outline" && content && (
         <div className="mb-4 -mt-2">
           <Button onClick={createScriptNow} disabled={generatingScript}>
             {generatingScript ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-            {generatingScript ? "Writing your script..." : "Create Script"}
+            {generatingScript ? (hasWebinarScript ? "Updating your script..." : "Writing your script...") : scriptActionLabel}
           </Button>
           {generatingScript && (
             <p className="mt-2 text-xs text-muted-foreground">
@@ -1388,9 +1432,9 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           <DialogHeader>
             <DialogTitle>Your signature webinar is built!</DialogTitle>
             <DialogDescription>
-              Now that your slides are ready, let&apos;s create your script — the exact words to
-              say on every slide, aligned to the deck you just built, so you know exactly how to
-              deliver it.
+              {hasWebinarScript
+                ? "Your existing script was written for the previous version of this deck — want to update it to match what you just built? This only touches the script, never the slides."
+                : "Now that your slides are ready, let's create your script — the exact words to say on every slide, aligned to the deck you just built, so you know exactly how to deliver it."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -1399,7 +1443,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             </Button>
             <Button onClick={createScriptNow}>
               <Sparkles className="mr-2 h-4 w-4" />
-              Create Script
+              {scriptActionLabel}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1597,7 +1641,12 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             <TextEditPanel generationId={generationId} onApplied={handleAiEditApplied} />
           )}
           {isSlideDeckAsset && deckViewMode === "slides" ? (
-            <SlidePreview markdown={content} generationId={generationId} mediaEnabled={SLIDE_MEDIA_ASSET_TYPES.includes(assetType)} />
+            <SlidePreview
+              markdown={content}
+              generationId={generationId}
+              mediaEnabled={SLIDE_MEDIA_ASSET_TYPES.includes(assetType)}
+              scriptBySlideNumber={scriptBySlideNumber}
+            />
           ) : (
             <RichTextEditor key={editorKey} markdown={content} onChange={handleEditorChange} />
           )}
