@@ -19,7 +19,9 @@ Attention → Curiosity → Understanding → Belief → Confidence → Commitme
 3. Pattern Interrupt — break the expected pattern
 4. Big Promise — the transformation/outcome ahead
 5. Credibility Bridge — initial trust and authority
-6. Opening Story — emotional connection, identification ("that's me")
+6. Opening Story — emotional connection, identification ("that's me"); build this as a full
+   Epiphany Bridge™ story (Playbook 10) — Backstory → Desire → Wall → Mentor → Epiphany → Plan →
+   Conflict → Achievement → Return — not just an anecdote
 7. Problem Amplification — the true cost of the current situation
 8. Hidden Cost of Inaction — what continuing without change actually costs
 9. False Solutions — why previous attempts failed
@@ -27,7 +29,9 @@ Attention → Curiosity → Understanding → Belief → Confidence → Commitme
 11. The Big Idea — the central organizing concept
 12. Future Pacing — help prospects mentally experience success
 13. Education Framework — teach the perspective that supports the solution
-14. Belief Shifting — systematically replace limiting beliefs
+14. Belief Shifting — systematically replace limiting beliefs; this is where the Big Domino™
+    (Playbook 10) gets named and knocked down — the ONE belief that collapses every other
+    objection once it's adopted
 15. Proof Architecture — evidence in strategic sequence
 16. Demonstration — show the solution in action
 17. Product Reveal — introduce the solution as the logical conclusion

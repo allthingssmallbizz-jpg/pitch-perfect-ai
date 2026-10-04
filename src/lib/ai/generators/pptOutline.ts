@@ -37,7 +37,7 @@ export const PPT_OUTLINE_CONTINUATION_HINT =
   "You stopped short of the required 60-90 total slides — this deck is not done yet. Keep writing through the rest of the arc (remaining teaching points, transition, offer stack, guarantee, urgency, close/CTA) with the same slide-by-slide pacing as before: one slide per real beat, not one slide per phase.";
 
 export function buildPptOutlinePrompt(project: Project, priorGenerations: PriorGeneration[] = []): string {
-  return `Build a slide-by-slide PowerPoint outline (titles + speaker notes, not full design) for presenting this offer. Use PPWOS™ phases if this reads as a consumer webinar/pitch, or PPSOS™ (Capture Executive Attention → Build Business Relevance → Create New Business Beliefs → Build Executive Certainty → Present the Solution → Maximize Business Value → Drive Organizational Commitment) if the discovery notes indicate a B2B/enterprise/multi-stakeholder audience.
+  return `Build a slide-by-slide PowerPoint outline (titles + speaker notes, not full design) for presenting this offer. Use PPWOS™ phases if this reads as a consumer webinar/pitch, or PPSOS™ (Capture Executive Attention → Build Business Relevance → Create New Business Beliefs → Build Executive Certainty → Present the Solution → Maximize Business Value → Drive Organizational Commitment) if the discovery notes indicate a B2B/enterprise/multi-stakeholder audience. If building the arc from discovery directly (no existing Webinar Outline to follow — see below), the Build Relevance/Create New Beliefs phases still need a real Epiphany Bridge™ story and a named Big Domino™ (Playbook 10), same as a Webinar Outline would require.
 
 ${formatDiscoveryBlock(project)}
 ${formatPriorGenerationsBlock(priorGenerations)}
