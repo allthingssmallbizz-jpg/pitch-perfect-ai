@@ -29,7 +29,9 @@ const FIELD_NAMES = [
   "presenter_origin_story",
   "presenter_signature_win",
   "presenter_setback_story",
+  "presenter_mentor",
   "presenter_epiphany_moment",
+  "presenter_conflict_story",
   "presenter_income_goal_6mo",
   "presenter_income_goal_12mo",
   "presenter_mission_why",
@@ -394,11 +396,27 @@ export default function PresenterBioForm({
         onAssist={setAssistTarget}
       />
       <Field
+        label="What or who helped you break through?"
+        name="presenter_mentor"
+        defaultValue={bio?.presenter_mentor ?? ""}
+        placeholder="A person, a book, a number you noticed, a client's comment — or 'no one, I figured it out alone.'"
+        hint="This is the Mentor beat of your story — the thing that pointed you toward the new way. Name it specifically. 'I figured it out alone' is a real answer too, as long as you say what you noticed. Leave blank if this hasn't happened yet for this business."
+        onAssist={setAssistTarget}
+      />
+      <Field
         label="The exact moment everything changed for you"
         name="presenter_epiphany_moment"
         defaultValue={bio?.presenter_epiphany_moment ?? ""}
         placeholder="The specific realization or insight — not just 'then I figured it out.'"
         hint="This is the one line a whole Opening Story can hinge on — the exact belief-shift moment, stated as something you realized in the moment, not a lesson you're teaching. Leave blank if you haven't had this moment yet for this business."
+        onAssist={setAssistTarget}
+      />
+      <Field
+        label="What still went wrong after you committed to the new way?"
+        name="presenter_conflict_story"
+        defaultValue={bio?.presenter_conflict_story ?? ""}
+        placeholder="The obstacle, doubt, or early failure you hit AFTER you started doing it differently — and how you pushed through."
+        hint="This is the Conflict beat — the darkest point right before it worked. Don't skip it: without a real struggle, your result sounds too easy to believe. Leave blank if this hasn't happened yet for this business."
         onAssist={setAssistTarget}
       />
       <Field
