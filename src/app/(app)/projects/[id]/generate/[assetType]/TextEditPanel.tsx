@@ -2,11 +2,20 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Wand2, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Wand2, Loader2, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TEXT_EDIT_CREDIT_COST } from "@/lib/ai/generators/textEdit";
 import type { AssetType } from "@/types/database";
+
+// Agent Polly's own Update Script rewrites a whole separate asset (webinar_script) in one click.
+// Build Module Slides has no separate script asset — bullets and speaker notes are one
+// generation — so the equivalent "I don't like the notes, redo them, but don't touch my slides"
+// action is a PRESET instruction sent through this same targeted-edit endpoint rather than a
+// different generator/route. Explicitly scoped to notes only so it can never quietly reshuffle
+// the slide structure a member already approved.
+const UPDATE_SCRIPT_INSTRUCTION =
+  "Rewrite ONLY the speaker notes for every single slide — do not change any slide's title or on-slide bullets, and do not add, remove, or reorder any slides. For each slide, write a full, word-for-word script (typically 3-6 natural spoken sentences) a total beginner presenter could read straight off the screen and still sound confident: open the point, explain/teach it, bridge from what was just said, set up what's next, and hit the slide's real teaching beat — not a generalization they'd have to improvise around. Copy every slide's title and bullets into the output completely unchanged.";
 
 // Course Outline's (and Cora's three module-scoped tools') equivalent of PageEditPanel — a plain
 // "tell it what to add, remove, or change" box that applies a targeted edit to the already-
@@ -56,21 +65,19 @@ export default function TextEditPanel({
   // screen. This stays on screen the same way the green one does, so "it silently did nothing" is
   // never actually silent.
   const [lastError, setLastError] = useState<string | null>(null);
+  // Distinguishes the preset "Update Script" action from the free-text box below for disabling/
+  // loading state — both share applyInstruction and can't run at the same time, but each needs
+  // its own button to show its own spinner rather than both lighting up together.
+  const [updatingScript, setUpdatingScript] = useState(false);
 
-  async function handleApply() {
-    if (!instruction.trim()) {
-      toast.error("Describe what to add, remove, or change first.");
-      return;
-    }
-    setApplying(true);
+  async function applyInstruction(instructionText: string, appliedLabel: string): Promise<boolean> {
     setLastApplied(null);
     setLastError(null);
     try {
-      const appliedInstruction = instruction;
       const res = await fetch(`/api/generations/${generationId}/edit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ instruction }),
+        body: JSON.stringify({ instruction: instructionText }),
       });
       const data = await res.json().catch(() => null);
       // A non-JSON response (data === null) means the platform cut the request off before this
@@ -89,20 +96,56 @@ export default function TextEditPanel({
       if (!res.ok) throw new Error(data.error || "Could not apply that update.");
 
       onApplied(data.content);
-      setInstruction("");
-      setLastApplied(appliedInstruction);
+      setLastApplied(appliedLabel);
       toast.success("Updated!");
+      return true;
     } catch (e) {
       const message = e instanceof Error ? e.message : "Could not apply that update.";
       setLastError(message);
       toast.error(message);
-    } finally {
-      setApplying(false);
+      return false;
     }
   }
 
+  async function handleApply() {
+    if (!instruction.trim()) {
+      toast.error("Describe what to add, remove, or change first.");
+      return;
+    }
+    setApplying(true);
+    const appliedInstruction = instruction;
+    const ok = await applyInstruction(appliedInstruction, appliedInstruction);
+    if (ok) setInstruction("");
+    setApplying(false);
+  }
+
+  async function handleUpdateScript() {
+    setUpdatingScript(true);
+    await applyInstruction(UPDATE_SCRIPT_INSTRUCTION, "Speaker notes rewritten for every slide");
+    setUpdatingScript(false);
+  }
+
+  const anyBusy = applying || updatingScript;
+
   return (
     <div className="card-elevated rounded-xl p-4">
+      {assetType === "course_module_slides" && (
+        <div className="mb-4 border-b border-border/60 pb-4">
+          <p className="mb-1.5 flex items-center gap-1.5 text-sm font-medium">
+            <RefreshCw className="h-4 w-4" />
+            Update Script
+          </p>
+          <p className="mb-2 text-xs text-muted-foreground">
+            Don&apos;t like how the speaker notes came out? Rewrite all of them fresh — this keeps
+            every slide&apos;s title and bullets exactly as they are, only the notes change. No
+            need to Regenerate the whole deck for this.
+          </p>
+          <Button type="button" variant="outline" size="sm" onClick={handleUpdateScript} disabled={anyBusy}>
+            {updatingScript ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            {updatingScript ? "Rewriting speaker notes..." : `Update Script (${TEXT_EDIT_CREDIT_COST} credits)`}
+          </Button>
+        </div>
+      )}
       <p className="mb-2 flex items-center gap-1.5 text-sm font-medium">
         <Wand2 className="h-4 w-4" />
         Add, remove, or change something
@@ -121,10 +164,10 @@ export default function TextEditPanel({
         onChange={(e) => setInstruction(e.target.value)}
         placeholder={placeholder}
         rows={3}
-        disabled={applying}
+        disabled={anyBusy}
       />
       <div className="mt-3 flex justify-end">
-        <Button type="button" size="sm" onClick={handleApply} disabled={applying}>
+        <Button type="button" size="sm" onClick={handleApply} disabled={anyBusy}>
           {applying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
           {applying ? "Working..." : `Apply update (${TEXT_EDIT_CREDIT_COST} credits)`}
         </Button>
