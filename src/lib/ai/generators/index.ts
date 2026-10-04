@@ -87,6 +87,10 @@ type BuildPromptExtra = {
   customNaming?: string;
   moduleIdentifier?: string;
   courseOutlineFullContent?: string;
+  // Webinar Script only — the exact ppt_outline generation's content to write a script for,
+  // resolved explicitly by route.ts from a member-specified sourceGenerationId (see
+  // 0043_webinar_script_source.sql) rather than implicitly "whichever deck is most recent."
+  sourceDeckContent?: string;
 };
 
 export interface AssetGenerator {
@@ -193,7 +197,7 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
     description: "The full spoken talk-track for Your Signature Webinar's slide deck — what to say on every slide.",
     creditCost: WEBINAR_SCRIPT_CREDIT_COST,
     maxOutputTokens: WEBINAR_SCRIPT_MAX_OUTPUT_TOKENS,
-    buildPrompt: buildWebinarScriptPrompt,
+    buildPrompt: (project, priorGenerations, extra) => buildWebinarScriptPrompt(project, priorGenerations, extra?.sourceDeckContent),
     isOutputIncomplete: isWebinarScriptIncomplete,
     continuationHint: WEBINAR_SCRIPT_CONTINUATION_HINT,
   },

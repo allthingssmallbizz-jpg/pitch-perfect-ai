@@ -31,14 +31,23 @@ export function isWebinarScriptIncomplete(content: string): boolean {
 export const WEBINAR_SCRIPT_CONTINUATION_HINT =
   "You stopped before writing a script for every slide in the deck — this is not done yet. Keep going in the exact same slide order, one script section per remaining slide, copying each slide's number and title exactly as they appear in the deck provided.";
 
-export function buildWebinarScriptPrompt(project: Project, priorGenerations: PriorGeneration[] = []): string {
-  const deck = priorGenerations.find((p) => p.assetType === "ppt_outline");
+// sourceDeckContent: the EXACT ppt_outline generation to write a script for, resolved explicitly
+// by route.ts (via sourceGenerationId, when a member is viewing a specific past deck version —
+// see 0043_webinar_script_source.sql) rather than implicitly "whichever ppt_outline is most
+// recent for this project." Falls back to the old priorGenerations lookup when not given, so a
+// plain "Create Script" click with no specific deck in view still works exactly as before.
+export function buildWebinarScriptPrompt(
+  project: Project,
+  priorGenerations: PriorGeneration[] = [],
+  sourceDeckContent?: string
+): string {
   // Deliberately NOT run through formatPriorGenerationsBlock's PRIOR_GENERATION_CHAR_LIMIT
   // truncation (shared.ts caps prior-asset context to ~4000 characters, fine for "stay
   // consistent with the headline" but would silently cut the deck off after its first dozen
   // slides here, wrecking exactly the 1:1 alignment this whole generator exists for). The route
-  // guards against calling this at all when `deck` is missing — see /api/generate/route.ts.
-  const deckContent = deck?.content ?? "";
+  // guards against calling this at all when no deck content is available — see
+  // /api/generate/route.ts.
+  const deckContent = sourceDeckContent ?? priorGenerations.find((p) => p.assetType === "ppt_outline")?.content ?? "";
   const otherContext = formatPriorGenerationsBlock(priorGenerations.filter((p) => p.assetType !== "ppt_outline"));
 
   return `Write the full spoken script — what the presenter actually says out loud — for the exact slide deck below, one script section per slide, aligned 1:1 to that deck's own numbering and titles. Do not invent a different slide structure, skip slides, or renumber anything.

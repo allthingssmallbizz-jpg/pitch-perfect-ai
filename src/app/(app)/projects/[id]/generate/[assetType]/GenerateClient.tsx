@@ -712,7 +712,11 @@ export default function GenerateClient({
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, assetType: "webinar_script", mode }),
+        // Targets the EXACT deck currently open, not implicitly "whichever ppt_outline is most
+        // recent for this project" — a member viewing an older deck version they like (opened
+        // via Past Generations) gets a script written for that specific one, not a different
+        // version they don't actually want attached (see 0043_webinar_script_source.sql).
+        body: JSON.stringify({ projectId, assetType: "webinar_script", mode, sourceGenerationId: generationId }),
       });
       const data = await res.json().catch(() => null);
       // See generateWebinarNow above: a non-JSON response means the platform cut the request off

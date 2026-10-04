@@ -191,15 +191,47 @@ export default async function GenerateAssetPage({
   // generation rather than baking that cost into every deck. When one exists, its per-slide
   // script should automatically stand in for the deck's own short notes wherever this deck's
   // content is read for presenting (Copy for Gamma, the in-app slide preview) — same upgrade the
-  // .pptx export already does (see parseWebinarScriptBySlideNumber in /api/export/pptx). Fetched
-  // here (not in those client components) since it's the same project_id lookup matchingPage
-  // already does for ppt_outline -> webinar_script.
+  // .pptx export already does (see parseWebinarScriptBySlideNumber in /api/export/pptx).
   let webinarScriptContent: string | null = null;
   const otherAssetType = MATCHING_ASSET_TYPE[generator.assetType];
-  if (otherAssetType) {
-    const { data: match } = await supabase
+  if (generator.assetType === "ppt_outline" && otherAssetType === "webinar_script" && initialGenerationId) {
+    // A project can have several deck versions (Regenerate, or several past generations) — prefer
+    // a script explicitly linked to the EXACT deck being viewed (source_generation_id — see
+    // 0043_webinar_script_source.sql) over "whichever script is most recent for the project,"
+    // which could otherwise pair this deck with a script actually written for a different
+    // version of it. Falls back to the old "most recent for the project" lookup only for a script
+    // generated before that column existed (source_generation_id null).
+    const { data: linked } = await supabase
       .from("generations")
       .select("id, content")
+      .eq("source_generation_id", initialGenerationId)
+      .eq("asset_type", "webinar_script")
+      .eq("status", "complete")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const match =
+      linked ??
+      (
+        await supabase
+          .from("generations")
+          .select("id, content")
+          .eq("project_id", id)
+          .eq("asset_type", "webinar_script")
+          .is("source_generation_id", null)
+          .eq("status", "complete")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      ).data;
+    if (match) {
+      matchingPage = { assetType: "webinar_script", generationId: match.id };
+      webinarScriptContent = match.content;
+    }
+  } else if (otherAssetType) {
+    const { data: match } = await supabase
+      .from("generations")
+      .select("id")
       .eq("project_id", id)
       .eq("asset_type", otherAssetType)
       .eq("status", "complete")
@@ -207,9 +239,6 @@ export default async function GenerateAssetPage({
       .limit(1)
       .maybeSingle();
     if (match) matchingPage = { assetType: otherAssetType, generationId: match.id };
-    if (match && generator.assetType === "ppt_outline" && otherAssetType === "webinar_script") {
-      webinarScriptContent = match.content;
-    }
   }
 
   // Views/leads/conversion % for the currently-open generation — only meaningful once it's been

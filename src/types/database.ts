@@ -214,6 +214,11 @@ export type Generation = {
   // quiz/workbook only, null for course_outline and every other asset type).
   approved_at: string | null;
   module_identifier: string | null;
+  // Which specific prior generation this one was built FROM — currently only set for
+  // webinar_script rows, pointing at the exact ppt_outline deck used (see
+  // 0043_webinar_script_source.sql). Null for every other asset type, and for a webinar_script
+  // generated before this column existed.
+  source_generation_id: string | null;
 };
 
 export type GenerationVersionSource = "generate" | "edit" | "snapshot";

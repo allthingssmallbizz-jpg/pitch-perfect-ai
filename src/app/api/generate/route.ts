@@ -44,6 +44,11 @@ const requestSchema = z.object({
   // Build Module Slides' required "which module" input — checked for real below (course_outline
   // must actually contain a module matching this). Ignored by every other generator.
   moduleIdentifier: z.string().max(200).optional(),
+  // Webinar Script only — the exact ppt_outline generation to write a script for (the deck a
+  // member actually has open), resolved below instead of implicitly "whichever deck is most
+  // recent for this project." Omitted means that old implicit behavior, for backward
+  // compatibility with any caller that doesn't pass it. Ignored by every other generator.
+  sourceGenerationId: z.string().uuid().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -61,13 +66,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { projectId, assetType, mode, courseLevel, customNaming, moduleIdentifier } = parsed.data as {
+  const { projectId, assetType, mode, courseLevel, customNaming, moduleIdentifier, sourceGenerationId } = parsed.data as {
     projectId: string;
     assetType: keyof typeof ASSET_GENERATORS;
     mode: GenerationMode;
     courseLevel?: string;
     customNaming?: string;
     moduleIdentifier?: string;
+    sourceGenerationId?: string;
   };
 
   const generator = ASSET_GENERATORS[assetType];
@@ -126,24 +132,46 @@ export async function POST(req: NextRequest) {
 
   // A Webinar Script writes the talk-track for an existing slide deck, aligned 1:1 to its exact
   // slide numbers/titles (see buildWebinarScriptPrompt) — there's nothing to align to without one.
-  // Checked here, before the pending row is even inserted, so this reads as a normal validation
-  // error instead of a wasted Claude call that gets caught and reported as a generic "Generation
-  // failed" (the catch block below never surfaces its specific error message to the client, only
-  // to the generations row's own `error` column).
+  // Resolved explicitly to a single {id, content} here — via sourceGenerationId when a member is
+  // viewing a specific past deck version and wants a script attached to exactly that one (see
+  // 0043_webinar_script_source.sql), falling back to whichever deck is most recent for this
+  // project otherwise — rather than leaving "which deck" implicit inside the generic
+  // priorGenerations lookup further below, which only ever meant "the most recent," silently
+  // wrong once a project has more than one deck version. Checked here, before the pending row is
+  // even inserted, so a missing/invalid deck reads as a normal validation error instead of a
+  // wasted Claude call that gets caught and reported as a generic "Generation failed."
+  let webinarScriptSourceDeck: { id: string; content: string } | undefined;
   if (assetType === "webinar_script") {
-    const { data: deck } = await supabase
-      .from("generations")
-      .select("id")
-      .eq("project_id", projectId)
-      .eq("asset_type", "ppt_outline")
-      .eq("status", "complete")
-      .limit(1)
-      .maybeSingle();
-    if (!deck) {
-      return NextResponse.json(
-        { error: "Generate Your Signature Webinar (the slide deck) first — the script needs your actual slides to write from." },
-        { status: 400 }
-      );
+    if (sourceGenerationId) {
+      const { data: deck } = await supabase
+        .from("generations")
+        .select("id, content")
+        .eq("id", sourceGenerationId)
+        .eq("project_id", projectId)
+        .eq("asset_type", "ppt_outline")
+        .eq("status", "complete")
+        .maybeSingle();
+      if (!deck?.content) {
+        return NextResponse.json({ error: "Couldn't find that specific deck to write a script for." }, { status: 404 });
+      }
+      webinarScriptSourceDeck = { id: deck.id, content: deck.content };
+    } else {
+      const { data: deck } = await supabase
+        .from("generations")
+        .select("id, content")
+        .eq("project_id", projectId)
+        .eq("asset_type", "ppt_outline")
+        .eq("status", "complete")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!deck?.content) {
+        return NextResponse.json(
+          { error: "Generate Your Signature Webinar (the slide deck) first — the script needs your actual slides to write from." },
+          { status: 400 }
+        );
+      }
+      webinarScriptSourceDeck = { id: deck.id, content: deck.content };
     }
   }
 
@@ -224,6 +252,11 @@ export async function POST(req: NextRequest) {
       // section (0039_course_completed.sql). Null for every other asset type, course_outline
       // included (a course has one outline, not one per module).
       module_identifier: moduleScoped ? moduleIdentifier : null,
+      // Persists exactly which ppt_outline deck this script was written for (see
+      // 0043_webinar_script_source.sql) — always recorded, even when sourceGenerationId wasn't
+      // explicitly passed, so every future consumer (export, Copy for Gamma, the slide preview)
+      // can match a script back to its real deck instead of guessing "whichever is most recent."
+      source_generation_id: assetType === "webinar_script" ? webinarScriptSourceDeck?.id ?? null : null,
     })
     .select("id")
     .single();
@@ -267,6 +300,7 @@ export async function POST(req: NextRequest) {
       customNaming,
       moduleIdentifier,
       courseOutlineFullContent,
+      sourceDeckContent: webinarScriptSourceDeck?.content,
     });
 
     const result = await generateCompleteAsset(

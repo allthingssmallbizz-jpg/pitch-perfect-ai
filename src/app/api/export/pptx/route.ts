@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const [{ data: project }, { data: brandVoice }, { data: scriptRow }, { data: mediaRows }] = await Promise.all([
+  const [{ data: project }, { data: brandVoice }, { data: mediaRows }] = await Promise.all([
     generation.project_id
       ? admin.from("projects").select("name").eq("id", generation.project_id).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -54,29 +54,49 @@ export async function GET(req: NextRequest) {
       .select("primary_color, secondary_color, accent_color, outline_color")
       .eq("user_id", generation.user_id)
       .maybeSingle(),
-    // If a Webinar Script exists for this same project, its per-slide talk-track becomes the
-    // real PowerPoint speaker notes automatically — the whole point of generating a proper script
-    // is that nobody has to manually copy/paste it into the Notes pane themselves afterward. Falls
-    // back to the deck's own short embedded notes (parsePptOutline's `.notes`) per slide when
-    // there's no script yet. Only meaningful for ppt_outline itself — Webinar Script is Your
-    // Signature Webinar's own pair, not Build Module Slides', and a project can genuinely have
-    // both a webinar AND a course going at once, so this must not attach one asset's script onto
-    // the other's totally unrelated module deck.
-    generation.project_id && generation.asset_type === "ppt_outline"
-      ? admin
-          .from("generations")
-          .select("content")
-          .eq("project_id", generation.project_id)
-          .eq("asset_type", "webinar_script")
-          .eq("status", "complete")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
     // Member-added per-slide images/charts (see /api/generations/[id]/slide-media and
     // slideMedia.ts) — optional, so most generations simply have none of these rows.
     admin.from("slide_media").select("slide_number, kind, storage_path, chart_type, chart_data, prompt").eq("generation_id", generation.id),
   ]);
+
+  // If a Webinar Script exists for this EXACT deck, its per-slide talk-track becomes the real
+  // PowerPoint speaker notes automatically — the whole point of generating a proper script is
+  // that nobody has to manually copy/paste it into the Notes pane themselves afterward. Falls
+  // back to the deck's own short embedded notes (parsePptOutline's `.notes`) per slide when
+  // there's no script yet. Only meaningful for ppt_outline itself — Webinar Script is Your
+  // Signature Webinar's own pair, not Build Module Slides'.
+  //
+  // Prefers a script explicitly linked to THIS deck (source_generation_id — see
+  // 0043_webinar_script_source.sql) over "whichever script is most recent for the project," since
+  // a project can have several deck versions and this export is for one specific one. Falls back
+  // to the old "most recent for the project" lookup only for a script generated before that
+  // column existed (source_generation_id null), so older projects don't lose their script export.
+  let scriptRow: { content: string | null } | null = null;
+  if (generation.project_id && generation.asset_type === "ppt_outline") {
+    const { data: linkedScript } = await admin
+      .from("generations")
+      .select("content")
+      .eq("source_generation_id", generation.id)
+      .eq("asset_type", "webinar_script")
+      .eq("status", "complete")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    scriptRow = linkedScript;
+    if (!scriptRow) {
+      const { data: fallbackScript } = await admin
+        .from("generations")
+        .select("content")
+        .eq("project_id", generation.project_id)
+        .eq("asset_type", "webinar_script")
+        .is("source_generation_id", null)
+        .eq("status", "complete")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      scriptRow = fallbackScript;
+    }
+  }
 
   const theme = resolveTheme(brandVoice);
   const brandName = project?.name?.trim() || "Pitch Perfect AI";
