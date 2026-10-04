@@ -58,6 +58,8 @@ Read the above carefully: it may specify the course title, specific module names
     : `NAMING — the member left this blank, so invent the course title and every module name yourself, grounded in this project's actual discovery facts (not a generic template name).`
 }
 
+Every module, sub-module, and lesson below — not just the Mindset module — must be grounded in this project's actual niche, industry, and audience from Discovery above: real terminology, scenarios, and examples specific to it, never generic business-course content that could apply to any niche unchanged. If a lesson topic reads abstract, make it concrete to this specific pursuit when you write it.
+
 Produce the outline in this structure:
 
 1. **Course name and transformation promise** — a specific, outcome-driven title (not "The [Niche] Course") and a one-sentence promise of the exact A → B transformation: where the student starts, and what they can specifically do, have, or be by the end if they complete every module.
