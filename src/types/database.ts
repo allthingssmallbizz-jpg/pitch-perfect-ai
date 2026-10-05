@@ -346,6 +346,15 @@ export type PresenterBioProfile = {
   presenter_mission_why: string;
   presenter_recognition: string;
   presenter_relatable_detail: string;
+  // This presenter's own voice, scoped to this one niche — distinct from the account-wide
+  // BrandVoice above, which only has one slot per account. Same shape/reasoning as BrandVoice's
+  // own voice fields (see getBrandVoiceBlock), just per-niche instead of per-account — see
+  // 0044_presenter_voice.sql. All optional.
+  presenter_voice_tone: string;
+  presenter_voice_preferred_words: string;
+  presenter_voice_forbidden_words: string;
+  presenter_voice_sample_writing: string;
+  presenter_voice_notes: string;
   created_at: string;
   updated_at: string;
 };

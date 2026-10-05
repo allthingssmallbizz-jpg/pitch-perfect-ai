@@ -41,6 +41,11 @@ export async function updatePresenterBio(_prevState: unknown, formData: FormData
     presenter_mission_why: text("presenter_mission_why"),
     presenter_recognition: text("presenter_recognition"),
     presenter_relatable_detail: text("presenter_relatable_detail"),
+    presenter_voice_tone: text("presenter_voice_tone"),
+    presenter_voice_preferred_words: text("presenter_voice_preferred_words"),
+    presenter_voice_forbidden_words: text("presenter_voice_forbidden_words"),
+    presenter_voice_sample_writing: text("presenter_voice_sample_writing"),
+    presenter_voice_notes: text("presenter_voice_notes"),
   };
 
   const { error } = await supabase

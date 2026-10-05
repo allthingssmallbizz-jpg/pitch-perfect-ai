@@ -51,6 +51,35 @@ export async function getPresenterBioBlock(
     );
   }
 
+  // This presenter's own voice for THIS niche — distinct from, and takes priority over, the
+  // account-wide Brand Voice block elsewhere in the same system prompt. An account building for
+  // several different presenters/niches only has one Brand Voice slot, which can't capture more
+  // than one of them — this is what actually lets a specific course/webinar sound like the
+  // person actually presenting it instead of generic, formal AI copy. See 0044_presenter_voice.sql.
+  const hasVoice =
+    data.presenter_voice_tone.trim() ||
+    data.presenter_voice_preferred_words.trim() ||
+    data.presenter_voice_forbidden_words.trim() ||
+    data.presenter_voice_sample_writing.trim() ||
+    data.presenter_voice_notes.trim();
+  if (hasVoice) {
+    lines.push(
+      "",
+      "THIS PRESENTER'S OWN VOICE — if this section is filled in, follow it over any general Brand Voice guidance elsewhere for this asset; this presenter's actual way of talking is more specific and should win:"
+    );
+    if (data.presenter_voice_tone.trim()) lines.push(`Tone: ${data.presenter_voice_tone.trim()}`);
+    if (data.presenter_voice_preferred_words.trim())
+      lines.push(`Words/phrases they actually use — prefer these where natural: ${data.presenter_voice_preferred_words.trim()}`);
+    if (data.presenter_voice_forbidden_words.trim())
+      lines.push(`Words/phrases they would never say — never use these: ${data.presenter_voice_forbidden_words.trim()}`);
+    if (data.presenter_voice_notes.trim()) lines.push(`Other voice notes: ${data.presenter_voice_notes.trim()}`);
+    if (data.presenter_voice_sample_writing.trim()) {
+      lines.push(
+        `A real sample of how they actually write or speak — mirror this exact rhythm and vocabulary, especially in speaker notes/scripts where it reads out loud:\n"""\n${data.presenter_voice_sample_writing.trim()}\n"""`
+      );
+    }
+  }
+
   return lines.join("\n");
 }
 

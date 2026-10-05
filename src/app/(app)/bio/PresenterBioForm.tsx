@@ -37,6 +37,11 @@ const FIELD_NAMES = [
   "presenter_mission_why",
   "presenter_recognition",
   "presenter_relatable_detail",
+  "presenter_voice_tone",
+  "presenter_voice_preferred_words",
+  "presenter_voice_forbidden_words",
+  "presenter_voice_sample_writing",
+  "presenter_voice_notes",
 ];
 
 function AssistButton({ onClick }: { onClick: () => void }) {
@@ -468,6 +473,76 @@ export default function PresenterBioForm({
         Income goals are context for you, not customer-facing copy — generators only use them for
         authentic vision-casting where it genuinely fits, never as a line to quote.
       </p>
+
+      <div className="border-t border-border pt-6">
+        <h2 className="mb-1 text-sm font-semibold">This presenter&apos;s own voice (optional)</h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          How THIS specific presenter actually talks — different from the account-wide Brand Voice
+          in Settings, which only covers one voice for your whole account. Fill this in when a
+          project&apos;s presenter has their own distinct way of speaking, and every generation for
+          this niche (speaker notes, scripts, emails) will follow it instead of sounding like
+          generic AI copy.
+        </p>
+        <div>
+          <Label htmlFor="presenter_voice_tone">Tone &amp; voice description</Label>
+          <Textarea
+            id="presenter_voice_tone"
+            name="presenter_voice_tone"
+            rows={2}
+            defaultValue={bio?.presenter_voice_tone ?? ""}
+            placeholder="e.g. Warm, plainspoken, talks like she's across the kitchen table from you — no jargon, short sentences."
+            className="mt-1"
+          />
+        </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div>
+            <Label htmlFor="presenter_voice_preferred_words">Words/phrases they actually use</Label>
+            <Input
+              id="presenter_voice_preferred_words"
+              name="presenter_voice_preferred_words"
+              defaultValue={bio?.presenter_voice_preferred_words ?? ""}
+              placeholder="e.g. y'all, honestly, let's dig in"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="presenter_voice_forbidden_words">Words/phrases they&apos;d never say</Label>
+            <Input
+              id="presenter_voice_forbidden_words"
+              name="presenter_voice_forbidden_words"
+              defaultValue={bio?.presenter_voice_forbidden_words ?? ""}
+              placeholder="e.g. leverage, synergy, circle back"
+              className="mt-1"
+            />
+          </div>
+        </div>
+        <div className="mt-4">
+          <Label htmlFor="presenter_voice_sample_writing">A real sample of how they write or speak</Label>
+          <Textarea
+            id="presenter_voice_sample_writing"
+            name="presenter_voice_sample_writing"
+            rows={8}
+            defaultValue={bio?.presenter_voice_sample_writing ?? ""}
+            placeholder="Paste 200-800 words that sound exactly how they actually talk — an email, a blog post, a transcript of them teaching. The AI will mirror this rhythm and vocabulary instead of writing generic copy."
+            className="mt-1"
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            The single highest-leverage input here. Paste their real words, not a description of
+            their style.
+          </p>
+        </div>
+        <div className="mt-4">
+          <Label htmlFor="presenter_voice_notes">Other voice notes</Label>
+          <Textarea
+            id="presenter_voice_notes"
+            name="presenter_voice_notes"
+            rows={2}
+            defaultValue={bio?.presenter_voice_notes ?? ""}
+            placeholder="e.g. Always calls her audience 'babe.' Never uses exclamation points."
+            className="mt-1"
+          />
+        </div>
+      </div>
 
       <div className="flex items-center justify-between border-t border-border pt-5">
         <Button type="submit" disabled={pending}>
