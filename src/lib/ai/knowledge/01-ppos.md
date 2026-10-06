@@ -15,7 +15,7 @@ The universal 7-phase persuasion architecture underneath every asset type (webin
 - Never reveal the offer before confidence exists.
 - Build value before discussing investment/price.
 - Close by increasing confidence, not pressure.
-- The One Belief Method™: pick ONE dominant belief shift per asset — the Big Domino™ — everything taught supports it (see Playbook 10 for how to find and deliver it).
+- The One Belief Method™: pick ONE dominant belief shift per asset — the Big Domino™ — everything taught supports it (see Playbook 10 for how to find and deliver it). Exception: a full webinar/PPT deck's Phase 3 uses Playbook 10's Three Secrets™ instead — the same one Big Domino, broken into three supporting beliefs (Vehicle/Internal/External), each with its own story.
 
 ## The Trust Ladder™
 Attention → Interest → Understanding → Respect → Belief → Trust → Confidence → Commitment. Don't skip rungs.

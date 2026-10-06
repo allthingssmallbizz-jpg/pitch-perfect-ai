@@ -8,7 +8,7 @@ Webinars run PPOS live, with more room for teaching, proof, and interaction. App
 |---|---|---|
 | 1. Capture Attention™ | "Is this worth my time?" | Welcome, Big Promise (outcome not topic), light agenda, immediate engagement trigger (poll/chat) |
 | 2. Build Relevance™ | "Is this about someone like me?" | Audience identification, opportunity framing, shared-experience story (Epiphany Bridge™ — Playbook 10), interactive reflection |
-| 3. Create New Beliefs™ | "Could there be a better way?" | One Belief Method™ / Big Domino™ (Playbook 10), delivered via Epiphany Bridge story where a real one exists, strategic teaching (why not how), false-belief removal ("many people naturally assume... but"), named framework introduction, micro-commitments ("does this make sense?") |
+| 3. Create New Beliefs™ | "Could there be a better way?" | The Three Secrets™: the Big Domino™ (Playbook 10) broken into its Vehicle, Internal, and External false beliefs, each delivered via its own Epiphany Bridge story, strategic teaching (why not how), false-belief removal ("many people naturally assume... but"), named framework introduction, micro-commitments ("does this make sense?") |
 | 4. Build Certainty™ | "Can I trust this approach?" | Demonstrations, case studies, testimonials (each answers a different objection), live examples |
 | 5. Present the Solution™ | "Is this the solution I've been looking for?" | Introduce offer as logical conclusion; Unique Method™; future pacing 30/90/365 days |
 | 6. Maximize Value™ | "Is this worth the investment?" | Core offer, implementation roadmap, bonus stack (each removes an objection), investment framing before price, guarantee |
@@ -18,7 +18,7 @@ Webinars run PPOS live, with more room for teaching, proof, and interaction. App
 Never teach without strategic purpose · every lesson moves ≥1 belief · never reveal offer before confidence exists · every interaction increases investment · Q&A is part of selling, not separate from it · build value before price · close by increasing confidence, not pressure.
 
 ## Structure to output for a "Webinar Outline" asset
-For each of the 7 phases: a one-line strategic objective + 3-6 bullet beats (welcome/hook, stories, teaching points, proof, transition) + note the ONE belief being shifted in Phase 3 + the engagement trigger for that section. End with the Closing Sequence: Transformation Recap → Offer → Value Stack → Bonuses → Guarantee → Investment → Scarcity → Urgency → CTA → Q&A → Final Reinforcement.
+For each of the 7 phases: a one-line strategic objective + 3-6 bullet beats (welcome/hook, stories, teaching points, proof, transition) + the engagement trigger for that section. Phase 3 names the Big Domino™ once, then breaks it into The Three Secrets™ (Playbook 10) — Vehicle, Internal, External — each with its own false belief and its own dedicated Epiphany Bridge story, not one story covering all three. End with the Closing Sequence: Transformation Recap → Offer → Value Stack → Bonuses → Guarantee → Investment → Scarcity → Urgency → CTA → Q&A → Final Reinforcement.
 
 ## Q&A — Three-Part Answer™
 Acknowledge → Answer → Reinforce (reconnect the answer to the larger transformation).

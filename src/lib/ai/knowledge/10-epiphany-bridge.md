@@ -43,17 +43,42 @@ moment the storyteller reached it.
 | 8 | The Achievement | The Reward | The result, which retroactively proves the epiphany true |
 | 9 | The Return | Return with the Elixir | The explicit handoff into teaching/offer: "I came back to bring this discovery to people exactly where I used to be" |
 
+## The Three Secrets™ — the full Perfect Webinar Script's Phase 3 (webinar/VSL-PPT-deck length only)
+
+A short asset (an ad, an email, a landing page) only has room to knock down ONE Big Domino with
+ONE Epiphany Bridge story — that's the One Belief Method below, and it stays the default
+everywhere. A full-length webinar (and its PPT deck/script) is long enough to do what the
+original Perfect Webinar Script actually does: break the Big Domino into **three** specific false
+beliefs, each broken by its **own**, separate Epiphany Bridge story. These three stories together
+are "The Three Secrets™":
+
+| Belief type | What the audience doubts | Example false belief |
+|---|---|---|
+| **Vehicle** | The mechanism/method itself — "does this actually work?" | "I've tried funnels before, they don't work for my niche." |
+| **Internal** | Themselves — "can I actually do this?" | "I'm not technical/disciplined/experienced enough to pull this off." |
+| **External** | Their circumstances — "will my situation let this work?" | "I don't have the time/money/support to start this right now." |
+
+All three still serve the SAME Big Domino — they're the three specific doubts standing between
+the audience and adopting it, not three unrelated beliefs. Identify the Big Domino first, then
+find this audience's real version of each of the three doubts above, then write a dedicated
+Epiphany Bridge story (the same 9-beat structure below) for each one individually — never one
+story trying to cover more than one secret at once.
+
 ## Operating Rules
 
 - Every major belief shift in PPOS/PPWOS/PPSOS Phase 3 should be carried by an Epiphany Bridge
   story wherever a real one exists, not a bare teaching point — including a "shared-experience
   story" called for elsewhere (e.g. PPWOS Phase 2 Build Relevance).
-- One Epiphany Bridge per belief — matches the One Belief Method's "pick ONE dominant shift."
+- One Epiphany Bridge per belief — matches the One Belief Method's "pick ONE dominant shift." The
+  one documented exception is a full webinar/PPT deck's Phase 3, which uses The Three Secrets™
+  above instead: three beliefs (Vehicle/Internal/External), each still getting exactly one story.
 - The epiphany line must name the specific realization, not "and then I figured it out." If
   discovery data has no real story, flag `[NEEDS: a real story/example for this belief shift]`
-  rather than inventing one.
+  rather than inventing one — on a Three Secrets webinar, flag each missing one individually
+  (e.g. `[NEEDS: a real story for the Internal false belief]`), never skip a secret silently.
 - Don't flatten beat 7 (The Ordeal) into a throwaway line — real stakes make the Reward and
-  Return feel earned, not convenient.
+  Return feel earned, not convenient. This applies to each of the Three Secrets' stories too, not
+  just a single presenter origin story.
 - By Present the Solution™ (PPOS Phase 5), the journey being told has fully shifted to the
   audience's own (see Who's the Hero? above) — don't revisit the presenter's story as the main
   narrative from here on.
