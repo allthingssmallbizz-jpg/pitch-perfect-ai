@@ -55,8 +55,12 @@ export function projectNeedsDiscovery(project: Pick<Project, RequiredFieldKey>):
 // Same required-field list, applied to raw form field values (before they're saved) — lets
 // updateProjectDiscovery reject an incomplete save with a specific, actionable list instead of
 // silently persisting a half-finished brief that projectNeedsDiscovery would just bounce later.
-export function getMissingDiscoveryFieldLabels(fields: Record<string, string>): string[] {
-  return REQUIRED_DISCOVERY_FIELDS.filter(({ key }) => !fields[key]?.trim()).map((f) => f.label);
+// Record<string, unknown> rather than Record<string, string> — the real object passed in
+// (updateProjectDiscovery's own `fields`) now also carries non-string values (stack_items is an
+// array) that aren't among REQUIRED_DISCOVERY_FIELDS' own keys and so never actually get read
+// here, but still need to type-check as part of the same object.
+export function getMissingDiscoveryFieldLabels(fields: Record<string, unknown>): string[] {
+  return REQUIRED_DISCOVERY_FIELDS.filter(({ key }) => !String(fields[key] ?? "").trim()).map((f) => f.label);
 }
 
 // Used for the Discovery form's own soft, dismissible "you left some blank" warning on save —

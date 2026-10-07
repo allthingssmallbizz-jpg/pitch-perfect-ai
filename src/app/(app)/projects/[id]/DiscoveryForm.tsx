@@ -2,8 +2,8 @@
 
 import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
-import { Sparkles, Globe, Wand2, UserCircle, ArrowRight, TriangleAlert } from "lucide-react";
-import type { Project } from "@/types/database";
+import { Sparkles, Globe, Wand2, UserCircle, ArrowRight, TriangleAlert, Plus, X } from "lucide-react";
+import type { Project, StackItem } from "@/types/database";
 import { updateProjectDiscovery } from "@/lib/actions/projects";
 import { getMissingRecommendedFieldLabels } from "@/lib/projects";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { parseMoney, formatMoney } from "@/lib/ai/generators/shared";
 import DiscoveryAssistDialog, { type AssistTarget } from "@/components/DiscoveryAssistDialog";
 import WebsiteImportDialog from "@/components/WebsiteImportDialog";
 import OfferBuilderDialog from "@/components/OfferBuilderDialog";
@@ -53,6 +54,7 @@ const DISCOVERY_FIELD_NAMES = [
   "price",
   "guarantee",
   "bonuses",
+  "core_offer_value",
   "scarcity_urgency",
   "cta",
   "funnel_type",
@@ -140,6 +142,82 @@ function Field({
   );
 }
 
+// A repeatable name+value list — the structured counterpart to the free-text "Bonuses" field
+// above it, so the webinar/VSL/sales-page generators can build a real progressive stack reveal
+// (core offer, then each bonus revealed one at a time with its own value, totaled, THEN the price
+// shown as a small fraction of that total) instead of guessing numbers out of prose. Controlled
+// (unlike most of this form) since add/remove rows need real React state; serializes to the one
+// hidden "stack_items" input the server action parses back out (see parseStackItems).
+function ValueStackEditor({
+  coreValue,
+  items,
+  onItemsChange,
+}: {
+  coreValue: string;
+  items: StackItem[];
+  onItemsChange: (items: StackItem[]) => void;
+}) {
+  function updateItem(index: number, patch: Partial<StackItem>) {
+    onItemsChange(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  }
+  function addItem() {
+    onItemsChange([...items, { name: "", value: "" }]);
+  }
+  function removeItem(index: number) {
+    onItemsChange(items.filter((_, i) => i !== index));
+  }
+
+  const core = coreValue.trim() ? parseMoney(coreValue) : null;
+  const total = items.reduce((sum, item) => sum + (parseMoney(item.value) ?? 0), core ?? 0);
+
+  return (
+    <div>
+      <input type="hidden" name="stack_items" value={JSON.stringify(items)} />
+      <Label>Value Stack — bonuses, each with its own value</Label>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        Separate from the free-text Bonuses box above — this is where exact numbers go, so the
+        webinar can reveal the core offer, then these bonuses one at a time with their values,
+        add up to a real total, and only then show the price as a small fraction of it (the
+        classic stack close). Leave it empty if you&apos;d rather describe bonuses in prose above
+        only.
+      </p>
+      <div className="mt-2 space-y-2">
+        {items.map((item, i) => (
+          <div key={i} className="flex gap-2">
+            <Input
+              value={item.name}
+              onChange={(e) => updateItem(i, { name: e.target.value })}
+              placeholder="e.g. Private Q&A call"
+              className="flex-1"
+            />
+            <Input
+              value={item.value}
+              onChange={(e) => updateItem(i, { value: e.target.value })}
+              placeholder="e.g. $497"
+              className="w-28"
+            />
+            <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(i)} title="Remove">
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+      <Button type="button" variant="outline" size="sm" className="mt-2" onClick={addItem}>
+        <Plus className="mr-1.5 h-3.5 w-3.5" />
+        Add a bonus
+      </Button>
+      {total > 0 && (
+        <p className="mt-2 text-xs text-primary">
+          Total stack value so far: <strong>{formatMoney(total)}</strong> (core offer
+          {core ? ` ${formatMoney(core)}` : " value not set"} + every bonus above). A classic
+          stack prices the actual offer at roughly a tenth of this or less — for this total,
+          that&apos;s around {formatMoney(total / 10)}.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function Section({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
     <div className="space-y-4 border-t border-border pt-5 first:border-t-0 first:pt-0">
@@ -172,6 +250,11 @@ export default function DiscoveryForm({
   const [missingWarning, setMissingWarning] = useState<string[] | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const skipMissingCheckRef = useRef(false);
+  // Controlled, unlike most of this form's fields — the Value Stack editor needs the core
+  // offer's live value to compute a running total as it's typed, and the stack items are a
+  // dynamic add/remove list with nowhere to live as a plain DOM element.
+  const [coreOfferValue, setCoreOfferValue] = useState(project.core_offer_value ?? "");
+  const [stackItems, setStackItems] = useState<StackItem[]>(project.stack_items ?? []);
 
   function collectOtherAnswers(): Record<string, string> {
     const out: Record<string, string> = {};
@@ -186,16 +269,30 @@ export default function DiscoveryForm({
   // exactly the kind of form a dropped connection or a browser crash mid-way through is
   // devastating for, with no way to get any of it back before this. Every field name, plus
   // "name" (not part of DISCOVERY_FIELD_NAMES, since that list is scoped to the discovery-assist
-  // dialog's own needs — this backup needs the project name too). See useFormDraft for how it's
-  // restored and cleared.
+  // dialog's own needs — this backup needs the project name too) and "stack_items" (not a plain
+  // DOM field at all — collected/restored straight from its own React state instead). See
+  // useFormDraft for how it's restored and cleared.
   const { persist: persistDraft, clearDraft, restoredAt } = useFormDraft({
     storageKey: `pp-discovery-draft:${project.id}`,
     collect: () => {
       const nameEl = document.getElementById("name") as HTMLInputElement | null;
-      return { ...collectOtherAnswers(), name: nameEl?.value ?? "" };
+      return { ...collectOtherAnswers(), name: nameEl?.value ?? "", stack_items: JSON.stringify(stackItems) };
     },
     restore: (draft) => {
       for (const [key, value] of Object.entries(draft)) {
+        if (key === "stack_items") {
+          try {
+            const parsed = JSON.parse(value);
+            if (Array.isArray(parsed)) setStackItems(parsed);
+          } catch {
+            // Corrupt draft value — leave the stack items as they already are rather than crash.
+          }
+          continue;
+        }
+        if (key === "core_offer_value") {
+          if (value) setCoreOfferValue(value);
+          continue;
+        }
         const el = document.getElementById(key) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
         if (el && value) el.value = value;
       }
@@ -545,11 +642,27 @@ export default function DiscoveryForm({
           label="Bonuses (if any)"
           name="bonuses"
           defaultValue={project.bonuses}
-          placeholder="List each bonus and its perceived value."
-          hint={`No bonuses? Answer "None" — that's a real answer, not a skipped question.`}
+          placeholder="List each bonus — any extra context that doesn't fit the Value Stack below."
+          hint={`No bonuses? Answer "None" — that's a real answer, not a skipped question. For the exact dollar value of each one, use the Value Stack below instead — this box is just for extra context/flavor.`}
           required
           onAssist={setAssistTarget}
         />
+        <div>
+          <Label htmlFor="core_offer_value">Core offer value</Label>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            What the core product/offer itself is worth, before any bonus — introduced first in
+            the stack reveal. Leave blank if you&apos;d rather not put a number on it.
+          </p>
+          <Input
+            id="core_offer_value"
+            name="core_offer_value"
+            value={coreOfferValue}
+            onChange={(e) => setCoreOfferValue(e.target.value)}
+            placeholder="e.g. $997"
+            className="mt-1"
+          />
+        </div>
+        <ValueStackEditor coreValue={coreOfferValue} items={stackItems} onItemsChange={setStackItems} />
         <Field
           label="Scarcity / urgency"
           name="scarcity_urgency"

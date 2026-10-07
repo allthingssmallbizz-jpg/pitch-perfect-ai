@@ -1,6 +1,56 @@
 import type { AssetType, Project } from "@/types/database";
 import { getFunnelTypeLabel } from "@/lib/funnelType";
 
+// Best-effort — strips everything but digits and a decimal point ("$1,997" -> 1997, "$297/mo"
+// -> 297). Returns null for anything that doesn't parse to a real positive number rather than
+// guessing, since a wrong number in a sum is worse than one missing line in it. Exported so
+// DiscoveryForm's Value Stack editor can show the member the exact same running total the
+// generator prompt actually sees, instead of two slightly different pieces of arithmetic.
+export function parseMoney(value: string): number | null {
+  const n = Number(value.replace(/[^0-9.]/g, ""));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+export function formatMoney(n: number): string {
+  return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
+
+// The Value Stack block (see 0045_value_stack.sql) — core offer value + each bonus/stack item's
+// own value, summed into a real total the generator doesn't have to guess at. Separate from
+// formatDiscoveryBlock's own field() helper below since this needs real arithmetic, not just a
+// blank-vs-filled check. Returns "" when nothing here is actually filled in, so a project that
+// hasn't used this yet doesn't get a block of all-blank lines.
+function formatValueStackBlock(project: Project): string {
+  const coreValue = project.core_offer_value?.trim() ? parseMoney(project.core_offer_value) : null;
+  const items = (project.stack_items ?? []).filter((item) => item.name?.trim() || item.value?.trim());
+  if (!project.core_offer_value?.trim() && items.length === 0) return "";
+
+  const lines = [
+    "",
+    "VALUE STACK — build the offer reveal from these EXACT items, progressively, never all at once (see this generator's own rules for pacing):",
+    `Core offer value: ${project.core_offer_value?.trim() || "(not provided)"}`,
+  ];
+  let total = coreValue ?? 0;
+  for (const item of items) {
+    lines.push(`Stack item: ${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"}`);
+    const v = item.value?.trim() ? parseMoney(item.value) : null;
+    if (v) total += v;
+  }
+  if (total > 0) {
+    lines.push(`TOTAL STACK VALUE (core + every stack item above, computed): ${formatMoney(total)}`);
+    const priceValue = parseMoney(project.price);
+    if (priceValue) {
+      const ratio = total / priceValue;
+      lines.push(
+        ratio >= 1.5
+          ? `ACTUAL PRICE vs. TOTAL VALUE: the price (${project.price.trim()}) is about ${ratio.toFixed(1)}x less than the total stack value above — state this gap explicitly and dramatically when revealing the price (the classic "all of this is worth ${formatMoney(total)}... but not today — today it's just ${project.price.trim()}" moment).`
+          : `ACTUAL PRICE vs. TOTAL VALUE: the price (${project.price.trim()}) is NOT meaningfully smaller than the total stack value (${formatMoney(total)}) — this undercuts the reveal; the price should read as a small fraction of the total, not close to it. Still use the real numbers given, but don't invent extra drama the math doesn't support.`
+      );
+    }
+  }
+  return lines.join("\n");
+}
+
 // Renders a Project's full discovery brief into the block every generator prompt is built on.
 // Centralized so "discovery-before-copy" is enforced consistently — every generator sees
 // exactly the same facts, and missing fields are explicit rather than silently blank.
@@ -43,6 +93,7 @@ export function formatDiscoveryBlock(project: Project): string {
     field("Price point", project.price),
     field("Guarantee", project.guarantee),
     field("Bonuses", project.bonuses),
+    formatValueStackBlock(project),
     field("Scarcity / urgency", project.scarcity_urgency),
     field("Primary call to action", project.cta),
     field("Funnel type (what the CTA leads to)", getFunnelTypeLabel(project.funnel_type)),

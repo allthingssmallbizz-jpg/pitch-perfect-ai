@@ -38,9 +38,9 @@ Attention → Curiosity → Understanding → Belief → Confidence → Commitme
 15. Proof Architecture — evidence in strategic sequence
 16. Demonstration — show the solution in action
 17. Product Reveal — introduce the solution as the logical conclusion
-18. Offer Construction — the complete solution package
-19. Value Stack — layer value elements systematically
-20. Bonuses — strategic additions that remove friction (each maps to one objection)
+18. Offer Construction — introduce the CORE offer alone first, with its own value if one was given — before any bonus exists yet
+19. Value Stack — layer value elements progressively, one at a time, never all at once: each bonus gets its own moment and its own stated value (each mapping to one objection), building toward a real total — state that total once every item has been revealed, then only after that reveal the actual price, framed explicitly as a small fraction of the total ("all of this is worth [total]... today, just [price]")
+20. Bonuses — strategic additions that remove friction (each maps to one objection; see Stage 19 for how/when each is actually revealed)
 21. Guarantee — transfer risk from buyer to seller
 22. Scarcity — authentic limitations only
 23. Urgency — why delay costs more than action

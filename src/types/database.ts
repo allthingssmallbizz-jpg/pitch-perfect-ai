@@ -110,6 +110,14 @@ export type AwarenessLevel =
   | "Product-Aware"
   | "Most Aware";
 
+// One bonus/stack item in a project's Value Stack (see 0045_value_stack.sql) — `value` is plain
+// text like price/guarantee elsewhere ("$497"), not a validated number, so a member can write
+// whatever reads naturally; formatDiscoveryBlock does its own best-effort parsing when summing.
+export type StackItem = {
+  name: string;
+  value: string;
+};
+
 export type Project = {
   id: string;
   user_id: string;
@@ -143,6 +151,13 @@ export type Project = {
   price: string;
   guarantee: string;
   bonuses: string;
+  // The core offer's own dollar value, and the ordered list of bonus/stack items (each with its
+  // own value) revealed progressively after it — see 0045_value_stack.sql. Both optional and
+  // additive alongside `bonuses` above, which stays free-text context/notes rather than being
+  // replaced. formatDiscoveryBlock (generators/shared.ts) computes the running total and the
+  // price-vs-total ratio from these for every generator's prompt.
+  core_offer_value: string;
+  stack_items: StackItem[];
   scarcity_urgency: string;
   cta: string;
   // Which conversion pattern this offer's CTA actually leads to — drives the Thank You Page

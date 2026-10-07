@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { AwarenessLevel } from "@/types/database";
+import type { AwarenessLevel, StackItem } from "@/types/database";
 import { ASSET_TYPES } from "@/lib/ai/generators";
 import { getTemplate } from "@/lib/templates";
 import { getMissingDiscoveryFieldLabels } from "@/lib/projects";
@@ -244,6 +244,8 @@ export async function duplicateProject(_prevState: unknown, formData: FormData) 
     price: original.price,
     guarantee: original.guarantee,
     bonuses: original.bonuses,
+    core_offer_value: original.core_offer_value,
+    stack_items: original.stack_items,
     scarcity_urgency: original.scarcity_urgency,
     cta: original.cta,
     funnel_type: original.funnel_type,
@@ -358,6 +360,22 @@ export async function duplicateProject(_prevState: unknown, formData: FormData) 
   redirect(`/projects/${newProject.id}`);
 }
 
+// DiscoveryForm's Value Stack list serializes to this single hidden field as JSON (see
+// 0045_value_stack.sql) — parsed defensively since it's client-built, dropping any row that
+// isn't a real {name, value} pair of strings rather than letting a malformed value corrupt the
+// column or crash the save.
+function parseStackItems(raw: string): StackItem[] {
+  try {
+    const parsed = JSON.parse(raw || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item): item is StackItem => typeof item?.name === "string" && typeof item?.value === "string")
+      .map((item) => ({ name: item.name, value: item.value }));
+  } catch {
+    return [];
+  }
+}
+
 export async function updateProjectDiscovery(_prevState: unknown, formData: FormData) {
   const supabase = await createClient();
   const {
@@ -398,6 +416,8 @@ export async function updateProjectDiscovery(_prevState: unknown, formData: Form
     price: text("price"),
     guarantee: text("guarantee"),
     bonuses: text("bonuses"),
+    core_offer_value: text("core_offer_value"),
+    stack_items: parseStackItems(text("stack_items")),
     scarcity_urgency: text("scarcity_urgency"),
     cta: text("cta"),
     funnel_type: text("funnel_type"),

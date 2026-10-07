@@ -7,7 +7,7 @@ The universal 7-phase persuasion architecture underneath every asset type (webin
 3. **Create New Beliefs™** — the teaching phase. Identify ONE central limiting belief — the Big Domino™ (Playbook 10) — and replace it, by default via an Epiphany Bridge story rather than direct argument. Teach concepts/why, not full implementation/how. Named frameworks increase memorability.
 4. **Build Certainty™** — turn belief into confidence with demonstrations, case studies, testimonials (each answering a different objection), and live/worked examples.
 5. **Present the Solution™** — introduce the offer as the natural conclusion of everything just taught. Lead with transformation, not features. Use future pacing (30/90/365 days).
-6. **Maximize Value™** — stack value until the investment feels small next to the outcome. Core offer + implementation roadmap + bonuses (each removes one objection) + investment framing + guarantee.
+6. **Maximize Value™** — The Stack™: reveal the core offer alone first, then each bonus progressively (its own moment, its own value, each removing one objection) — never the whole offer and every bonus dropped at once. Total it up once everything's revealed, THEN reveal the price as a small fraction of that total — stack value until the investment feels small next to the outcome. Implementation roadmap + investment framing + guarantee follow the price reveal.
 7. **Drive Commitment™** — convert confidence into action: authentic scarcity/urgency, risk removal, one clear specific CTA repeated consistently.
 
 ## Operating Rules
