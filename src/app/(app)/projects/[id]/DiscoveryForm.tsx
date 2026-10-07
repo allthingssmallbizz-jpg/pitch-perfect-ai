@@ -434,12 +434,12 @@ export default function DiscoveryForm({
           onAssist={setAssistTarget}
         />
         <Field
-          label="Webinar / offer name"
+          label="Core offer name"
           name="offer_name"
           defaultValue={project.offer_name}
           textarea={false}
-          placeholder="What your audience will actually see — a title, not a description."
-          hint="Don't have one yet? Use the Offer Builder button above — it'll suggest a few."
+          placeholder="The exact name of what they're buying — a title, not a description."
+          hint={`This is what gets sold at the end — your program/course/package name, or the webinar/challenge's own name if that IS the paid thing. Its price goes in "Core offer price" further down, in the Offer section. Don't have a name yet? Use the Offer Builder button above — it'll suggest a few.`}
           required
           onAssist={setAssistTarget}
         />
@@ -607,12 +607,12 @@ export default function DiscoveryForm({
       <Section title="Offer" subtitle="Price, bonuses, guarantee, urgency.">
         <div className="grid grid-cols-2 gap-4">
           <Field
-            label="Price point"
+            label="Core offer price"
             name="price"
             defaultValue={project.price}
             textarea={false}
             placeholder="e.g. $1,997 one-time or $297/month"
-            hint="Even a rough number helps — without it, the AI has to guess."
+            hint={`What you actually charge for "${project.offer_name?.trim() || "the core offer named above"}" — even a rough number helps, without it the AI has to guess. Not the same as "Core offer value" below, which is its worth in the stack reveal, not what you charge.`}
             required
             onAssist={setAssistTarget}
           />

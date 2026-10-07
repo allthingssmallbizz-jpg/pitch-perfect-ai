@@ -27,10 +27,10 @@ export const OFFER_BUILDER_FIELD_KEYS = [
 export type OfferBuilderFieldKey = (typeof OFFER_BUILDER_FIELD_KEYS)[number];
 
 export const OFFER_BUILDER_FIELD_LABELS: Record<OfferBuilderFieldKey, string> = {
-  offer_name: "Webinar / offer name",
+  offer_name: "Core offer name",
   core_promise: "Core promise",
   outcomes: "Top outcomes / benefits",
-  price: "Price point",
+  price: "Core offer price",
   guarantee: "Guarantee",
   bonuses: "Bonuses / demo stack",
   cta: "Primary call to action (closing mechanism)",

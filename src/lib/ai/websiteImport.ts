@@ -55,7 +55,7 @@ export const WEBSITE_IMPORT_FIELD_LABELS: Record<WebsiteImportFieldKey, string> 
   core_promise: "Core promise",
   outcomes: "Top outcomes / benefits",
   proof: "Proof available",
-  price: "Price point",
+  price: "Core offer price",
   guarantee: "Guarantee",
   bonuses: "Bonuses (if any)",
   scarcity_urgency: "Scarcity / urgency",
