@@ -15,8 +15,17 @@ import { parseVideoEmbedUrl, upsertVideoEmbed, removeVideoEmbed } from "@/lib/vi
 // asset) might not be a good fit for a freeform "add/remove" edit without more thought. Course
 // Outline was the first; Cora's three module-scoped tools followed — a member marking a module's
 // slides/quiz/workbook "Completed" still needs to be able to fix a wrong speaker note or a bad
-// question without a full Regenerate blowing away everything else they liked about it.
-const TEXT_EDITABLE_ASSET_TYPES = ["course_outline", "course_module_slides", "course_module_quiz", "course_module_workbook"];
+// question without a full Regenerate blowing away everything else they liked about it. Webinar
+// Outline (Agent Sarah's blueprint) followed too: reported need was to tweak a phase's wording
+// directly so Your Signature Webinar (Polly) picks up the change, instead of backing all the way
+// out to Discovery for a small wording fix.
+const TEXT_EDITABLE_ASSET_TYPES = [
+  "course_outline",
+  "webinar_outline",
+  "course_module_slides",
+  "course_module_quiz",
+  "course_module_workbook",
+];
 
 export const runtime = "nodejs";
 // The text-edit path has to echo back the ENTIRE document with the change applied, not just a

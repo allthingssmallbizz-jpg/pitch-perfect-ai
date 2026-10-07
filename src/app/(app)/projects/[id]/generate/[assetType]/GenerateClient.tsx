@@ -1656,9 +1656,10 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
       {content && !isWebPageAsset && (
         <div className="space-y-4">
           <TtsPlayer text={content} />
-          {(assetType === "course_outline" || MODULE_SCOPED_ASSET_TYPES.includes(assetType)) && generationId && (
-            <TextEditPanel generationId={generationId} assetType={assetType} onApplied={handleAiEditApplied} />
-          )}
+          {(assetType === "course_outline" || assetType === "webinar_outline" || MODULE_SCOPED_ASSET_TYPES.includes(assetType)) &&
+            generationId && (
+              <TextEditPanel generationId={generationId} assetType={assetType} onApplied={handleAiEditApplied} />
+            )}
           {isSlideDeckAsset && deckViewMode === "slides" ? (
             <SlidePreview
               markdown={content}
