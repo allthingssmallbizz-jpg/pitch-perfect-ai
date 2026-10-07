@@ -43,14 +43,14 @@ moment the storyteller reached it.
 | 8 | The Achievement | The Reward | The result, which retroactively proves the epiphany true |
 | 9 | The Return | Return with the Elixir | The explicit handoff into teaching/offer: "I came back to bring this discovery to people exactly where I used to be" |
 
-## The Three Secrets™ — the full Perfect Webinar Script's Phase 3 (webinar/VSL-PPT-deck length only)
+## The Three Secrets™ — the full Perfect Webinar Script's Phase 3 (webinar and VSL length only)
 
 A short asset (an ad, an email, a landing page) only has room to knock down ONE Big Domino with
 ONE Epiphany Bridge story — that's the One Belief Method below, and it stays the default
-everywhere. A full-length webinar (and its PPT deck/script) is long enough to do what the
-original Perfect Webinar Script actually does: break the Big Domino into **three** specific false
-beliefs, each broken by its **own**, separate Epiphany Bridge story. These three stories together
-are "The Three Secrets™":
+everywhere. A full-length webinar (and its PPT deck/script) or a full VSL is long enough to do
+what the original Perfect Webinar Script actually does: break the Big Domino into **three**
+specific false beliefs, each broken by its **own**, separate Epiphany Bridge story. These three
+stories together are "The Three Secrets™":
 
 | Belief type | What the audience doubts | Example false belief |
 |---|---|---|
@@ -61,8 +61,11 @@ are "The Three Secrets™":
 All three still serve the SAME Big Domino — they're the three specific doubts standing between
 the audience and adopting it, not three unrelated beliefs. Identify the Big Domino first, then
 find this audience's real version of each of the three doubts above, then write a dedicated
-Epiphany Bridge story (the same 9-beat structure below) for each one individually — never one
-story trying to cover more than one secret at once.
+Epiphany Bridge story for each one individually — never one story trying to cover more than one
+secret at once. A full webinar has room for each story to use the complete 9-beat structure below;
+a VSL's Belief Shifting stage is one stage among 25 in a shorter script, so there each of the
+three gets a condensed version instead (the false belief stated, then the real moment/evidence
+that broke it — not all 9 beats spelled out) rather than three full origin stories back to back.
 
 ## Operating Rules
 
@@ -70,8 +73,9 @@ story trying to cover more than one secret at once.
   story wherever a real one exists, not a bare teaching point — including a "shared-experience
   story" called for elsewhere (e.g. PPWOS Phase 2 Build Relevance).
 - One Epiphany Bridge per belief — matches the One Belief Method's "pick ONE dominant shift." The
-  one documented exception is a full webinar/PPT deck's Phase 3, which uses The Three Secrets™
-  above instead: three beliefs (Vehicle/Internal/External), each still getting exactly one story.
+  documented exceptions are a full webinar/PPT deck's Phase 3 and a VSL's Belief Shifting stage
+  (Stage 14), which use The Three Secrets™ above instead: three beliefs (Vehicle/Internal/
+  External), each still getting exactly one story.
 - The epiphany line must name the specific realization, not "and then I figured it out." If
   discovery data has no real story, flag `[NEEDS: a real story/example for this belief shift]`
   rather than inventing one — on a Three Secrets webinar, flag each missing one individually

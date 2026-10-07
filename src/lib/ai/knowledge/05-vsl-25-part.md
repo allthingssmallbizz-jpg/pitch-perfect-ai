@@ -29,9 +29,12 @@ Attention → Curiosity → Understanding → Belief → Confidence → Commitme
 11. The Big Idea — the central organizing concept
 12. Future Pacing — help prospects mentally experience success
 13. Education Framework — teach the perspective that supports the solution
-14. Belief Shifting — systematically replace limiting beliefs; this is where the Big Domino™
-    (Playbook 10) gets named and knocked down — the ONE belief that collapses every other
-    objection once it's adopted
+14. Belief Shifting — systematically replace limiting beliefs. Name the Big Domino™ (Playbook 10)
+    first, then break it into The Three Secrets™ (Playbook 10): a Vehicle false belief ("does
+    this actually work?"), an Internal one ("can I actually do this?"), and an External one
+    ("will my situation let this work?") — three short sub-beats (14a/14b/14c), each stating
+    that specific false belief and the real moment/evidence that broke it, not one single belief
+    treated as the whole stage
 15. Proof Architecture — evidence in strategic sequence
 16. Demonstration — show the solution in action
 17. Product Reveal — introduce the solution as the logical conclusion
