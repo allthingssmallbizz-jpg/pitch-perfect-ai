@@ -25,6 +25,7 @@ import {
 import { Undo2 } from "lucide-react";
 import DashboardOnboarding from "@/components/DashboardOnboarding";
 import DeleteProjectButton from "@/components/DeleteProjectButton";
+import DuplicateProjectButton from "@/components/DuplicateProjectButton";
 import { ASSET_GENERATORS, type GeneratorAssetType } from "@/lib/ai/generators";
 import { AGENTS } from "@/lib/agents/config";
 import { createProjectFromTemplate, restoreProject } from "@/lib/actions/projects";
@@ -277,6 +278,7 @@ export default async function DashboardPage() {
                     Open <ArrowRight className="ml-1 h-4 w-4" />
                   </Link>
                 </Button>
+                <DuplicateProjectButton projectId={project.id} />
                 <DeleteProjectButton projectId={project.id} projectName={project.name} />
               </div>
             );

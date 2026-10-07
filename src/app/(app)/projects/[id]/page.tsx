@@ -13,6 +13,7 @@ import { isRestrictionBypassActive } from "@/lib/adminBypass";
 import { Badge } from "@/components/ui/badge";
 import AgentBadge from "@/components/AgentBadge";
 import BioBlockedDialog from "@/components/BioBlockedDialog";
+import DuplicateProjectButton from "@/components/DuplicateProjectButton";
 import DiscoveryWalkthroughVideo from "@/components/DiscoveryWalkthroughVideo";
 import ToolLink from "./ToolLink";
 import RoadmapSection from "./RoadmapSection";
@@ -146,7 +147,10 @@ export default async function ProjectPage({
       <Link href="/dashboard" className="text-sm text-primary hover:underline">
         ← All projects
       </Link>
-      <h1 className="mt-2 mb-6 font-display text-2xl font-semibold text-gradient-silver">{project.name}</h1>
+      <div className="mt-2 mb-6 flex items-center gap-2">
+        <h1 className="font-display text-2xl font-semibold text-gradient-silver">{project.name}</h1>
+        <DuplicateProjectButton projectId={project.id} />
+      </div>
 
       <RoadmapSection
         projectId={project.id}

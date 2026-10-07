@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { AwarenessLevel } from "@/types/database";
 import { ASSET_TYPES } from "@/lib/ai/generators";
 import { getTemplate } from "@/lib/templates";
@@ -137,6 +138,224 @@ export async function createProjectFromTemplate(formData: FormData) {
 
   revalidatePath("/", "layout");
   redirect(`/projects/${data.id}`);
+}
+
+// Reported need: a member running the same offer two ways (a small private cohort vs. the full
+// public webinar launch) wants to start the second one from everything already built for the
+// first, then tweak it independently — not regenerate everything from scratch, and not risk
+// editing the original while adapting it. Clones the project's own discovery fields, its niche
+// bio (its own new row — every project requires exactly one bio, same rule createProject follows,
+// so sharing one row between two projects isn't an option here), and the CURRENT content for
+// every asset type/module already generated (the latest complete generation per asset_type +
+// module_identifier pair — not its full edit history or past superseded drafts, which would
+// balloon this into copying everything ever generated for comparatively little benefit). A
+// duplicate starts fresh on publishing (publish_slug/published_at reset to null) so it's never
+// silently "live" at the original's link, and slide_media (Build Module Slides' per-slide images/
+// charts) is copied alongside its matching generation so a duplicated deck doesn't quietly lose
+// its visuals. No credits charged — this is a database copy, not a new AI generation.
+export async function duplicateProject(_prevState: unknown, formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const projectId = String(formData.get("projectId") || "");
+  const { data: original } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("id", projectId)
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!original) return { error: "Could not find that project." };
+
+  // Same gate createProject applies — a duplicate is a real project and consumes the same one
+  // niche slot every project does, no exception for being a copy.
+  const { data: profile } = await supabase.from("profiles").select("tier, bonus_niche_limit").eq("id", user.id).single();
+  const tier = profile?.tier ?? "Gold";
+  const bonusNicheLimit = profile?.bonus_niche_limit ?? 0;
+  const limitCheck = await canCreateBioProfile(supabase, user.id, tier, bonusNicheLimit);
+  if (!limitCheck.ok) return { error: limitCheck.message };
+
+  const newName = `${original.name} (Copy)`;
+
+  const { data: originalBio } = original.presenter_bio_profile_id
+    ? await supabase.from("presenter_bio_profiles").select("*").eq("id", original.presenter_bio_profile_id).maybeSingle()
+    : { data: null };
+
+  // Explicit field lists (same style as updateProjectDiscovery's own `fields` below) rather than
+  // spreading-minus-a-few-keys — keeps exactly what gets copied visible at a glance, and a column
+  // this list doesn't yet know about (id/timestamps/ownership) can never leak through by accident.
+  const bioFields = originalBio
+    ? {
+        presenter_ihelp_audience: originalBio.presenter_ihelp_audience,
+        presenter_ihelp_outcome: originalBio.presenter_ihelp_outcome,
+        presenter_ihelp_mechanism: originalBio.presenter_ihelp_mechanism,
+        presenter_ihelp_pain_point: originalBio.presenter_ihelp_pain_point,
+        presenter_ihelp_statement: originalBio.presenter_ihelp_statement,
+        presenter_mission: originalBio.presenter_mission,
+        presenter_years_experience: originalBio.presenter_years_experience,
+        presenter_credentials: originalBio.presenter_credentials,
+        presenter_origin_story: originalBio.presenter_origin_story,
+        presenter_signature_win: originalBio.presenter_signature_win,
+        presenter_setback_story: originalBio.presenter_setback_story,
+        presenter_epiphany_moment: originalBio.presenter_epiphany_moment,
+        presenter_mentor: originalBio.presenter_mentor,
+        presenter_conflict_story: originalBio.presenter_conflict_story,
+        presenter_income_goal_6mo: originalBio.presenter_income_goal_6mo,
+        presenter_income_goal_12mo: originalBio.presenter_income_goal_12mo,
+        presenter_mission_why: originalBio.presenter_mission_why,
+        presenter_recognition: originalBio.presenter_recognition,
+        presenter_relatable_detail: originalBio.presenter_relatable_detail,
+        presenter_voice_tone: originalBio.presenter_voice_tone,
+        presenter_voice_preferred_words: originalBio.presenter_voice_preferred_words,
+        presenter_voice_forbidden_words: originalBio.presenter_voice_forbidden_words,
+        presenter_voice_sample_writing: originalBio.presenter_voice_sample_writing,
+        presenter_voice_notes: originalBio.presenter_voice_notes,
+      }
+    : {};
+  const { data: newBio, error: bioError } = await supabase
+    .from("presenter_bio_profiles")
+    .insert({ ...bioFields, user_id: user.id, label: newName })
+    .select("id")
+    .single();
+  if (bioError || !newBio) return { error: "Could not duplicate this project. Try again." };
+
+  const discoveryFields = {
+    business_name: original.business_name,
+    industry: original.industry,
+    product: original.product,
+    offer_name: original.offer_name,
+    audience: original.audience,
+    existing_assets: original.existing_assets,
+    awareness_level: original.awareness_level,
+    pain_points: original.pain_points,
+    false_beliefs: original.false_beliefs,
+    desired_transformation: original.desired_transformation,
+    category: original.category,
+    enemy: original.enemy,
+    differentiator: original.differentiator,
+    competitive_alternatives: original.competitive_alternatives,
+    unique_mechanism: original.unique_mechanism,
+    core_promise: original.core_promise,
+    outcomes: original.outcomes,
+    proof: original.proof,
+    price: original.price,
+    guarantee: original.guarantee,
+    bonuses: original.bonuses,
+    scarcity_urgency: original.scarcity_urgency,
+    cta: original.cta,
+    funnel_type: original.funnel_type,
+    discovery_notes: original.discovery_notes,
+    course_naming: original.course_naming,
+    mode: original.mode,
+  };
+  const { data: newProject, error: projectError } = await supabase
+    .from("projects")
+    .insert({ ...discoveryFields, user_id: user.id, name: newName, presenter_bio_profile_id: newBio.id })
+    .select("id")
+    .single();
+  if (projectError || !newProject) {
+    await supabase.from("presenter_bio_profiles").delete().eq("id", newBio.id);
+    return { error: "Could not duplicate this project. Try again." };
+  }
+
+  // Everything below writes generations/slide_media directly (not through a user-scoped RLS
+  // policy, which only ever allows a member to read their own rows — every real write to these
+  // tables elsewhere in the app goes through the admin client the same way, see
+  // /api/generate/route.ts and the edit route).
+  const admin = createAdminClient();
+
+  const { data: allGenerations } = await admin
+    .from("generations")
+    .select("*")
+    .eq("project_id", projectId)
+    .eq("status", "complete")
+    .order("created_at", { ascending: false });
+
+  // The CURRENT content for each asset type/module — first-seen-wins after sorting newest first,
+  // same dedup pattern used for cross-generator "stay consistent with" context in
+  // /api/generate/route.ts and the dashboard's own latestGenerationByProject.
+  const seen = new Set<string>();
+  const currentGenerations = (allGenerations ?? []).filter((g) => {
+    const key = `${g.asset_type}::${g.module_identifier ?? ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const idMap = new Map<string, string>();
+  for (const gen of currentGenerations) {
+    const { data: inserted } = await admin
+      .from("generations")
+      .insert({
+        user_id: user.id,
+        project_id: newProject.id,
+        asset_type: gen.asset_type,
+        mode: gen.mode,
+        status: gen.status,
+        content: gen.content,
+        input_content: gen.input_content,
+        model: gen.model,
+        input_tokens: gen.input_tokens,
+        output_tokens: gen.output_tokens,
+        cost_usd: gen.cost_usd,
+        credits_charged: gen.credits_charged,
+        video_path: gen.video_path,
+        video_duration_seconds: gen.video_duration_seconds,
+        video_size_bytes: gen.video_size_bytes,
+        transcript: gen.transcript,
+        transcription_cost_usd: gen.transcription_cost_usd,
+        winners: gen.winners,
+        image_source_path: gen.image_source_path,
+        image_result_path: gen.image_result_path,
+        // Deliberately reset, not copied — a duplicate should never already be "live" at the
+        // original's publish link, and approval state is a separate per-content judgment that's
+        // fine to carry over as-is (see module_identifier/approved_at just below).
+        publish_slug: null,
+        published_at: null,
+        approved_at: gen.approved_at,
+        module_identifier: gen.module_identifier,
+        // Fixed up in the pass below once every id in this batch has its new counterpart —
+        // never copied directly, since it points at another generation's id, and that id is
+        // about to change for every row in this same duplication.
+        source_generation_id: null,
+      })
+      .select("id")
+      .single();
+    if (inserted) idMap.set(gen.id, inserted.id);
+  }
+
+  for (const gen of currentGenerations) {
+    if (!gen.source_generation_id) continue;
+    const newSourceId = idMap.get(gen.source_generation_id);
+    const newOwnId = idMap.get(gen.id);
+    if (newSourceId && newOwnId) {
+      await admin.from("generations").update({ source_generation_id: newSourceId }).eq("id", newOwnId);
+    }
+  }
+
+  for (const [oldId, newId] of idMap.entries()) {
+    const { data: media } = await admin.from("slide_media").select("*").eq("generation_id", oldId);
+    if (media?.length) {
+      await admin.from("slide_media").insert(
+        media.map((m) => ({
+          generation_id: newId,
+          user_id: user.id,
+          slide_number: m.slide_number,
+          kind: m.kind,
+          storage_path: m.storage_path,
+          chart_type: m.chart_type,
+          chart_data: m.chart_data,
+          prompt: m.prompt,
+        }))
+      );
+    }
+  }
+
+  revalidatePath("/", "layout");
+  redirect(`/projects/${newProject.id}`);
 }
 
 export async function updateProjectDiscovery(_prevState: unknown, formData: FormData) {
