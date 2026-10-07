@@ -5,30 +5,21 @@ import { toast } from "sonner";
 import { Volume2, Play, Pause, Square, Loader2, SkipBack, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TTS_VOICES, TTS_CREDIT_COST, type TtsVoice } from "@/lib/ai/tts";
+import { cleanSpokenScript } from "@/lib/ai/spokenScriptText";
+import type { AssetType } from "@/types/database";
 
 type Props = {
   text: string;
   title?: string;
+  // Needed so VSL Script/Webinar Script can have their own structural labels (beat numbers,
+  // "Slide #: Title") stripped before anything is spoken — see cleanSpokenScript. Optional and a
+  // no-op for every other/unknown asset type, which keeps exactly the markdown-syntax-only
+  // cleanup this already did for every existing caller that has no reason to pass it.
+  assetType?: AssetType;
   // True when `text` is a trailing slice starting from where the member clicked in the document,
   // not the whole thing — purely for the hint line below; doesn't change playback itself.
   startsFromMarker?: boolean;
 };
-
-// Strips markdown so the TTS reads only spoken content, not formatting syntax.
-function cleanForSpeech(md: string): string {
-  return md
-    .replace(/^\s*---+\s*$/gm, ". ")
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/\*\*(.+?)\*\*/g, "$1")
-    .replace(/\*(.+?)\*/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/^\s*[-*+]\s+/gm, "")
-    .replace(/^\s*>\s?/gm, "")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
 
 function chunkForTts(text: string, maxChars = 1800): string[] {
   const clean = text.trim();
@@ -56,7 +47,7 @@ function chunkForTts(text: string, maxChars = 1800): string[] {
   return chunks;
 }
 
-export default function TtsPlayer({ text, title, startsFromMarker }: Props) {
+export default function TtsPlayer({ text, title, assetType, startsFromMarker }: Props) {
   const [voice, setVoice] = useState<TtsVoice>("alloy");
   const [status, setStatus] = useState<"idle" | "loading" | "playing" | "paused">("idle");
   const [index, setIndex] = useState(0);
@@ -64,9 +55,10 @@ export default function TtsPlayer({ text, title, startsFromMarker }: Props) {
   const objectUrlRef = useRef<string | null>(null);
   const stoppedRef = useRef(false);
 
-  const chunks = useMemo(() => chunkForTts(cleanForSpeech(text)), [text]);
+  const cleaned = useMemo(() => cleanSpokenScript(text, assetType), [text, assetType]);
+  const chunks = useMemo(() => chunkForTts(cleaned), [cleaned]);
   const totalChunks = chunks.length;
-  const wordCount = useMemo(() => (cleanForSpeech(text).match(/\S+/g) ?? []).length, [text]);
+  const wordCount = useMemo(() => (cleaned.match(/\S+/g) ?? []).length, [cleaned]);
 
   useEffect(() => {
     return () => {

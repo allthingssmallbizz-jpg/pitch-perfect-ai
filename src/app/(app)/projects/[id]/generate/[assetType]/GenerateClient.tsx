@@ -57,6 +57,7 @@ import { getPublicSiteUrl } from "@/lib/publishing";
 import type { PageStats } from "@/lib/analytics";
 import { COURSE_ASSET_TYPES, type CourseModuleRef } from "@/lib/ai/courseModules";
 import { parsePptOutline, parseWebinarScriptBySlideNumber } from "@/lib/ai/pptxParser";
+import { cleanSpokenScript } from "@/lib/ai/spokenScriptText";
 import PageEditPanel from "./PageEditPanel";
 import TextEditPanel from "./TextEditPanel";
 import SlidePreview from "./SlidePreview";
@@ -1010,7 +1011,15 @@ export default function GenerateClient({
 
   async function copyToClipboard() {
     if (!content) return;
-    await navigator.clipboard.writeText(content);
+    // VSL Script and Webinar Script are word-for-word spoken scripts, meant to be pasted straight
+    // into a voice tool, teleprompter, or video editor — their own structural labels ("**1.
+    // Pre-Hook**", "**Slide 4: Title**") exist purely to organize the document here, and were
+    // leaking into that pasted copy as if they were lines of the actual script (reported: a real
+    // video tool ended up reading the beat names out loud). Every other asset type's Copy is
+    // unchanged — this only ever strips something for these two.
+    const textToCopy =
+      assetType === "vsl_script" || assetType === "webinar_script" ? cleanSpokenScript(content, assetType) : content;
+    await navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
@@ -1355,6 +1364,15 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
         </p>
       )}
 
+      {(assetType === "vsl_script" || assetType === "webinar_script") && content && (
+        <p className="mb-4 -mt-2 text-xs text-muted-foreground">
+          The beat/slide labels above (like <strong>&quot;4. Big Promise&quot;</strong>) are there
+          to help you find your way around the document — <strong>Copy</strong> and{" "}
+          <strong>Read aloud</strong> both skip them automatically, so what you paste into a video
+          tool or hear read back is just the real spoken script, never the labels.
+        </p>
+      )}
+
       {assetType === "landing_page" && content && !projectFunnelType && (
         <p className="mb-4 -mt-2 text-xs text-muted-foreground">
           Tip: set this project&apos;s{" "}
@@ -1668,7 +1686,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
 
       {content && !isWebPageAsset && (
         <div className="space-y-4">
-          <TtsPlayer text={ttsStartText ?? content} startsFromMarker={ttsStartText !== null} />
+          <TtsPlayer text={ttsStartText ?? content} assetType={assetType} startsFromMarker={ttsStartText !== null} />
           {(assetType === "course_outline" || assetType === "webinar_outline" || MODULE_SCOPED_ASSET_TYPES.includes(assetType)) &&
             generationId && (
               <TextEditPanel generationId={generationId} assetType={assetType} onApplied={handleAiEditApplied} />

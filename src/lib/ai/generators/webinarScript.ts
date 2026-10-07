@@ -59,8 +59,8 @@ THE EXACT SLIDE DECK TO WRITE A SCRIPT FOR — copy every slide's number and tit
 ${deckContent}
 
 For each slide, output:
-**Slide #: Title** (copied exactly from the deck above)
-2-5 sentences of natural, conversational spoken script — not a word-for-word essay to be read flatly, and not just a restatement of the slide's bullets. This is what the presenter actually SAYS while that slide is on screen: expand the point, bridge from what was just said, build belief, and set up what's coming next. It should sound like a real person talking to a room, not a document being narrated.
+**Slide #: Title** (copied exactly from the deck above, on its own line)
+2-5 sentences of natural, conversational spoken script — not a word-for-word essay to be read flatly, and not just a restatement of the slide's bullets. This is what the presenter actually SAYS while that slide is on screen: expand the point, bridge from what was just said, build belief, and set up what's coming next. It should sound like a real person talking to a room, not a document being narrated. That label line exists only to keep this document aligned to the deck for whoever's reading it — it is invisible structure, never something the presenter actually says, so the spoken script itself must never announce or reference the slide number/title ("on this slide," "moving to slide 12," "here's our big promise slide") — just deliver the actual point directly, exactly as a real presenter would say it with no script visible to the audience at all.
 
 Keep the pacing natural for the format (a 60-90 slide deck runs roughly 60-90 minutes, so most slides get a tight few sentences, not a monologue) but substantial enough that someone with zero prep could read straight through it and deliver an effective, persuasive, on-message presentation — hit the emotional beats (curiosity, belief-shift, credibility, urgency, the ask) each slide exists for rather than just describing what's visible on it.`;
 }
