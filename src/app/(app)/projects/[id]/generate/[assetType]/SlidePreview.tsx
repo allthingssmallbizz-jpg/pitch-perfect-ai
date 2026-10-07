@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ImagePlus, BarChart3, Loader2, X, RefreshCw } from "lucide-react";
+import { ImagePlus, BarChart3, Loader2, X, RefreshCw, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { parsePptOutline, classifySlideLayout } from "@/lib/ai/pptxParser";
@@ -78,6 +78,7 @@ export default function SlidePreview({
   generationId,
   mediaEnabled,
   scriptBySlideNumber,
+  onSelectSlide,
 }: {
   markdown: string;
   generationId: string | null;
@@ -87,9 +88,27 @@ export default function SlidePreview({
   // Copy for Gamma also show. Null for every other asset type, and for ppt_outline itself until
   // a script has been created.
   scriptBySlideNumber: Map<number, string> | null;
+  // "Read aloud" could only ever start at the very top of a deck, with no equivalent here of the
+  // Text view's "click in the document to start from there" — reported as a real gap once that
+  // was added. Fires with the same shape that fix already expects (the plain text from this
+  // slide to the end of the deck, or null for the deck's own first slide — same "null means read
+  // everything" convention RichTextEditor's own callback uses) so GenerateClient can feed it
+  // straight to TtsPlayer without any new wiring on that side.
+  onSelectSlide?: (trailingText: string | null) => void;
 }) {
   const slides = parsePptOutline(markdown);
   const total = slides.length;
+
+  function resolvedNotes(slideNumber: number, fallback: string): string {
+    return scriptBySlideNumber?.get(slideNumber) || fallback;
+  }
+
+  function buildReadFromText(fromNumber: number): string {
+    return slides
+      .filter((s) => s.number >= fromNumber)
+      .map((s) => [s.title, s.bullets.join(". "), resolvedNotes(s.number, s.notes)].filter(Boolean).join("\n\n"))
+      .join("\n\n");
+  }
 
   const [mediaBySlideNumber, setMediaBySlideNumber] = useState<Map<number, SlideMediaItem>>(new Map());
   const [generatingFor, setGeneratingFor] = useState<number | null>(null);
@@ -231,7 +250,7 @@ export default function SlidePreview({
           const media = mediaBySlideNumber.get(slide.number);
           const showMediaControls = mediaEnabled && layout === "content" && generationId;
           const draft = chartDrafts[slide.number];
-          const notes = scriptBySlideNumber?.get(slide.number) || slide.notes;
+          const notes = resolvedNotes(slide.number, slide.notes);
           const notesAreFullScript = Boolean(scriptBySlideNumber?.get(slide.number));
 
           return (
@@ -240,9 +259,22 @@ export default function SlidePreview({
               className="flex flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm"
             >
               <div className="flex flex-col gap-3 bg-gradient-to-br from-slate-900 to-slate-700 p-5 text-white">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
-                  Slide {slide.number}
-                </span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
+                    Slide {slide.number}
+                  </span>
+                  {onSelectSlide && (
+                    <button
+                      type="button"
+                      onClick={() => onSelectSlide(index === 0 ? null : buildReadFromText(slide.number))}
+                      className="flex items-center gap-1 rounded-full border border-white/20 px-2 py-0.5 text-[10px] text-white/60 transition-colors hover:border-white/40 hover:text-white"
+                      title={`Read aloud starting from Slide ${slide.number}`}
+                    >
+                      <Volume2 className="h-3 w-3" />
+                      Read from here
+                    </button>
+                  )}
+                </div>
                 <h3 className="font-display text-base font-bold leading-snug">{slide.title}</h3>
                 {slide.bullets.length > 0 && (
                   <ul className="space-y-1.5 text-xs leading-snug text-white/90">

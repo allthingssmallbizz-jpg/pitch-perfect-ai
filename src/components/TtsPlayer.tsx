@@ -220,7 +220,7 @@ export default function TtsPlayer({ text, title, startsFromMarker }: Props) {
             </div>
             {startsFromMarker && (
               <div className="text-xs text-primary">
-                Starting from where your cursor is in the text below — click at the very top to read from the beginning instead.
+                Starting from where you last clicked (in the text, or a slide&apos;s &quot;Read from here&quot;) — click back at the very beginning to read the whole thing instead.
               </div>
             )}
           </div>

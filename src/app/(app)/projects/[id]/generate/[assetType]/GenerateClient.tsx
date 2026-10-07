@@ -1679,6 +1679,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
               generationId={generationId}
               mediaEnabled={SLIDE_MEDIA_ASSET_TYPES.includes(assetType)}
               scriptBySlideNumber={scriptBySlideNumber}
+              onSelectSlide={setTtsStartText}
             />
           ) : (
             <RichTextEditor
