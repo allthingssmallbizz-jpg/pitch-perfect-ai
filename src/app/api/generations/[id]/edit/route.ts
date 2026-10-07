@@ -18,10 +18,13 @@ import { parseVideoEmbedUrl, upsertVideoEmbed, removeVideoEmbed } from "@/lib/vi
 // question without a full Regenerate blowing away everything else they liked about it. Webinar
 // Outline (Agent Sarah's blueprint) followed too: reported need was to tweak a phase's wording
 // directly so Your Signature Webinar (Polly) picks up the change, instead of backing all the way
-// out to Discovery for a small wording fix.
+// out to Discovery for a small wording fix. VSL Script (Agent Vicky) followed the same way —
+// fixing a line that still narrates its own structure, or any other small wording issue, without
+// a full Regenerate.
 const TEXT_EDITABLE_ASSET_TYPES = [
   "course_outline",
   "webinar_outline",
+  "vsl_script",
   "course_module_slides",
   "course_module_quiz",
   "course_module_workbook",
@@ -97,7 +100,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const admin = createAdminClient();
     try {
-      const prompt = buildTextEditPrompt(generation.content, instruction);
+      const prompt = buildTextEditPrompt(generation.content, instruction, generation.asset_type);
       const result = await generateCompleteAsset(
         "You are a precise editor. You make exactly the change requested and leave everything else untouched.",
         prompt,

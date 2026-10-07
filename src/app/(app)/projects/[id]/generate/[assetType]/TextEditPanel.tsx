@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TEXT_EDIT_CREDIT_COST } from "@/lib/ai/generators/textEdit";
 import { getAgent } from "@/lib/agents/config";
+import { COURSE_ASSET_TYPES } from "@/lib/ai/courseModules";
 import type { AssetType } from "@/types/database";
 
 // Agent Polly's own Update Script rewrites a whole separate asset (webinar_script) in one click.
@@ -30,6 +31,7 @@ const UPDATE_SCRIPT_INSTRUCTION =
 const CONTENT_LABELS: Partial<Record<AssetType, string>> = {
   course_outline: "course",
   webinar_outline: "webinar blueprint",
+  vsl_script: "VSL script",
   course_module_slides: "module's slides",
   course_module_quiz: "module's quiz",
   course_module_workbook: "module's workbook",
@@ -38,20 +40,23 @@ const CONTENT_LABELS: Partial<Record<AssetType, string>> = {
 const PLACEHOLDERS: Partial<Record<AssetType, string>> = {
   course_outline: `e.g. "Add a module on pricing between Module 3 and Module 4" or "Remove the community accountability section" or "Rename Module 2 to 'Find Your Signature Offer'"`,
   webinar_outline: `e.g. "Add a case study to Phase 4" or "Change the CTA in Phase 7 to 'Book a call'" or "Remove the poll question in Phase 1"`,
+  vsl_script: `e.g. "Rewrite Beat 4 (Big Promise) so it doesn't announce itself" or "Add a stronger proof point to Stage 15" or "Shorten the Opening Story, it's running long"`,
   course_module_slides: `e.g. "Rewrite the speaker notes on Slide 7 to explain the pricing objection" or "Add a slide after Slide 10 covering follow-up emails" or "Fix the bullet on Slide 4, it's inaccurate"`,
   course_module_quiz: `e.g. "Add a question about handling the pricing objection" or "Fix the answer key for question 3" or "Remove question 5, it doesn't fit this module"`,
   course_module_workbook: `e.g. "Add a reflection prompt after Lesson 2" or "Fix the completion checklist at the end" or "Make the pricing worksheet more specific"`,
 };
 
 // The "want this to stick permanently" footnote — each root asset (Course Outline, Webinar
-// Blueprint) feeds its own downstream build(s), so each needs its own version of "here's where a
-// permanent change actually belongs instead." Module-scoped tools share one version since they
-// all point back to the same Course Outline.
+// Blueprint, VSL Script) has its own relationship to Discovery/downstream builds, so each needs
+// its own version of "here's where a permanent change actually belongs instead." Module-scoped
+// tools share one version since they all point back to the same Course Outline.
 const PERMANENCE_HINTS: Partial<Record<AssetType, string>> = {
   course_outline:
     " For a change you want to stick permanently (and also show up in every module's slides/quiz/workbook), add it to this project's Discovery Notes instead.",
   webinar_outline:
     " For a change you want to stick permanently (and also show up when you build or rebuild Your Signature Webinar from this), add it to this project's Discovery Notes instead.",
+  vsl_script:
+    " For a change you want to stick permanently, add it to this project's Discovery Notes instead — Regenerate starts this script over fresh from Discovery, so a one-off edit here wouldn't carry forward either way.",
 };
 const DEFAULT_PERMANENCE_HINT =
   " If you want a change to also apply the next time you rebuild this module from scratch, update the Course Outline itself too — this only fixes the copy you already have.";
@@ -174,7 +179,7 @@ export default function TextEditPanel({
       <p className="mb-3 text-xs text-muted-foreground">
         Tell {agentName} exactly what to add, take out, or change in the {contentLabel} above —
         and only that changes. Everything else
-        {assetType !== "webinar_outline" && ", including anything you’ve already marked Completed,"}{" "}
+        {COURSE_ASSET_TYPES.includes(assetType) && ", including anything you’ve already marked Completed,"}{" "}
         stays exactly as it is. Heads up: this only changes what&apos;s shown above — hitting{" "}
         <strong>Regenerate</strong> later starts over completely fresh and will lose it.
         {permanenceHint}
