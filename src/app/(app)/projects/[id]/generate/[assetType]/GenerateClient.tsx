@@ -365,6 +365,14 @@ export default function GenerateClient({
   );
   const downloadFilename = assetType === "thank_you_page" ? "thank-you-page.html" : "landing-page.html";
   const [content, setContent] = useState<string | null>(initialContent);
+  // Reported: "Read aloud" always started at the very top, with no way to resume or jump in
+  // partway through a long document. RichTextEditor reports the plain text from wherever the
+  // caret currently is to the end (null once it's back at the very start, meaning "read the
+  // whole thing") — TtsPlayer below gets fed that instead of the full content whenever it's set.
+  // Reset to null anywhere `content` is replaced wholesale (a fresh generation, an AI edit, a
+  // restored version) rather than just edited in place, since the old caret position means
+  // nothing once the underlying document is a different one.
+  const [ttsStartText, setTtsStartText] = useState<string | null>(null);
   // Forces RichTextEditor to fully remount from fresh content after an AI edit is applied — see
   // handleAiEditApplied below for why a remount rather than relying on its own sync effect.
   const [editorKey, setEditorKey] = useState(0);
@@ -817,6 +825,7 @@ export default function GenerateClient({
       // entire notification, not a supplement to it.
       if (mountedRef.current) {
         setContent(data.content);
+        setTtsStartText(null);
         setGenerationId(data.generationId);
         // A brand-new generation has no edit applied to it yet — whatever was true of the
         // previous one this just replaced no longer applies.
@@ -988,6 +997,7 @@ export default function GenerateClient({
   // silently no-op the way a diff-based sync effect could, since there's no diff to get wrong.
   function handleAiEditApplied(newContent: string) {
     setContent(newContent);
+    setTtsStartText(null);
     setSaved(false);
     setEditorKey((k) => k + 1);
     // Regenerate rebuilds this asset entirely fresh from the project's Discovery brief — it has
@@ -1210,7 +1220,10 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
                 <VersionHistory
                   generationId={generationId}
                   currentContent={content}
-                  onRestored={(restored) => setContent(restored)}
+                  onRestored={(restored) => {
+                    setContent(restored);
+                    setTtsStartText(null);
+                  }}
                 />
                 {isWebPageAsset ? (
                   <>
@@ -1655,7 +1668,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
 
       {content && !isWebPageAsset && (
         <div className="space-y-4">
-          <TtsPlayer text={content} />
+          <TtsPlayer text={ttsStartText ?? content} startsFromMarker={ttsStartText !== null} />
           {(assetType === "course_outline" || assetType === "webinar_outline" || MODULE_SCOPED_ASSET_TYPES.includes(assetType)) &&
             generationId && (
               <TextEditPanel generationId={generationId} assetType={assetType} onApplied={handleAiEditApplied} />
@@ -1668,7 +1681,12 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
               scriptBySlideNumber={scriptBySlideNumber}
             />
           ) : (
-            <RichTextEditor key={editorKey} markdown={content} onChange={handleEditorChange} />
+            <RichTextEditor
+              key={editorKey}
+              markdown={content}
+              onChange={handleEditorChange}
+              onSelectionTextChange={(trailing, isAtStart) => setTtsStartText(isAtStart ? null : trailing)}
+            />
           )}
         </div>
       )}

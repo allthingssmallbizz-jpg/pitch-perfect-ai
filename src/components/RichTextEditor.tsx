@@ -32,12 +32,19 @@ type Props = {
   onChange: (markdown: string) => void;
   placeholder?: string;
   className?: string;
+  // Reported need: "Read aloud" always started from the very top, with no way to resume or jump
+  // in partway through a long document. Fires on every caret move (click or keyboard) with the
+  // plain text from the caret to the end of the document — isAtStart true only right at position
+  // 0/1, so the parent can tell "nothing's been clicked yet, read the whole thing" apart from
+  // "they clicked right at the top on purpose." textBetween reads straight from Tiptap's own
+  // document model rather than the rendered DOM, so it's exact regardless of formatting.
+  onSelectionTextChange?: (trailingText: string, isAtStart: boolean) => void;
 };
 
 // Editor over Tiptap. Accepts and emits markdown (via src/lib/markdownHtml.ts) so the rest of
 // the app — exports, TTS, generation storage — keeps treating `generations.content` as markdown
 // and doesn't need to change.
-export default function RichTextEditor({ markdown, onChange, placeholder, className }: Props) {
+export default function RichTextEditor({ markdown, onChange, placeholder, className, onSelectionTextChange }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const initialHtml = useMemo(() => markdownToHtml(markdown), []);
 
@@ -68,6 +75,12 @@ export default function RichTextEditor({ markdown, onChange, placeholder, classN
     },
     onUpdate: ({ editor }) => {
       onChange(htmlToMarkdown(editor.getHTML()));
+    },
+    onSelectionUpdate: ({ editor }) => {
+      if (!onSelectionTextChange) return;
+      const { from } = editor.state.selection;
+      const trailing = editor.state.doc.textBetween(from, editor.state.doc.content.size, "\n\n", "\n\n");
+      onSelectionTextChange(trailing, from <= 1);
     },
   });
 

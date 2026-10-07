@@ -9,6 +9,9 @@ import { TTS_VOICES, TTS_CREDIT_COST, type TtsVoice } from "@/lib/ai/tts";
 type Props = {
   text: string;
   title?: string;
+  // True when `text` is a trailing slice starting from where the member clicked in the document,
+  // not the whole thing — purely for the hint line below; doesn't change playback itself.
+  startsFromMarker?: boolean;
 };
 
 // Strips markdown so the TTS reads only spoken content, not formatting syntax.
@@ -53,7 +56,7 @@ function chunkForTts(text: string, maxChars = 1800): string[] {
   return chunks;
 }
 
-export default function TtsPlayer({ text, title }: Props) {
+export default function TtsPlayer({ text, title, startsFromMarker }: Props) {
   const [voice, setVoice] = useState<TtsVoice>("alloy");
   const [status, setStatus] = useState<"idle" | "loading" | "playing" | "paused">("idle");
   const [index, setIndex] = useState(0);
@@ -75,6 +78,24 @@ export default function TtsPlayer({ text, title }: Props) {
       if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
     };
   }, []);
+
+  // `text` changes whenever the member clicks a new spot in the document (the parent swaps in
+  // the trailing slice from that point) or the content itself is replaced (Regenerate, an AI
+  // edit, restoring a version) — chunk boundaries for the OLD text no longer mean anything for
+  // the new one, so any in-flight audio (a real external <audio> element, exactly what an effect
+  // is for) and the old chunk index have to be dropped rather than left pointing at the wrong
+  // place. Not cascading in the way the lint rule normally guards against — status/index land on
+  // the same idle/0 reset every single time this fires, so it can never trigger a further change.
+  useEffect(() => {
+    stoppedRef.current = true;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStatus("idle");
+    setIndex(0);
+  }, [text]);
 
   async function fetchChunk(chunk: string): Promise<Blob> {
     const res = await fetch("/api/tts", {
@@ -197,6 +218,11 @@ export default function TtsPlayer({ text, title }: Props) {
               {totalChunks > 1 ? "s" : ""}/part
               {totalChunks > 1 && ` · part ${Math.min(index + 1, totalChunks)}/${totalChunks}`}
             </div>
+            {startsFromMarker && (
+              <div className="text-xs text-primary">
+                Starting from where your cursor is in the text below — click at the very top to read from the beginning instead.
+              </div>
+            )}
           </div>
         </div>
 
