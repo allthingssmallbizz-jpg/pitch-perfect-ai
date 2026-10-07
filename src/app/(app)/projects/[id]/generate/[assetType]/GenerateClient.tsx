@@ -682,6 +682,17 @@ export default function GenerateClient({
         },
         duration: 45000,
       });
+      // The toast action above is the only way to reach it if the member already navigated
+      // elsewhere during the wait — but reported gap: staying right here on this blueprint page
+      // the whole time (the common case for a slow, retried generation like this one) left NO
+      // button in sight once it finally finished, because the red "View Agent Polly's..." link
+      // just below is computed server-side in page.tsx (matchingPage) and only reflects whatever
+      // was true when this page last loaded — it has no way to know a new deck now exists until
+      // something tells Next.js to re-check. router.refresh() re-runs that server lookup in
+      // place (keeps this component and its state mounted, just refreshes the server-rendered
+      // props around it) so that button appears right here the moment this succeeds, without
+      // waiting on the toast at all.
+      router.refresh();
     } catch (e) {
       // A toast alone isn't enough here — a 60-90 slide deck can take a few minutes, and if a
       // member looks away during that wait (or the toast auto-dismisses), a toast-only error
@@ -737,6 +748,10 @@ export default function GenerateClient({
         },
         duration: 45000,
       });
+      // See generateWebinarNow above — same gap, same fix: refresh the server-computed
+      // matchingPage so the "View Agent Polly's Webinar Script" button appears right here on
+      // this deck's own page the moment it's done, not only reachable through the toast.
+      router.refresh();
     } catch (e) {
       // Same reasoning as generateWebinarNow above — a script for a 60-90 slide deck is another
       // multi-minute generation, so a persistent banner (not just a toast) is what keeps a
