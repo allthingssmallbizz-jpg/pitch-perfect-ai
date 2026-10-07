@@ -44,7 +44,12 @@ ${formatPriorGenerationsBlock(priorGenerations)}
 
 If a Webinar Outline already exists above for this project, build these slides directly from its phases and beats (same headline, same belief shift, same offer stack order) rather than re-deriving the arc from discovery alone — this deck should be the visual version of that exact outline, not a different pass at the same facts.
 
-THE STACK REVEAL — this is a slide-pacing rule, on top of whatever the outline or discovery says about the offer: give the Maximize Value / Stack sequence its own dedicated run of slides, never one slide that shows the core offer, every bonus, the total, and the price all at once. One slide (or a tight few) per beat: the core offer alone → each bonus revealed on its own slide with its own value on screen → a slide totaling everything just revealed (state the real number from the VALUE STACK discovery data when one was computed) → only then a slide revealing the price, visually/verbally contrasted against that total. A member watching should see the stack visibly grow slide by slide, never see the whole thing land at once.
+THE STACK REVEAL — this is a slide-pacing rule, on top of whatever the outline or discovery says about the offer. Never one slide that shows the core offer, every bonus, the total, and the price all at once — but also never one slide PER individual bonus, which turns into far too many slides when there are several. Instead, build it as a batched, CUMULATIVE recap:
+1. A slide introducing the core offer alone, with its own value if one was supplied — before any bonus exists yet.
+2. Count how many bonus/stack items the VALUE STACK discovery data actually has, then group them into batches of roughly 2-3 each. How many "stack recap" slides follow depends on that real count (3 items → one recap slide; 9 items → three recap slides; 10 items → maybe 3+3+4) — don't force a fixed number of slides regardless of how many items actually exist.
+3. Each stack-recap slide shows the FULL cumulative stack built so far, not just what's new in that batch: the core offer + every item from every earlier batch + this batch's new items, each with its own value, all together as one growing on-screen list. The second recap slide repeats everything the first one showed AND adds the next batch; the third repeats everything the first two showed AND adds its own batch. The visible effect is the stack physically growing slide to slide, not a series of unrelated one-off reveals.
+4. A final slide totaling literally everything just stacked (the real number from the discovery data when one was computed — never invent one).
+5. Only then a slide revealing the price, visually/verbally contrasted against that total.
 
 For each slide output:
 - **Slide #: Title**

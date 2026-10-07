@@ -39,7 +39,7 @@ Attention → Curiosity → Understanding → Belief → Confidence → Commitme
 16. Demonstration — show the solution in action
 17. Product Reveal — introduce the solution as the logical conclusion
 18. Offer Construction — introduce the CORE offer alone first, with its own value if one was given — before any bonus exists yet
-19. Value Stack — layer value elements progressively, one at a time, never all at once: each bonus gets its own moment and its own stated value (each mapping to one objection), building toward a real total — state that total once every item has been revealed, then only after that reveal the actual price, framed explicitly as a small fraction of the total ("all of this is worth [total]... today, just [price]")
+19. Value Stack — layer value elements in a few cumulative batches of 2-3, never all at once and never one bonus per beat either (too many beats for a long bonus list): each batch restates everything stacked so far plus its own new items with their stated values (each mapping to one objection), building toward a real total — state that total once every batch has landed, then only after that reveal the actual price, framed explicitly as a small fraction of the total ("all of this is worth [total]... today, just [price]")
 20. Bonuses — strategic additions that remove friction (each maps to one objection; see Stage 19 for how/when each is actually revealed)
 21. Guarantee — transfer risk from buyer to seller
 22. Scarcity — authentic limitations only
