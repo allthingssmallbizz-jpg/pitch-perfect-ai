@@ -30,6 +30,7 @@ import {
   Wand2,
   CheckCircle2,
   Undo,
+  Square,
 } from "lucide-react";
 import {
   Dialog,
@@ -438,6 +439,20 @@ export default function GenerateClient({
       mountedRef.current = false;
     };
   }, []);
+  // Reported: hitting Regenerate by accident, with no way to stop it, felt like losing the deck/
+  // script they already had — even though the old one was never actually touched (Regenerate
+  // always writes a brand-new row; see run() below), seeing it replaced on screen by a blank/
+  // loading state with no way back reads as exactly that. abortControllerRef lets Stop actually
+  // cancel the in-flight request; previousGenerationRef snapshots what was on screen right before
+  // Generate/Regenerate was clicked, so Stop can put it straight back rather than leaving a blank
+  // page behind.
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const previousGenerationRef = useRef<{
+    content: string | null;
+    generationId: string | null;
+    publishSlug: string | null;
+    publishedAt: string | null;
+  } | null>(null);
   const [copied, setCopied] = useState(false);
   const [copiedForGamma, setCopiedForGamma] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -789,6 +804,11 @@ export default function GenerateClient({
       );
       return;
     }
+    // Snapshot exactly what's on screen right now, before any of it is touched — Stop puts this
+    // straight back if the member cancels, so it never reads as "I lost my deck."
+    previousGenerationRef.current = { content, generationId, publishSlug, publishedAt };
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
     setLoading(true);
     setElapsedSeconds(0);
     setError(null);
@@ -797,6 +817,7 @@ export default function GenerateClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId, assetType, mode, courseLevel, customNaming, moduleIdentifier: effectiveModuleIdentifier }),
+        signal: abortController.signal,
       });
       const data = await res.json().catch(() => null);
       // A non-JSON response (data === null) means the platform cut the request off before the
@@ -861,7 +882,11 @@ export default function GenerateClient({
           duration: 45000,
         });
       }
-    } catch {
+    } catch (e) {
+      // Stop (below) already restored the previous content and told the member what happened —
+      // nothing more to show here, and definitely not the generic "Network error" banner, which
+      // would read as a real failure right on top of a deliberate cancel.
+      if (e instanceof DOMException && e.name === "AbortError") return;
       // A genuine network-level failure (not the non-JSON-response case above, which is handled
       // separately) — still mounted gets the usual inline banner; already navigated away gets
       // nothing further, since there's no finished result waiting for them to come back to.
@@ -869,6 +894,29 @@ export default function GenerateClient({
     } finally {
       setLoading(false);
     }
+  }
+
+  // Stops waiting on an in-flight Generate/Regenerate and puts back exactly what was on screen
+  // before it started — the request itself may still finish server-side and land in Past
+  // Generations a little later (same "it keeps running, you just stop watching" behavior this
+  // page already uses elsewhere for a member who navigates away mid-generation), but nothing here
+  // looks lost or stuck on a blank/loading screen in the meantime.
+  function stopGenerating() {
+    abortControllerRef.current?.abort();
+    const previous = previousGenerationRef.current;
+    if (previous) {
+      setContent(previous.content);
+      setGenerationId(previous.generationId);
+      setPublishSlug(previous.publishSlug);
+      setPublishedAt(previous.publishedAt);
+    }
+    setLoading(false);
+    setElapsedSeconds(0);
+    toast.info(
+      previous?.content
+        ? "Stopped — your previous version is back."
+        : "Stopped. If it finishes anyway in the background, it'll show up in Past Generations."
+    );
   }
 
   // "Which module comes after the one just built?" — matched against the dropdown's own value
@@ -1176,6 +1224,12 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           <Sparkles className="mr-2 h-4 w-4" />
           {loading ? "Generating..." : content ? "Regenerate" : "Generate"}
         </Button>
+        {loading && (
+          <Button type="button" variant="outline" onClick={stopGenerating}>
+            <Square className="mr-2 h-4 w-4" />
+            Stop
+          </Button>
+        )}
         {content && (
           <>
             <Button variant="outline" onClick={copyToClipboard}>

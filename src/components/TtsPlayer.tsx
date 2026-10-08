@@ -279,6 +279,40 @@ export default function TtsPlayer({ text, title, assetType, startsFromMarker }: 
           )}
         </div>
       </div>
+
+      {/* Reported: pausing or stopping mid-read meant scrolling all the way back up to this card
+          — on a long deck/document, that's a real scroll on both desktop and a phone. This floats
+          a small "follow" control fixed to the bottom of the viewport whenever there's an active
+          session (loading, playing, or paused) worth reaching quickly, so Play/Pause/Stop stay in
+          view no matter how far down the page has scrolled. Hidden once stopped/finished — no
+          floating bar to get in the way when there's nothing active to control. */}
+      {status !== "idle" && (
+        <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="flex items-center gap-2 rounded-full border border-primary/30 bg-card/95 px-3 py-2 shadow-lg backdrop-blur">
+            <Volume2 className="h-4 w-4 shrink-0 text-primary" />
+            <span className="hidden text-xs text-muted-foreground sm:inline">
+              {status === "loading" ? "Loading…" : status === "playing" ? "Reading aloud" : "Paused"}
+              {totalChunks > 1 && ` · ${Math.min(index + 1, totalChunks)}/${totalChunks}`}
+            </span>
+            {status === "playing" ? (
+              <Button size="sm" onClick={handlePause}>
+                <Pause className="mr-1.5 h-4 w-4" /> Pause
+              </Button>
+            ) : status === "loading" ? (
+              <Button size="sm" disabled>
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Loading…
+              </Button>
+            ) : (
+              <Button size="sm" onClick={handlePlay}>
+                <Play className="mr-1.5 h-4 w-4" /> Resume
+              </Button>
+            )}
+            <Button variant="outline" size="icon" onClick={handleStop} title="Stop">
+              <Square className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
