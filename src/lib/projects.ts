@@ -6,8 +6,11 @@ import type { Project } from "@/types/database";
 // (projectNeedsDiscovery) so neither can drift out of sync with what the UI actually asks for.
 // Was 14 fields; a student made it all the way through Discovery, hit "Save," and only then got
 // bounced back for gaps in fields that were never marked required in the first place — Aaron's
-// fix was making every real question mandatory. Only "Additional discovery notes" (a genuine
-// freeform catch-all, not a specific question) stays optional now.
+// fix was making every real question mandatory. "Additional discovery notes" (a genuine freeform
+// catch-all, not a specific question) stayed optional from the start; "Bonuses (if any)" below
+// joined it once the structured Stack items / Bonuses / Fast Action Bonus lists (0045/0046) gave
+// members a real place to put exact values — this free-text box is now just an optional fallback
+// for extra context, so it shouldn't block anyone the way a specific, unanswered question should.
 // `as const satisfies` (not a plain `{ key: keyof Project; label: string }[]` annotation) so
 // RequiredFieldKey below narrows to just these literal keys instead of widening to every key on
 // Project — that's what lets projectNeedsDiscovery accept a lean `.select("business_name,
@@ -34,7 +37,6 @@ export const REQUIRED_DISCOVERY_FIELDS = [
   { key: "proof", label: "Proof available" },
   { key: "price", label: "Core offer price" },
   { key: "guarantee", label: "Guarantee" },
-  { key: "bonuses", label: "Bonuses (if any)" },
   { key: "scarcity_urgency", label: "Scarcity / urgency" },
   { key: "cta", label: "Primary call to action" },
   { key: "funnel_type", label: "Funnel type" },

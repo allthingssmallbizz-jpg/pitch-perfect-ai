@@ -212,10 +212,11 @@ export const GUIDED_REQUIRED_QUESTIONS: GuidedQuestion[] = [
   {
     key: "bonuses",
     section: "Your offer",
-    question: "Any bonuses included with the offer?",
-    helper: `No bonuses? Answer "None" — that's a real answer, not a skipped question.`,
+    question: "Any bonuses included with the offer? (optional)",
+    helper:
+      "Optional — the Stack items / Bonuses lists on the main Discovery form are where exact dollar values go; this is just extra context if you want it.",
     type: "textarea",
-    required: true,
+    required: false,
   },
   {
     key: "scarcity_urgency",

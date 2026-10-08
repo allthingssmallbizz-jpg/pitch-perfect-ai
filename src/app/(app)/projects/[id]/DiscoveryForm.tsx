@@ -752,12 +752,11 @@ export default function DiscoveryForm({
           onAssist={setAssistTarget}
         />
         <Field
-          label="Bonuses (if any)"
+          label="Bonuses (optional notes)"
           name="bonuses"
           defaultValue={project.bonuses}
-          placeholder="List each bonus — any extra context that doesn't fit the Value Stack below."
-          hint={`No bonuses? Answer "None" — that's a real answer, not a skipped question. For the exact dollar value of each one, use the Value Stack below instead — this box is just for extra context/flavor.`}
-          required
+          placeholder="Any extra context about your bonuses that doesn't fit the Value Stack below."
+          hint="Optional — for the exact dollar value of each bonus, use the Stack items / Bonuses lists below instead. Leave this blank if the structured list below already covers it."
           onAssist={setAssistTarget}
         />
         <div>
