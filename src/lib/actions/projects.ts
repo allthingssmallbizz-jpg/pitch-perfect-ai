@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { AwarenessLevel, StackItem } from "@/types/database";
+import type { AwarenessLevel, StackItem, FastActionBonus } from "@/types/database";
 import { ASSET_TYPES } from "@/lib/ai/generators";
 import { getTemplate } from "@/lib/templates";
 import { getMissingDiscoveryFieldLabels } from "@/lib/projects";
@@ -246,6 +246,7 @@ export async function duplicateProject(_prevState: unknown, formData: FormData) 
     bonuses: original.bonuses,
     core_offer_value: original.core_offer_value,
     stack_items: original.stack_items,
+    fast_action_bonuses: original.fast_action_bonuses,
     scarcity_urgency: original.scarcity_urgency,
     cta: original.cta,
     funnel_type: original.funnel_type,
@@ -361,16 +362,39 @@ export async function duplicateProject(_prevState: unknown, formData: FormData) 
 }
 
 // DiscoveryForm's Value Stack list serializes to this single hidden field as JSON (see
-// 0045_value_stack.sql) — parsed defensively since it's client-built, dropping any row that
-// isn't a real {name, value} pair of strings rather than letting a malformed value corrupt the
-// column or crash the save.
+// 0045_value_stack.sql, 0046_bonus_category_and_fab.sql) — parsed defensively since it's
+// client-built, dropping any row that isn't a real {name, value} pair of strings rather than
+// letting a malformed value corrupt the column or crash the save. `category` is optional and
+// passed through as-is only when it's actually "stack" or "bonus" — anything else (a drifted
+// client, a hand-edited draft) is dropped rather than saved, so a bad value can't silently steer
+// the reveal wrong later; formatValueStackBlock defaults a missing category to "stack" when read.
 function parseStackItems(raw: string): StackItem[] {
   try {
     const parsed = JSON.parse(raw || "[]");
     if (!Array.isArray(parsed)) return [];
     return parsed
       .filter((item): item is StackItem => typeof item?.name === "string" && typeof item?.value === "string")
-      .map((item) => ({ name: item.name, value: item.value }));
+      .map((item) => ({
+        name: item.name,
+        value: item.value,
+        ...(item.category === "stack" || item.category === "bonus" ? { category: item.category } : {}),
+      }));
+  } catch {
+    return [];
+  }
+}
+
+// Same defensive parse for the separate Fast Action Bonus list (see 0046_bonus_category_and_fab.sql).
+function parseFastActionBonuses(raw: string): FastActionBonus[] {
+  try {
+    const parsed = JSON.parse(raw || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(
+        (item): item is FastActionBonus =>
+          typeof item?.name === "string" && typeof item?.value === "string" && typeof item?.condition === "string"
+      )
+      .map((item) => ({ name: item.name, value: item.value, condition: item.condition }));
   } catch {
     return [];
   }
@@ -418,6 +442,7 @@ export async function updateProjectDiscovery(_prevState: unknown, formData: Form
     bonuses: text("bonuses"),
     core_offer_value: text("core_offer_value"),
     stack_items: parseStackItems(text("stack_items")),
+    fast_action_bonuses: parseFastActionBonuses(text("fast_action_bonuses")),
     scarcity_urgency: text("scarcity_urgency"),
     cta: text("cta"),
     funnel_type: text("funnel_type"),

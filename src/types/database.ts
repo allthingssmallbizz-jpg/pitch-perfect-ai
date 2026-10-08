@@ -113,9 +113,26 @@ export type AwarenessLevel =
 // One bonus/stack item in a project's Value Stack (see 0045_value_stack.sql) — `value` is plain
 // text like price/guarantee elsewhere ("$497"), not a validated number, so a member can write
 // whatever reads naturally; formatDiscoveryBlock does its own best-effort parsing when summing.
+// `category` distinguishes a core component of the offer itself ("stack") from a separate extra
+// gift thrown in on top ("bonus") — both still count toward the same running total and get
+// revealed in the same progressive reveal, just worded differently ("included in the program"
+// vs. "and I'll also throw in..."). Optional/missing (every row saved before this distinction
+// existed) defaults to "stack" wherever it's read — see 0046_bonus_category_and_fab.sql.
 export type StackItem = {
   name: string;
   value: string;
+  category?: "stack" | "bonus";
+};
+
+// A bonus reserved for whoever acts fastest (see 0046_bonus_category_and_fab.sql) — revealed
+// after the price, tied to urgency/scarcity (Phase 7, not the Value Stack's own Phase 6), never
+// folded into the ordinary stack/bonus list above. `condition` is what actually makes it "fast
+// action" ("the first 5 people," "within 15 minutes," "before midnight tonight") — without one
+// it's just a regular bonus.
+export type FastActionBonus = {
+  name: string;
+  value: string;
+  condition: string;
 };
 
 export type Project = {
@@ -158,6 +175,10 @@ export type Project = {
   // price-vs-total ratio from these for every generator's prompt.
   core_offer_value: string;
   stack_items: StackItem[];
+  // Reserved for whoever acts fastest — see FastActionBonus and 0046_bonus_category_and_fab.sql.
+  // Revealed after the price alongside Scarcity/urgency below, not part of the Value Stack's own
+  // reveal. Optional.
+  fast_action_bonuses: FastActionBonus[];
   scarcity_urgency: string;
   cta: string;
   // Which conversion pattern this offer's CTA actually leads to — drives the Thank You Page

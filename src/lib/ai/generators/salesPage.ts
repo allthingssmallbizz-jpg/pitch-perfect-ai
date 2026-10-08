@@ -16,10 +16,11 @@ Output real, publish-ready copy organized under these section headers:
 3. **The Belief Shift** (surface the ONE false belief, introduce the new belief/mechanism, name it if there's a proprietary method)
 4. **Proof** (case studies / testimonials / results — only from the supplied "Proof" field; mark gaps as [NEEDS PROOF])
 5. **The Offer** (what it is, how it works, the transformation — not just features)
-6. **Value Stack** (core offer introduced first, then each bonus in its own line/paragraph mapped to the objection it kills — use the VALUE STACK discovery data's real items/values when present, never invent numbers it didn't give; total it up, then frame the price as a small fraction of that total using the ACTUAL PRICE vs. TOTAL VALUE line when the discovery data computed one)
+6. **Value Stack** (core offer introduced first, then each stack item/bonus in its own line/paragraph mapped to the objection it kills — use the VALUE STACK discovery data's real items/values when present, never invent numbers it didn't give; total it up, then frame the price as a small fraction of that total using the ACTUAL PRICE vs. TOTAL VALUE line when the discovery data computed one. A stack item (part of the core offer) and a bonus (a separate extra) read differently — "included" vs. "and you'll also get")
 7. **Guarantee / Risk Reversal**
-8. **FAQ / Objections** (anticipate 4-6 objections implied by the discovery notes and answer each)
-9. **Final CTA** (one clear, specific, repeated call to action)
+8. **Fast Action Bonus** (only if the FAST ACTION BONUS discovery data has a real item — its value and qualifying condition, framed as the reason to act right now; omit this section entirely rather than inventing one if that data is empty)
+9. **FAQ / Objections** (anticipate 4-6 objections implied by the discovery notes and answer each)
+10. **Final CTA** (one clear, specific, repeated call to action)
 
 Write full page copy, not an outline — this is meant to be pasted directly into a page builder.`;
 }

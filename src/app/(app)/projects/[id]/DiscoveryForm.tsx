@@ -3,7 +3,7 @@
 import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
 import { Sparkles, Globe, Wand2, UserCircle, ArrowRight, TriangleAlert, Plus, X } from "lucide-react";
-import type { Project, StackItem } from "@/types/database";
+import type { Project, StackItem, FastActionBonus } from "@/types/database";
 import { updateProjectDiscovery } from "@/lib/actions/projects";
 import { getMissingRecommendedFieldLabels } from "@/lib/projects";
 import { Button } from "@/components/ui/button";
@@ -142,12 +142,47 @@ function Field({
   );
 }
 
-// A repeatable name+value list — the structured counterpart to the free-text "Bonuses" field
-// above it, so the webinar/VSL/sales-page generators can build a real progressive stack reveal
-// (core offer, then each bonus revealed one at a time with its own value, totaled, THEN the price
-// shown as a small fraction of that total) instead of guessing numbers out of prose. Controlled
-// (unlike most of this form) since add/remove rows need real React state; serializes to the one
-// hidden "stack_items" input the server action parses back out (see parseStackItems).
+// One name+value row, reused for both the Stack Items and Bonuses groups below — the only
+// difference between the two groups is the `category` tag stamped onto new rows and the copy
+// around them, so one small presentational component covers both instead of two near-duplicates.
+function StackRow({
+  item,
+  onChange,
+  onRemove,
+}: {
+  item: StackItem;
+  onChange: (patch: Partial<StackItem>) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="flex gap-2">
+      <Input
+        value={item.name}
+        onChange={(e) => onChange({ name: e.target.value })}
+        placeholder="e.g. Private Q&A call"
+        className="flex-1"
+      />
+      <Input
+        value={item.value}
+        onChange={(e) => onChange({ value: e.target.value })}
+        placeholder="e.g. $497"
+        className="w-28"
+      />
+      <Button type="button" variant="ghost" size="icon" onClick={onRemove} title="Remove">
+        <X className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
+// Two distinct groups sharing one array (tagged by `category`) and one hidden "stack_items"
+// input — a core component of the offer itself ("Stack items") reads differently in the reveal
+// than a separate extra gift thrown in on top ("Bonuses"), even though both count toward the
+// same running total, so the webinar/VSL/sales-page generators need to tell them apart (see
+// formatValueStackBlock). Controlled (unlike most of this form) since add/remove rows need real
+// React state; serializes to the one hidden input the server action parses back out (see
+// parseStackItems). Rows saved before this distinction existed have no `category` at all and are
+// treated as stack items here, matching formatValueStackBlock's own default.
 function ValueStackEditor({
   coreValue,
   items,
@@ -160,8 +195,8 @@ function ValueStackEditor({
   function updateItem(index: number, patch: Partial<StackItem>) {
     onItemsChange(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   }
-  function addItem() {
-    onItemsChange([...items, { name: "", value: "" }]);
+  function addItem(category: "stack" | "bonus") {
+    onItemsChange([...items, { name: "", value: "", category }]);
   }
   function removeItem(index: number) {
     onItemsChange(items.filter((_, i) => i !== index));
@@ -169,32 +204,109 @@ function ValueStackEditor({
 
   const core = coreValue.trim() ? parseMoney(coreValue) : null;
   const total = items.reduce((sum, item) => sum + (parseMoney(item.value) ?? 0), core ?? 0);
+  const stackIndexes = items.map((item, i) => [item, i] as const).filter(([item]) => item.category !== "bonus");
+  const bonusIndexes = items.map((item, i) => [item, i] as const).filter(([item]) => item.category === "bonus");
 
   return (
     <div>
       <input type="hidden" name="stack_items" value={JSON.stringify(items)} />
-      <Label>Value Stack — bonuses, each with its own value</Label>
+
+      <Label>Stack items — core components of the offer, each with its own value</Label>
       <p className="mt-0.5 text-xs text-muted-foreground">
-        Separate from the free-text Bonuses box above — this is where exact numbers go, so the
-        webinar can reveal the core offer, then these bonuses one at a time with their values,
-        add up to a real total, and only then show the price as a small fraction of it (the
-        classic stack close). Leave it empty if you&apos;d rather describe bonuses in prose above
-        only.
+        Pieces of the actual program/package itself (a module, a template library, a live
+        implementation week) — introduced as &quot;included in the program,&quot; not as a separate gift.
+      </p>
+      <div className="mt-2 space-y-2">
+        {stackIndexes.map(([item, i]) => (
+          <StackRow key={i} item={item} onChange={(patch) => updateItem(i, patch)} onRemove={() => removeItem(i)} />
+        ))}
+      </div>
+      <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => addItem("stack")}>
+        <Plus className="mr-1.5 h-3.5 w-3.5" />
+        Add a stack item
+      </Button>
+
+      <div className="mt-5">
+        <Label>Bonuses — separate extras, each with its own value</Label>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Not part of the core offer itself — a free gift thrown in on top (&quot;and if you join
+          today, I&apos;ll also give you...&quot;). Different from the free-text Bonuses box further
+          up, which is just for context/notes; this is where the exact numbers go.
+        </p>
+        <div className="mt-2 space-y-2">
+          {bonusIndexes.map(([item, i]) => (
+            <StackRow key={i} item={item} onChange={(patch) => updateItem(i, patch)} onRemove={() => removeItem(i)} />
+          ))}
+        </div>
+        <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => addItem("bonus")}>
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          Add a bonus
+        </Button>
+      </div>
+
+      {total > 0 && (
+        <p className="mt-3 text-xs text-primary">
+          Total stack value so far: <strong>{formatMoney(total)}</strong> (core offer
+          {core ? ` ${formatMoney(core)}` : " value not set"} + every stack item and bonus above).
+          A classic stack prices the actual offer at roughly a tenth of this or less — for this
+          total, that&apos;s around {formatMoney(total / 10)}.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// A bonus reserved for whoever acts fastest — genuinely separate from the Value Stack above:
+// revealed AFTER the price, tied to urgency/scarcity, never part of the pre-price reveal. The
+// `condition` field (what actually qualifies someone) is what makes this different from an
+// ordinary bonus, so each row needs one.
+function FastActionBonusEditor({
+  items,
+  onItemsChange,
+}: {
+  items: FastActionBonus[];
+  onItemsChange: (items: FastActionBonus[]) => void;
+}) {
+  function updateItem(index: number, patch: Partial<FastActionBonus>) {
+    onItemsChange(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  }
+  function addItem() {
+    onItemsChange([...items, { name: "", value: "", condition: "" }]);
+  }
+  function removeItem(index: number) {
+    onItemsChange(items.filter((_, i) => i !== index));
+  }
+
+  return (
+    <div>
+      <input type="hidden" name="fast_action_bonuses" value={JSON.stringify(items)} />
+      <Label>Fast Action Bonus(es) — reserved for whoever acts fastest</Label>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        Revealed AFTER the price, to drive acting right now — separate from the Value Stack
+        above. Needs a real qualifying condition (&quot;the first 5 people,&quot; &quot;within 15
+        minutes,&quot; &quot;before midnight tonight&quot;) — without one it&apos;s just a regular
+        bonus.
       </p>
       <div className="mt-2 space-y-2">
         {items.map((item, i) => (
-          <div key={i} className="flex gap-2">
+          <div key={i} className="flex flex-wrap gap-2">
             <Input
               value={item.name}
               onChange={(e) => updateItem(i, { name: e.target.value })}
-              placeholder="e.g. Private Q&A call"
-              className="flex-1"
+              placeholder="e.g. 1-on-1 strategy call"
+              className="flex-1 basis-40"
             />
             <Input
               value={item.value}
               onChange={(e) => updateItem(i, { value: e.target.value })}
-              placeholder="e.g. $497"
-              className="w-28"
+              placeholder="e.g. $997"
+              className="w-24"
+            />
+            <Input
+              value={item.condition}
+              onChange={(e) => updateItem(i, { condition: e.target.value })}
+              placeholder="e.g. First 5 people"
+              className="flex-1 basis-40"
             />
             <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(i)} title="Remove">
               <X className="h-4 w-4" />
@@ -204,16 +316,8 @@ function ValueStackEditor({
       </div>
       <Button type="button" variant="outline" size="sm" className="mt-2" onClick={addItem}>
         <Plus className="mr-1.5 h-3.5 w-3.5" />
-        Add a bonus
+        Add a fast action bonus
       </Button>
-      {total > 0 && (
-        <p className="mt-2 text-xs text-primary">
-          Total stack value so far: <strong>{formatMoney(total)}</strong> (core offer
-          {core ? ` ${formatMoney(core)}` : " value not set"} + every bonus above). A classic
-          stack prices the actual offer at roughly a tenth of this or less — for this total,
-          that&apos;s around {formatMoney(total / 10)}.
-        </p>
-      )}
     </div>
   );
 }
@@ -255,6 +359,7 @@ export default function DiscoveryForm({
   // dynamic add/remove list with nowhere to live as a plain DOM element.
   const [coreOfferValue, setCoreOfferValue] = useState(project.core_offer_value ?? "");
   const [stackItems, setStackItems] = useState<StackItem[]>(project.stack_items ?? []);
+  const [fastActionBonuses, setFastActionBonuses] = useState<FastActionBonus[]>(project.fast_action_bonuses ?? []);
 
   function collectOtherAnswers(): Record<string, string> {
     const out: Record<string, string> = {};
@@ -276,16 +381,24 @@ export default function DiscoveryForm({
     storageKey: `pp-discovery-draft:${project.id}`,
     collect: () => {
       const nameEl = document.getElementById("name") as HTMLInputElement | null;
-      return { ...collectOtherAnswers(), name: nameEl?.value ?? "", stack_items: JSON.stringify(stackItems) };
+      return {
+        ...collectOtherAnswers(),
+        name: nameEl?.value ?? "",
+        stack_items: JSON.stringify(stackItems),
+        fast_action_bonuses: JSON.stringify(fastActionBonuses),
+      };
     },
     restore: (draft) => {
       for (const [key, value] of Object.entries(draft)) {
-        if (key === "stack_items") {
+        if (key === "stack_items" || key === "fast_action_bonuses") {
           try {
             const parsed = JSON.parse(value);
-            if (Array.isArray(parsed)) setStackItems(parsed);
+            if (Array.isArray(parsed)) {
+              if (key === "stack_items") setStackItems(parsed);
+              else setFastActionBonuses(parsed);
+            }
           } catch {
-            // Corrupt draft value — leave the stack items as they already are rather than crash.
+            // Corrupt draft value — leave that list as it already is rather than crash.
           }
           continue;
         }
@@ -672,6 +785,7 @@ export default function DiscoveryForm({
           required
           onAssist={setAssistTarget}
         />
+        <FastActionBonusEditor items={fastActionBonuses} onItemsChange={setFastActionBonuses} />
         <Field
           label="Primary call to action"
           name="cta"

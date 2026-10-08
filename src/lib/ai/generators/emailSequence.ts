@@ -21,8 +21,8 @@ Write 7 emails covering this arc:
 3. **Belief shift** — surface the false belief, introduce the new belief/mechanism
 4. **Proof** — case study or testimonial (only from supplied "Proof"; flag gap otherwise)
 5. **Objection handling** — address the biggest implied objection directly
-6. **Offer / value stack** — the core offer, each bonus with its own value (use the VALUE STACK discovery data's real items/values when present), the total, the price framed as a small fraction of it, guarantee
-7. **Urgency / last call** — authentic urgency only if a real deadline/scarcity mechanism was supplied; otherwise close on risk reversal instead of manufactured urgency
+6. **Offer / value stack** — the core offer, each stack item/bonus with its own value (use the VALUE STACK discovery data's real items/values when present; a stack item is part of the core offer, a bonus is a separate extra — word them differently), the total, the price framed as a small fraction of it, guarantee
+7. **Urgency / last call** — the Fast Action Bonus from the discovery data when present (its value and qualifying condition, framed as the reason to act today — never invented if that data is empty), plus authentic urgency only if a real deadline/scarcity mechanism was supplied; otherwise close on risk reversal instead of manufactured urgency
 
 For each email output: **Subject line**, **Preview text**, and full body copy. Keep each email focused on ONE job — don't cram the whole pitch into every email.`;
 }

@@ -15,29 +15,42 @@ export function formatMoney(n: number): string {
   return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
-// The Value Stack block (see 0045_value_stack.sql) — core offer value + each bonus/stack item's
-// own value, summed into a real total the generator doesn't have to guess at. Separate from
-// formatDiscoveryBlock's own field() helper below since this needs real arithmetic, not just a
-// blank-vs-filled check. Returns "" when nothing here is actually filled in, so a project that
-// hasn't used this yet doesn't get a block of all-blank lines.
+// The Value Stack block (see 0045_value_stack.sql, 0046_bonus_category_and_fab.sql) — core offer
+// value + each stack/bonus item's own value, summed into a real total the generator doesn't have
+// to guess at. Separate from formatDiscoveryBlock's own field() helper below since this needs
+// real arithmetic, not just a blank-vs-filled check. Returns "" when nothing here is actually
+// filled in, so a project that hasn't used this yet doesn't get a block of all-blank lines.
+//
+// Stack items and bonuses are listed under their own labels — a core component of the offer
+// itself reads differently when revealed ("included in the program") than a separate extra gift
+// ("and I'll also throw in...") — but both still count toward the one combined total. A missing
+// `category` (every item saved before this distinction existed) defaults to "stack".
 function formatValueStackBlock(project: Project): string {
   const coreValue = project.core_offer_value?.trim() ? parseMoney(project.core_offer_value) : null;
-  const items = (project.stack_items ?? []).filter((item) => item.name?.trim() || item.value?.trim());
-  if (!project.core_offer_value?.trim() && items.length === 0) return "";
+  const allItems = (project.stack_items ?? []).filter((item) => item.name?.trim() || item.value?.trim());
+  if (!project.core_offer_value?.trim() && allItems.length === 0) return "";
+
+  const stackItems = allItems.filter((item) => item.category !== "bonus");
+  const bonusItems = allItems.filter((item) => item.category === "bonus");
 
   const lines = [
     "",
-    "VALUE STACK — build the offer reveal from these EXACT items, progressively, never all at once (see this generator's own rules for pacing):",
+    "VALUE STACK — build the offer reveal from these EXACT items, progressively (batched cumulative recaps, never all at once and never one item per beat — see this generator's own rules for pacing):",
     `Core offer value: ${project.core_offer_value?.trim() || "(not provided)"}`,
   ];
   let total = coreValue ?? 0;
-  for (const item of items) {
-    lines.push(`Stack item: ${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"}`);
+  for (const item of stackItems) {
+    lines.push(`Stack item (part of the core offer): ${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"}`);
+    const v = item.value?.trim() ? parseMoney(item.value) : null;
+    if (v) total += v;
+  }
+  for (const item of bonusItems) {
+    lines.push(`Bonus (a separate extra, not part of the core offer): ${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"}`);
     const v = item.value?.trim() ? parseMoney(item.value) : null;
     if (v) total += v;
   }
   if (total > 0) {
-    lines.push(`TOTAL STACK VALUE (core + every stack item above, computed): ${formatMoney(total)}`);
+    lines.push(`TOTAL STACK VALUE (core + every stack item + every bonus above, computed): ${formatMoney(total)}`);
     const priceValue = parseMoney(project.price);
     if (priceValue) {
       const ratio = total / priceValue;
@@ -47,6 +60,29 @@ function formatValueStackBlock(project: Project): string {
           : `ACTUAL PRICE vs. TOTAL VALUE: the price (${project.price.trim()}) is NOT meaningfully smaller than the total stack value (${formatMoney(total)}) — this undercuts the reveal; the price should read as a small fraction of the total, not close to it. Still use the real numbers given, but don't invent extra drama the math doesn't support.`
       );
     }
+  }
+  return lines.join("\n");
+}
+
+// The Fast Action Bonus block (see 0046_bonus_category_and_fab.sql) — a bonus reserved for
+// whoever acts fastest (the qualifying condition is what makes it "fast action," not just another
+// bonus). Deliberately separate from formatValueStackBlock above: this is revealed AFTER the
+// price, tied to urgency/scarcity (Phase 7's territory), never folded into the Value Stack's own
+// pre-price reveal. Returns "" when none were given.
+function formatFastActionBonusBlock(project: Project): string {
+  const items = (project.fast_action_bonuses ?? []).filter(
+    (item) => item.name?.trim() || item.value?.trim() || item.condition?.trim()
+  );
+  if (items.length === 0) return "";
+
+  const lines = [
+    "",
+    "FAST ACTION BONUS(ES) — reveal these AFTER the price, tied to acting right now; never fold them into the Value Stack above or reveal them before the price:",
+  ];
+  for (const item of items) {
+    lines.push(
+      `${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"} — reserved for: ${item.condition?.trim() || "(no qualifying condition given — don't invent one, ask the member to add it)"}`
+    );
   }
   return lines.join("\n");
 }
@@ -95,6 +131,7 @@ export function formatDiscoveryBlock(project: Project): string {
     field("Bonuses", project.bonuses),
     formatValueStackBlock(project),
     field("Scarcity / urgency", project.scarcity_urgency),
+    formatFastActionBonusBlock(project),
     field("Primary call to action", project.cta),
     field("Funnel type (what the CTA leads to)", getFunnelTypeLabel(project.funnel_type)),
     "",
