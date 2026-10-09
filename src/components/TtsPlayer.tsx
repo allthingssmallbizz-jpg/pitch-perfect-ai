@@ -81,6 +81,31 @@ export default function TtsPlayer({ text, title, assetType, startsFromMarker, op
   // Dialog and Toast portal to the body to avoid. document doesn't exist during server rendering,
   // so the portal only ever renders once useIsClient confirms this is running in the browser.
   const isClient = useIsClient();
+  // Reported again: the follow control "doesn't even activate" on a phone, though it works fine
+  // on a laptop. The actual trigger (tapping inside the document to choose a read-from point) is
+  // a tap into a contenteditable field, which opens the on-screen keyboard — and on a phone, the
+  // keyboard does NOT shrink the CSS layout viewport that `position: fixed; bottom: 0` is anchored
+  // to (only the visual viewport shrinks), so the floater is still rendering, just pinned to the
+  // bottom of the full-height layout viewport sitting behind the keyboard, off-screen. A laptop
+  // has no on-screen keyboard, so this never reproduces there. Tracking how much shorter the
+  // visible (visual) viewport currently is than the full layout viewport, and lifting the floater
+  // by exactly that much, keeps it above the keyboard instead of hidden underneath it.
+  const [keyboardInset, setKeyboardInset] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    function updateInset() {
+      if (!vv) return;
+      setKeyboardInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    }
+    updateInset();
+    vv.addEventListener("resize", updateInset);
+    vv.addEventListener("scroll", updateInset);
+    return () => {
+      vv.removeEventListener("resize", updateInset);
+      vv.removeEventListener("scroll", updateInset);
+    };
+  }, []);
 
   const cleaned = useMemo(() => cleanSpokenScript(text, assetType), [text, assetType]);
   const chunks = useMemo(() => chunkForTts(cleaned), [cleaned]);
@@ -331,8 +356,11 @@ export default function TtsPlayer({ text, title, assetType, startsFromMarker, op
         floaterOpen &&
         createPortal(
           <div
-            className="fixed inset-x-0 bottom-0 z-[100] flex justify-center px-4"
-            style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+            className="fixed inset-x-0 z-[100] flex justify-center px-4"
+            style={{
+              bottom: keyboardInset,
+              paddingBottom: keyboardInset ? "1rem" : "max(1rem, env(safe-area-inset-bottom))",
+            }}
           >
             <div className="flex items-center gap-2 rounded-full border border-primary/30 bg-card/95 px-3 py-2 shadow-lg backdrop-blur">
               <Volume2 className="h-4 w-4 shrink-0 text-primary" />
