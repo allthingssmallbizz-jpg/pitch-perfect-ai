@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useIsClient } from "@/hooks/useIsClient";
-import { Volume2, Play, Pause, Square, Loader2, SkipBack, SkipForward } from "lucide-react";
+import { Volume2, Play, Pause, Square, Loader2, SkipBack, SkipForward, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TTS_VOICES, TTS_CREDIT_COST, type TtsVoice } from "@/lib/ai/tts";
 import { cleanSpokenScript } from "@/lib/ai/spokenScriptText";
@@ -21,6 +21,15 @@ type Props = {
   // True when `text` is a trailing slice starting from where the member clicked in the document,
   // not the whole thing — purely for the hint line below; doesn't change playback itself.
   startsFromMarker?: boolean;
+  // Bumped by the parent every time the member clicks inside the document/slide list to choose
+  // a new read-from point (not when `text` changes for any other reason, like a regenerate, an
+  // AI edit, or a restored version) — the one signal this component can't derive from `text`
+  // alone, since a content replacement and a click-to-position both just look like "text
+  // changed" from here. Reported: clicking a start point still required scrolling back to the
+  // top to actually press Play, and the floating control disappeared the moment the member
+  // clicked elsewhere in the text. This is what makes the floater pop open on its own right
+  // where the member clicked, instead of only ever appearing once something is already playing.
+  openSignal?: number;
 };
 
 function chunkForTts(text: string, maxChars = 1800): string[] {
@@ -49,10 +58,18 @@ function chunkForTts(text: string, maxChars = 1800): string[] {
   return chunks;
 }
 
-export default function TtsPlayer({ text, title, assetType, startsFromMarker }: Props) {
+export default function TtsPlayer({ text, title, assetType, startsFromMarker, openSignal = 0 }: Props) {
   const [voice, setVoice] = useState<TtsVoice>("alloy");
   const [status, setStatus] = useState<"idle" | "loading" | "playing" | "paused">("idle");
   const [index, setIndex] = useState(0);
+  // Whether the floating "follow" control is on screen at all — deliberately independent of
+  // `status`. Reported: it used to disappear the instant playback stopped/paused, or the moment
+  // the member clicked a new spot in the text, forcing a scroll back up to the top just to press
+  // Play again. Now it only ever closes when the member explicitly dismisses it (the X button
+  // below) or the underlying content is actually replaced (regenerate/AI edit/restore — see the
+  // `text`+`openSignal` effect), never on its own as a side effect of play/pause/stop.
+  const [floaterOpen, setFloaterOpen] = useState(false);
+  const prevOpenSignalRef = useRef(openSignal);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const stoppedRef = useRef(false);
@@ -97,7 +114,12 @@ export default function TtsPlayer({ text, title, assetType, startsFromMarker }: 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStatus("idle");
     setIndex(0);
-  }, [text]);
+    // Only a real click-to-position (openSignal bumped by the parent) should pop the floater
+    // open on its own — a regenerate/AI-edit/restore also changes `text` but should close it
+    // instead, since whatever was loaded/playing no longer matches the new content.
+    setFloaterOpen(openSignal !== prevOpenSignalRef.current);
+    prevOpenSignalRef.current = openSignal;
+  }, [text, openSignal]);
 
   async function fetchChunk(chunk: string): Promise<Blob> {
     const res = await fetch("/api/tts", {
@@ -119,6 +141,7 @@ export default function TtsPlayer({ text, title, assetType, startsFromMarker }: 
     }
     stoppedRef.current = false;
     setStatus("loading");
+    setFloaterOpen(true);
 
     for (let i = startIdx; i < chunks.length; i++) {
       if (stoppedRef.current) return;
@@ -294,15 +317,18 @@ export default function TtsPlayer({ text, title, assetType, startsFromMarker }: 
           — on a long deck/document, that's a real scroll on both desktop and a phone. Reported
           again as not appearing on a phone at all after the first attempt — portaled straight to
           document.body now (see isClient above) so no ancestor between this card and the page
-          root can interfere with its fixed positioning. Floats a small "follow" control fixed to
-          the bottom of the viewport whenever there's an active session (loading, playing, or
-          paused) worth reaching quickly, so Play/Pause/Stop stay in view no matter how far down
-          the page has scrolled. Hidden once stopped/finished. The safe-area inset is set via a
-          plain inline style, not a Tailwind arbitrary value — CSS `max()` with a comma inside
-          Tailwind's `[...]` bracket syntax is exactly the kind of thing that can silently fail to
-          generate, which a plain style attribute can't get wrong. */}
+          root can interfere with its fixed positioning. Reported a third time: it kept vanishing
+          the instant playback paused/stopped, or the moment the member clicked a new spot in the
+          text, right when they actually wanted it open. Visibility is now its own state
+          (floaterOpen) instead of being tied to `status` — it opens itself on a real click-to-
+          position or on Play, and from then on only the explicit X button below closes it, so
+          pausing/stopping/clicking around the document never makes it disappear on its own. The
+          safe-area inset is set via a plain inline style, not a Tailwind arbitrary value — CSS
+          `max()` with a comma inside Tailwind's `[...]` bracket syntax is exactly the kind of
+          thing that can silently fail to generate, which a plain style attribute can't get
+          wrong. */}
       {isClient &&
-        status !== "idle" &&
+        floaterOpen &&
         createPortal(
           <div
             className="fixed inset-x-0 bottom-0 z-[100] flex justify-center px-4"
@@ -311,7 +337,13 @@ export default function TtsPlayer({ text, title, assetType, startsFromMarker }: 
             <div className="flex items-center gap-2 rounded-full border border-primary/30 bg-card/95 px-3 py-2 shadow-lg backdrop-blur">
               <Volume2 className="h-4 w-4 shrink-0 text-primary" />
               <span className="hidden text-xs text-muted-foreground sm:inline">
-                {status === "loading" ? "Loading…" : status === "playing" ? "Reading aloud" : "Paused"}
+                {status === "loading"
+                  ? "Loading…"
+                  : status === "playing"
+                    ? "Reading aloud"
+                    : status === "paused"
+                      ? "Paused"
+                      : "Ready to play"}
                 {totalChunks > 1 && ` · ${Math.min(index + 1, totalChunks)}/${totalChunks}`}
               </span>
               {status === "playing" ? (
@@ -324,11 +356,14 @@ export default function TtsPlayer({ text, title, assetType, startsFromMarker }: 
                 </Button>
               ) : (
                 <Button size="sm" onClick={handlePlay}>
-                  <Play className="mr-1.5 h-4 w-4" /> Resume
+                  <Play className="mr-1.5 h-4 w-4" /> {status === "paused" ? "Resume" : "Play"}
                 </Button>
               )}
               <Button variant="outline" size="icon" onClick={handleStop} title="Stop">
                 <Square className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setFloaterOpen(false)} title="Close">
+                <X className="h-4 w-4" />
               </Button>
             </div>
           </div>,

@@ -375,6 +375,16 @@ export default function GenerateClient({
   // restored version) rather than just edited in place, since the old caret position means
   // nothing once the underlying document is a different one.
   const [ttsStartText, setTtsStartText] = useState<string | null>(null);
+  // Bumped only when the member actually clicks a new read-from spot (RichTextEditor's caret, or
+  // SlidePreview's "Read from here") — see selectTtsStart below. Fed to TtsPlayer as openSignal
+  // so it can tell "the member clicked to choose a start point" apart from the other reasons
+  // `content`/`ttsStartText` change here (a fresh generation, an AI edit, a restored version),
+  // which should NOT pop the floating Read Aloud control open on their own.
+  const [ttsOpenSignal, setTtsOpenSignal] = useState(0);
+  function selectTtsStart(value: string | null) {
+    setTtsStartText(value);
+    setTtsOpenSignal((n) => n + 1);
+  }
   // Forces RichTextEditor to fully remount from fresh content after an AI edit is applied — see
   // handleAiEditApplied below for why a remount rather than relying on its own sync effect.
   const [editorKey, setEditorKey] = useState(0);
@@ -1740,7 +1750,12 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
 
       {content && !isWebPageAsset && (
         <div className="space-y-4">
-          <TtsPlayer text={ttsStartText ?? content} assetType={assetType} startsFromMarker={ttsStartText !== null} />
+          <TtsPlayer
+            text={ttsStartText ?? content}
+            assetType={assetType}
+            startsFromMarker={ttsStartText !== null}
+            openSignal={ttsOpenSignal}
+          />
           {(assetType === "course_outline" ||
             assetType === "webinar_outline" ||
             assetType === "vsl_script" ||
@@ -1754,14 +1769,14 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
               generationId={generationId}
               mediaEnabled={SLIDE_MEDIA_ASSET_TYPES.includes(assetType)}
               scriptBySlideNumber={scriptBySlideNumber}
-              onSelectSlide={setTtsStartText}
+              onSelectSlide={selectTtsStart}
             />
           ) : (
             <RichTextEditor
               key={editorKey}
               markdown={content}
               onChange={handleEditorChange}
-              onSelectionTextChange={(trailing, isAtStart) => setTtsStartText(isAtStart ? null : trailing)}
+              onSelectionTextChange={(trailing, isAtStart) => selectTtsStart(isAtStart ? null : trailing)}
             />
           )}
         </div>
