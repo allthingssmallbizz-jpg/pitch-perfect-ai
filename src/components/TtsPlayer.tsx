@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
+import { useIsClient } from "@/hooks/useIsClient";
 import { Volume2, Play, Pause, Square, Loader2, SkipBack, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TTS_VOICES, TTS_CREDIT_COST, type TtsVoice } from "@/lib/ai/tts";
@@ -54,6 +56,14 @@ export default function TtsPlayer({ text, title, assetType, startsFromMarker }: 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const stoppedRef = useRef(false);
+  // The floating "follow" control below portals straight to document.body — reported as not
+  // showing up at all on a phone, most likely because some ancestor between this component and
+  // the page root (a transformed/contained element anywhere up the tree — sidebar layouts are a
+  // common source of exactly this) was quietly turning `position: fixed` into "fixed relative to
+  // that ancestor" instead of the real viewport, the same reliability problem Radix/shadcn's own
+  // Dialog and Toast portal to the body to avoid. document doesn't exist during server rendering,
+  // so the portal only ever renders once useIsClient confirms this is running in the browser.
+  const isClient = useIsClient();
 
   const cleaned = useMemo(() => cleanSpokenScript(text, assetType), [text, assetType]);
   const chunks = useMemo(() => chunkForTts(cleaned), [cleaned]);
@@ -281,38 +291,49 @@ export default function TtsPlayer({ text, title, assetType, startsFromMarker }: 
       </div>
 
       {/* Reported: pausing or stopping mid-read meant scrolling all the way back up to this card
-          — on a long deck/document, that's a real scroll on both desktop and a phone. This floats
-          a small "follow" control fixed to the bottom of the viewport whenever there's an active
-          session (loading, playing, or paused) worth reaching quickly, so Play/Pause/Stop stay in
-          view no matter how far down the page has scrolled. Hidden once stopped/finished — no
-          floating bar to get in the way when there's nothing active to control. */}
-      {status !== "idle" && (
-        <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <div className="flex items-center gap-2 rounded-full border border-primary/30 bg-card/95 px-3 py-2 shadow-lg backdrop-blur">
-            <Volume2 className="h-4 w-4 shrink-0 text-primary" />
-            <span className="hidden text-xs text-muted-foreground sm:inline">
-              {status === "loading" ? "Loading…" : status === "playing" ? "Reading aloud" : "Paused"}
-              {totalChunks > 1 && ` · ${Math.min(index + 1, totalChunks)}/${totalChunks}`}
-            </span>
-            {status === "playing" ? (
-              <Button size="sm" onClick={handlePause}>
-                <Pause className="mr-1.5 h-4 w-4" /> Pause
+          — on a long deck/document, that's a real scroll on both desktop and a phone. Reported
+          again as not appearing on a phone at all after the first attempt — portaled straight to
+          document.body now (see isClient above) so no ancestor between this card and the page
+          root can interfere with its fixed positioning. Floats a small "follow" control fixed to
+          the bottom of the viewport whenever there's an active session (loading, playing, or
+          paused) worth reaching quickly, so Play/Pause/Stop stay in view no matter how far down
+          the page has scrolled. Hidden once stopped/finished. The safe-area inset is set via a
+          plain inline style, not a Tailwind arbitrary value — CSS `max()` with a comma inside
+          Tailwind's `[...]` bracket syntax is exactly the kind of thing that can silently fail to
+          generate, which a plain style attribute can't get wrong. */}
+      {isClient &&
+        status !== "idle" &&
+        createPortal(
+          <div
+            className="fixed inset-x-0 bottom-0 z-[100] flex justify-center px-4"
+            style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+          >
+            <div className="flex items-center gap-2 rounded-full border border-primary/30 bg-card/95 px-3 py-2 shadow-lg backdrop-blur">
+              <Volume2 className="h-4 w-4 shrink-0 text-primary" />
+              <span className="hidden text-xs text-muted-foreground sm:inline">
+                {status === "loading" ? "Loading…" : status === "playing" ? "Reading aloud" : "Paused"}
+                {totalChunks > 1 && ` · ${Math.min(index + 1, totalChunks)}/${totalChunks}`}
+              </span>
+              {status === "playing" ? (
+                <Button size="sm" onClick={handlePause}>
+                  <Pause className="mr-1.5 h-4 w-4" /> Pause
+                </Button>
+              ) : status === "loading" ? (
+                <Button size="sm" disabled>
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Loading…
+                </Button>
+              ) : (
+                <Button size="sm" onClick={handlePlay}>
+                  <Play className="mr-1.5 h-4 w-4" /> Resume
+                </Button>
+              )}
+              <Button variant="outline" size="icon" onClick={handleStop} title="Stop">
+                <Square className="h-4 w-4" />
               </Button>
-            ) : status === "loading" ? (
-              <Button size="sm" disabled>
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Loading…
-              </Button>
-            ) : (
-              <Button size="sm" onClick={handlePlay}>
-                <Play className="mr-1.5 h-4 w-4" /> Resume
-              </Button>
-            )}
-            <Button variant="outline" size="icon" onClick={handleStop} title="Stop">
-              <Square className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
