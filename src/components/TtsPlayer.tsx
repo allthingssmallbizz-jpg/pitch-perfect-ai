@@ -30,7 +30,29 @@ type Props = {
   // clicked elsewhere in the text. This is what makes the floater pop open on its own right
   // where the member clicked, instead of only ever appearing once something is already playing.
   openSignal?: number;
+  // Reported: on a long script/webinar, it's easy to lose track of where the voice actually is,
+  // so a mistake heard while listening is hard to find and fix afterward. OpenAI's TTS API gives
+  // back audio only, no per-word timestamps, so this is an estimate (see tokenizeWithOffsets):
+  // called with the plain word it currently thinks is being spoken (proportional to how far
+  // through the chunk's characters playback has gotten), or `null` to clear whatever was last
+  // highlighted. Never called while paused — the last word stays highlighted on purpose, since
+  // pausing to go fix something is exactly the point of this.
+  onActiveWordChange?: (word: string | null) => void;
 };
+
+// No real per-word timestamps exist for this audio, so this distributes words across the
+// chunk's audio duration by character count — a longer word is assumed to take proportionally
+// longer to say. Rough, but close enough to point at roughly the right spot while listening;
+// see the `timeupdate` handler in playFrom for how it's actually used.
+function tokenizeWithOffsets(text: string): { word: string; start: number }[] {
+  return Array.from(text.matchAll(/\S+/g)).map((m) => ({ word: m[0], start: m.index }));
+}
+
+// Strips leading/trailing punctuation so "word," or "(word)" still matches the bare word in the
+// live document — RichTextEditor's findWordInDoc searches for exactly this trimmed form.
+function trimWordPunctuation(word: string): string {
+  return word.replace(/^[^A-Za-z0-9']+|[^A-Za-z0-9']+$/g, "");
+}
 
 function chunkForTts(text: string, maxChars = 1800): string[] {
   const clean = text.trim();
@@ -58,7 +80,14 @@ function chunkForTts(text: string, maxChars = 1800): string[] {
   return chunks;
 }
 
-export default function TtsPlayer({ text, title, assetType, startsFromMarker, openSignal = 0 }: Props) {
+export default function TtsPlayer({
+  text,
+  title,
+  assetType,
+  startsFromMarker,
+  openSignal = 0,
+  onActiveWordChange,
+}: Props) {
   const [voice, setVoice] = useState<TtsVoice>("alloy");
   const [status, setStatus] = useState<"idle" | "loading" | "playing" | "paused">("idle");
   const [index, setIndex] = useState(0);
@@ -73,6 +102,10 @@ export default function TtsPlayer({ text, title, assetType, startsFromMarker, op
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const stoppedRef = useRef(false);
+  // Which word (by index into the current chunk's tokenizeWithOffsets list) was last reported as
+  // active — reset to -1 at the start of every chunk so its very first word always fires once,
+  // even if it happens to land back on index 0 like the previous chunk's last reported word did.
+  const lastWordIndexRef = useRef(-1);
   // The floating "follow" control below portals straight to document.body — reported as not
   // showing up at all on a phone, most likely because some ancestor between this component and
   // the page root (a transformed/contained element anywhere up the tree — sidebar layouts are a
@@ -144,6 +177,8 @@ export default function TtsPlayer({ text, title, assetType, startsFromMarker, op
     // instead, since whatever was loaded/playing no longer matches the new content.
     setFloaterOpen(openSignal !== prevOpenSignalRef.current);
     prevOpenSignalRef.current = openSignal;
+    onActiveWordChange?.(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, openSignal]);
 
   async function fetchChunk(chunk: string): Promise<Blob> {
@@ -184,6 +219,33 @@ export default function TtsPlayer({ text, title, assetType, startsFromMarker, op
         audio.src = url;
 
         setStatus("playing");
+
+        const tokens = tokenizeWithOffsets(chunks[i]);
+        const totalChars = chunks[i].length || 1;
+        lastWordIndexRef.current = -1;
+        const onTimeUpdate = () => {
+          if (!tokens.length || !audio.duration || !Number.isFinite(audio.duration)) return;
+          const charPos = (audio.currentTime / audio.duration) * totalChars;
+          let lo = 0;
+          let hi = tokens.length - 1;
+          let found = 0;
+          while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            if (tokens[mid].start <= charPos) {
+              found = mid;
+              lo = mid + 1;
+            } else {
+              hi = mid - 1;
+            }
+          }
+          if (found !== lastWordIndexRef.current) {
+            lastWordIndexRef.current = found;
+            const trimmed = trimWordPunctuation(tokens[found].word);
+            if (trimmed) onActiveWordChange?.(trimmed);
+          }
+        };
+        audio.addEventListener("timeupdate", onTimeUpdate);
+
         await audio.play();
 
         await new Promise<void>((resolve) => {
@@ -200,6 +262,7 @@ export default function TtsPlayer({ text, title, assetType, startsFromMarker, op
           const cleanup = () => {
             audio.removeEventListener("ended", onEnded);
             audio.removeEventListener("pause", onPause);
+            audio.removeEventListener("timeupdate", onTimeUpdate);
           };
           audio.addEventListener("ended", onEnded);
           audio.addEventListener("pause", onPause);
@@ -212,6 +275,7 @@ export default function TtsPlayer({ text, title, assetType, startsFromMarker, op
     }
     setStatus("idle");
     setIndex(0);
+    onActiveWordChange?.(null);
   }
 
   function handlePlay() {
@@ -236,6 +300,7 @@ export default function TtsPlayer({ text, title, assetType, startsFromMarker, op
     }
     setStatus("idle");
     setIndex(0);
+    onActiveWordChange?.(null);
   }
   function handlePrev() {
     stoppedRef.current = true;

@@ -4,9 +4,10 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
-import { useEffect, useMemo } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { TtsHighlight, ttsHighlightPluginKey, findWordInDoc } from "@/lib/editor/ttsHighlightExtension";
 import {
   Bold,
   Italic,
@@ -38,13 +39,34 @@ type Props = {
   // 0/1, so the parent can tell "nothing's been clicked yet, read the whole thing" apart from
   // "they clicked right at the top on purpose." textBetween reads straight from Tiptap's own
   // document model rather than the rendered DOM, so it's exact regardless of formatting.
-  onSelectionTextChange?: (trailingText: string, isAtStart: boolean) => void;
+  // 3rd arg is the exact ProseMirror document position of the caret — GenerateClient stashes it
+  // so that once playback actually starts, the "follow along" highlight (see highlightHandleRef)
+  // knows where in the document to start searching instead of from the very top.
+  onSelectionTextChange?: (trailingText: string, isAtStart: boolean, pos: number) => void;
+};
+
+// Imperative handle for the "follow along while it reads" highlight — kept out of props since
+// it's driven by TtsPlayer's own playback timing (word-by-word, many times a second), not by any
+// data this component's own state should re-render for.
+export type RichTextEditorHandle = {
+  // Call once when a new read-aloud session starts (Play from idle), with the document position
+  // playback is starting from — resets the forward-search cursor so highlighting picks up there
+  // instead of wherever the last session left off.
+  resetHighlightSearch: (pos: number) => void;
+  // Call for each word TtsPlayer estimates it's currently speaking. Searches forward from the
+  // last match (see findWordInDoc) and highlights + scrolls to it; a no-op if the word can't be
+  // found ahead of the cursor (e.g. one cleanSpokenScript stripped before TTS ever saw it).
+  highlightNextOccurrence: (word: string) => void;
+  clearHighlight: () => void;
 };
 
 // Editor over Tiptap. Accepts and emits markdown (via src/lib/markdownHtml.ts) so the rest of
 // the app — exports, TTS, generation storage — keeps treating `generations.content` as markdown
 // and doesn't need to change.
-export default function RichTextEditor({ markdown, onChange, placeholder, className, onSelectionTextChange }: Props) {
+const RichTextEditor = forwardRef<RichTextEditorHandle, Props>(function RichTextEditor(
+  { markdown, onChange, placeholder, className, onSelectionTextChange },
+  ref
+) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const initialHtml = useMemo(() => markdownToHtml(markdown), []);
 
@@ -63,6 +85,7 @@ export default function RichTextEditor({ markdown, onChange, placeholder, classN
         autolink: true,
         HTMLAttributes: { class: "text-primary underline underline-offset-2" },
       }),
+      TtsHighlight,
     ],
     content: initialHtml,
     editorProps: {
@@ -80,9 +103,42 @@ export default function RichTextEditor({ markdown, onChange, placeholder, classN
       if (!onSelectionTextChange) return;
       const { from } = editor.state.selection;
       const trailing = editor.state.doc.textBetween(from, editor.state.doc.content.size, "\n\n", "\n\n");
-      onSelectionTextChange(trailing, from <= 1);
+      onSelectionTextChange(trailing, from <= 1, from);
     },
   });
+
+  const highlightSearchPosRef = useRef(0);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      resetHighlightSearch(pos) {
+        highlightSearchPosRef.current = pos;
+      },
+      highlightNextOccurrence(word) {
+        if (!editor) return;
+        const match = findWordInDoc(editor.state.doc, word, highlightSearchPosRef.current);
+        if (!match) return;
+        highlightSearchPosRef.current = match.to;
+        editor.view.dispatch(editor.state.tr.setMeta(ttsHighlightPluginKey, match));
+
+        // Only auto-scroll when the highlighted word is about to leave the visible area — doing
+        // it on every single word (several times a second) would fight the member's own scrolling
+        // and feel jittery, exactly what this is supposed to feel like the opposite of.
+        const dom = editor.view.domAtPos(match.from).node;
+        const el = dom instanceof Element ? dom : dom.parentElement;
+        const rect = el?.getBoundingClientRect();
+        if (rect && (rect.top < 120 || rect.bottom > window.innerHeight - 160)) {
+          el?.scrollIntoView({ block: "center", behavior: "smooth" });
+        }
+      },
+      clearHighlight() {
+        if (!editor) return;
+        editor.view.dispatch(editor.state.tr.setMeta(ttsHighlightPluginKey, null));
+      },
+    }),
+    [editor]
+  );
 
   // If the incoming markdown changes from the outside (e.g. a version restore), sync the
   // editor without wiping the caret unnecessarily.
@@ -260,4 +316,6 @@ export default function RichTextEditor({ markdown, onChange, placeholder, classN
       <EditorContent editor={editor} />
     </div>
   );
-}
+});
+
+export default RichTextEditor;

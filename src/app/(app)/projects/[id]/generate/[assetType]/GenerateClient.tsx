@@ -40,7 +40,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import RichTextEditor from "@/components/RichTextEditor";
+import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor";
 import VersionHistory from "@/components/VersionHistory";
 import TtsPlayer from "@/components/TtsPlayer";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
@@ -381,9 +381,34 @@ export default function GenerateClient({
   // `content`/`ttsStartText` change here (a fresh generation, an AI edit, a restored version),
   // which should NOT pop the floating Read Aloud control open on their own.
   const [ttsOpenSignal, setTtsOpenSignal] = useState(0);
-  function selectTtsStart(value: string | null) {
+  // The exact document position (RichTextEditor's ProseMirror caret position, not a character
+  // offset into any particular slice) the member last clicked to start reading from — a plain
+  // ref since it never needs to trigger a render, only to tell the "follow along" highlight
+  // (see onTtsActiveWordChange below) where to resume searching once it's cleared. Defaults to
+  // 0 (the very start of the document), matching ttsStartText's own "null means read from the
+  // top" default.
+  const ttsStartPosRef = useRef(0);
+  const richTextEditorRef = useRef<RichTextEditorHandle>(null);
+  function selectTtsStart(value: string | null, pos: number = 0) {
     setTtsStartText(value);
     setTtsOpenSignal((n) => n + 1);
+    ttsStartPosRef.current = pos;
+  }
+  // Reported: on a long script/webinar it's easy to lose track of where the voice actually is,
+  // making a heard mistake hard to find and fix. TtsPlayer calls this with its best estimate of
+  // the word currently being spoken (see its own onActiveWordChange prop comment for why it's an
+  // estimate, not an exact timestamp) — forwarded straight to RichTextEditor's own highlight, or
+  // `null` to clear it. Clearing also resets the highlight's search cursor back to wherever the
+  // member last clicked to start reading, so the NEXT read-aloud session (a fresh Play, not a
+  // resume) searches forward from the right spot instead of from whichever word the previous
+  // session's search cursor happened to land on.
+  function handleTtsActiveWordChange(word: string | null) {
+    if (word === null) {
+      richTextEditorRef.current?.clearHighlight();
+      richTextEditorRef.current?.resetHighlightSearch(ttsStartPosRef.current);
+    } else {
+      richTextEditorRef.current?.highlightNextOccurrence(word);
+    }
   }
   // Forces RichTextEditor to fully remount from fresh content after an AI edit is applied — see
   // handleAiEditApplied below for why a remount rather than relying on its own sync effect.
@@ -1755,6 +1780,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             assetType={assetType}
             startsFromMarker={ttsStartText !== null}
             openSignal={ttsOpenSignal}
+            onActiveWordChange={handleTtsActiveWordChange}
           />
           {(assetType === "course_outline" ||
             assetType === "webinar_outline" ||
@@ -1774,9 +1800,10 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           ) : (
             <RichTextEditor
               key={editorKey}
+              ref={richTextEditorRef}
               markdown={content}
               onChange={handleEditorChange}
-              onSelectionTextChange={(trailing, isAtStart) => selectTtsStart(isAtStart ? null : trailing)}
+              onSelectionTextChange={(trailing, isAtStart, pos) => selectTtsStart(isAtStart ? null : trailing, pos)}
             />
           )}
         </div>
