@@ -69,6 +69,7 @@ const DELIVERABLE_TYPES: GeneratorAssetType[] = [
   "course_module_slides",
   "course_module_quiz",
   "course_module_workbook",
+  "challenge_day_slides",
 ];
 
 const DELIVERABLE_ICONS: Record<GeneratorAssetType, LucideIcon> = {
@@ -87,6 +88,7 @@ const DELIVERABLE_ICONS: Record<GeneratorAssetType, LucideIcon> = {
   course_module_slides: MonitorPlay,
   course_module_quiz: ListChecks,
   course_module_workbook: NotebookPen,
+  challenge_day_slides: MonitorPlay,
 };
 
 export default async function DashboardPage() {

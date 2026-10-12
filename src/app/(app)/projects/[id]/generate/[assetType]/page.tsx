@@ -9,6 +9,7 @@ import { isPresenterBioIncomplete } from "@/lib/ai/presenterBio";
 import { isRestrictionBypassActive } from "@/lib/adminBypass";
 import { getPageStats, type PageStats } from "@/lib/analytics";
 import { parseCourseModuleList, COURSE_ASSET_TYPES, type CourseModuleRef } from "@/lib/ai/courseModules";
+import { parseChallengeDayList, type ChallengeDayRef } from "@/lib/ai/challengeDays";
 import AgentBadge from "@/components/AgentBadge";
 import BioBlockedDialog from "@/components/BioBlockedDialog";
 import DiscoveryBlockedDialog from "@/components/DiscoveryBlockedDialog";
@@ -50,6 +51,9 @@ export default async function GenerateAssetPage({
     generator.assetType === "course_module_slides" ||
     generator.assetType === "course_module_quiz" ||
     generator.assetType === "course_module_workbook";
+  // Same reasoning as isCourseModuleAsset above, one level down — Build Day Slides belongs to
+  // the Challenge Outline it was built from, not the project overview.
+  const isChallengeDaySlidesAsset = generator.assetType === "challenge_day_slides";
 
   const supabase = await createClient();
   const {
@@ -290,6 +294,21 @@ export default async function GenerateAssetPage({
     if (outline?.content) courseModules = parseCourseModuleList(outline.content);
   }
 
+  // Same reasoning as courseModules above, for Agent Casey's own "one day at a time" tool.
+  let challengeDays: ChallengeDayRef[] = [];
+  if (isChallengeDaySlidesAsset) {
+    const { data: outline } = await supabase
+      .from("generations")
+      .select("content")
+      .eq("project_id", id)
+      .eq("asset_type", "challenge_outline")
+      .eq("status", "complete")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (outline?.content) challengeDays = parseChallengeDayList(outline.content);
+  }
+
   const agent = AGENTS[generator.assetType];
 
   return (
@@ -312,11 +331,20 @@ export default async function GenerateAssetPage({
             ? "/websites"
             : isCourseModuleAsset
               ? `/projects/${id}/generate/course_outline`
-              : `/projects/${id}`
+              : isChallengeDaySlidesAsset
+                ? `/projects/${id}/generate/challenge_outline`
+                : `/projects/${id}`
         }
         className="text-sm text-primary hover:underline"
       >
-        ← {isWebPageAsset ? "My Websites" : isCourseModuleAsset ? "Course Outline" : project.name}
+        ←{" "}
+        {isWebPageAsset
+          ? "My Websites"
+          : isCourseModuleAsset
+            ? "Course Outline"
+            : isChallengeDaySlidesAsset
+              ? "Challenge Outline"
+              : project.name}
       </Link>
       <div className="mt-4 mb-1 flex flex-wrap items-center justify-between gap-3">
         <AgentBadge agent={agent} size="lg" showTagline />
@@ -388,6 +416,17 @@ export default async function GenerateAssetPage({
               Build Module Workbook
             </Link>
           )}
+          {/* Same reasoning as Build Module Slides above, one level down — reachable the moment
+              there's a Challenge Outline to build a day's deck from, not gated on one existing. */}
+          {generator.assetType === "challenge_outline" && pastGenerations.length > 0 && (
+            <Link
+              href={`/projects/${id}/generate/challenge_day_slides`}
+              className="flex items-center gap-1.5 rounded-full bg-red-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-500"
+            >
+              <MonitorPlay className="h-3.5 w-3.5" />
+              Build Day Slides
+            </Link>
+          )}
         </div>
       </div>
       {/* A bold, colored badge rather than the small muted-gray line this used to be — the plain
@@ -432,6 +471,7 @@ export default async function GenerateAssetPage({
         initialStats={initialStats}
         initialPastGenerations={pastGenerations}
         courseModules={courseModules}
+        challengeDays={challengeDays}
         initialCompletedGenerations={completedGenerations}
         projectName={project.name}
         initialCourseNaming={project.course_naming}

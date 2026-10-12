@@ -4,27 +4,36 @@ import { formatDiscoveryBlock, formatPriorGenerationsBlock, type PriorGeneration
 export const CHALLENGE_CREDIT_COST = 3;
 export const CHALLENGE_MAX_OUTPUT_TOKENS = 5000;
 
+export const CHALLENGE_LENGTHS = ["3", "5"] as const;
+export type ChallengeLength = (typeof CHALLENGE_LENGTHS)[number];
+export function isChallengeLength(value: string): value is ChallengeLength {
+  return (CHALLENGE_LENGTHS as readonly string[]).includes(value);
+}
+
 // The other classic engagement-funnel format alongside a Webinar or VSL: a free multi-day
 // "challenge" that delivers a real quick win each day, builds a habit of showing up, and pitches
 // on the final day once trust and momentum are highest — rather than asking for a buying decision
 // cold. Distinct enough in structure (daily beats, not one continuous arc) that it deserved its
 // own generator instead of being improvised out of the Webinar Outline.
-export function buildChallengeOutlinePrompt(project: Project, priorGenerations: PriorGeneration[] = []): string {
+export function buildChallengeOutlinePrompt(
+  project: Project,
+  priorGenerations: PriorGeneration[] = [],
+  challengeLength: ChallengeLength = "5"
+): string {
   return `Build a full multi-day Challenge Outline for the project below — a free, guided challenge that delivers a real result over several days, builds a daily habit of showing up, and makes the offer on the final day once trust and momentum are highest.
 
 ${formatDiscoveryBlock(project)}
 ${formatPriorGenerationsBlock(priorGenerations)}
 
-FIRST, decide the length: choose either a 3-day or 5-day challenge based on how much ground the transformation needs to cover and how the offer's price point/complexity was described — state which you chose and why in one line at the top. Default to 5 days unless the transformation is narrow enough to genuinely complete in 3.
+THE LENGTH HAS ALREADY BEEN CHOSEN: this is a ${challengeLength}-DAY challenge — build exactly ${challengeLength} days, no more and no fewer, scaling how much ground each day covers to fit (a 3-day challenge still needs to deliver a complete, satisfying arc in fewer days — don't pad it to feel like a 5-day challenge, and don't try to cram a 5-day amount of teaching into 3 rushed days either).
 
 Then produce the outline in this structure:
 
-1. **Challenge name and promise** — a specific, outcome-driven name (not just "The 5-Day Challenge") and a one-sentence promise of exactly what a participant will have, know, or be able to do by the end, if they show up and do the daily action.
+1. **Challenge name and promise** — a specific, outcome-driven name (not just "The ${challengeLength}-Day Challenge") and a one-sentence promise of exactly what a participant will have, know, or be able to do by the end, if they show up and do the daily action.
 
 2. **Day 0 — Welcome / Kickoff** (pre-Day-1 orientation, sent right after registration): welcome message, what to expect across the challenge, the single daily habit that makes this work (e.g. "show up live at 9am" or "do the day's action before moving on"), and one quick task to build immediate momentum before Day 1 even starts.
 
-3. **One block per challenge day** (3 or 5, per your choice above). For EACH day, include:
-   - **Day theme** — the one thing this day is about, tied to a specific step toward the transformation, not a generic topic.
+3. **One block per challenge day — exactly ${challengeLength} of them, numbered Day 1 through Day ${challengeLength}**. Head EACH day's block with its own line formatted EXACTLY as \`Day #: Theme\` (e.g. \`Day 1: Discover Your Signature Framework\`) — one day per line, nothing else on that line, theme stated as a real headline not a bare topic label. A member later picks from this exact heading when telling Casey which day to build slides for, so it has to be a clean, literal line, not buried in a sentence. Under that heading, for EACH day include:
    - **Teaching beat** — the core lesson/insight for the day (bullet beats, not a full script — this is a skeleton to build a live session or video from).
    - **The daily action** — one specific, completable task the participant does that day. This is the actual engine of the challenge: the "quick win" that makes tomorrow's content land and keeps them showing up.
    - **Engagement prompt** — a specific question or share-in-the-group prompt for that day (challenges live or die on participation, not passive consumption).

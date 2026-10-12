@@ -15,7 +15,19 @@ import {
 import { buildAdCopyPrompt, AD_COPY_CREDIT_COST, AD_COPY_MAX_OUTPUT_TOKENS } from "./adCopy";
 import { buildOfferLadderPrompt, OFFER_LADDER_CREDIT_COST, OFFER_LADDER_MAX_OUTPUT_TOKENS } from "./offerLadder";
 import { buildThankYouPagePrompt, THANK_YOU_PAGE_CREDIT_COST, THANK_YOU_PAGE_MAX_OUTPUT_TOKENS } from "./thankYouPage";
-import { buildChallengeOutlinePrompt, CHALLENGE_CREDIT_COST, CHALLENGE_MAX_OUTPUT_TOKENS } from "./challengeOutline";
+import {
+  buildChallengeOutlinePrompt,
+  CHALLENGE_CREDIT_COST,
+  CHALLENGE_MAX_OUTPUT_TOKENS,
+  isChallengeLength,
+} from "./challengeOutline";
+import {
+  buildChallengeDaySlidesPrompt,
+  CHALLENGE_DAY_SLIDES_CREDIT_COST,
+  CHALLENGE_DAY_SLIDES_MAX_OUTPUT_TOKENS,
+  isChallengeDaySlidesIncomplete,
+  CHALLENGE_DAY_SLIDES_CONTINUATION_HINT,
+} from "./challengeDaySlides";
 import {
   buildWebinarScriptPrompt,
   WEBINAR_SCRIPT_CREDIT_COST,
@@ -44,6 +56,7 @@ import {
 } from "./courseModuleWorkbook";
 export { WEB_PAGE_ASSET_TYPES } from "./htmlPage";
 export { COURSE_LEVELS, isCourseLevel, type CourseLevel } from "./courseOutline";
+export { CHALLENGE_LENGTHS, isChallengeLength, type ChallengeLength } from "./challengeOutline";
 
 // Excludes "presentation_analysis" and "headline_lab" — neither is driven by a project's
 // discovery fields (their input is pasted content / a topic brief), so they aren't part
@@ -91,6 +104,18 @@ type BuildPromptExtra = {
   // resolved explicitly by route.ts from a member-specified sourceGenerationId (see
   // 0043_webinar_script_source.sql) rather than implicitly "whichever deck is most recent."
   sourceDeckContent?: string;
+  // Challenge Outline's own per-generation length choice (3 or 5 days) — same reasoning as
+  // courseLevel above, a per-generation choice rather than a permanent project fact. Ignored by
+  // every other generator.
+  challengeLength?: string;
+  // Build Day Slides' required "which day" input, and the FULL text of an existing Challenge
+  // Outline to find that day inside — same shape as moduleIdentifier/courseOutlineFullContent
+  // above, kept as separate fields rather than reused ones since a project can have both a course
+  // and a challenge going at once. includePitch/isFinalDay: see challengeDaySlides.ts.
+  dayIdentifier?: string;
+  challengeOutlineFullContent?: string;
+  includePitch?: boolean;
+  isFinalDay?: boolean;
 };
 
 export interface AssetGenerator {
@@ -189,7 +214,32 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
     description: "Day-by-day free challenge structure — daily wins, engagement, and a pitch day.",
     creditCost: CHALLENGE_CREDIT_COST,
     maxOutputTokens: CHALLENGE_MAX_OUTPUT_TOKENS,
-    buildPrompt: buildChallengeOutlinePrompt,
+    buildPrompt: (project, priorGenerations, extra) =>
+      buildChallengeOutlinePrompt(
+        project,
+        priorGenerations,
+        extra?.challengeLength && isChallengeLength(extra.challengeLength) ? extra.challengeLength : undefined
+      ),
+  },
+  challenge_day_slides: {
+    assetType: "challenge_day_slides",
+    label: "Build Day Slides",
+    description: "Turns one day of an existing Challenge Outline into a real, presentable slide-by-slide session deck — with a pitch option for Day 4/5.",
+    creditCost: CHALLENGE_DAY_SLIDES_CREDIT_COST,
+    maxOutputTokens: CHALLENGE_DAY_SLIDES_MAX_OUTPUT_TOKENS,
+    // Ignores the standard priorGenerations entirely, same as Build Module Slides — the full
+    // challenge outline text (fetched directly in the API route) and which day to build arrive
+    // via extra instead. See BuildPromptExtra above.
+    buildPrompt: (project, _priorGenerations, extra) =>
+      buildChallengeDaySlidesPrompt(
+        project,
+        extra?.challengeOutlineFullContent ?? "",
+        extra?.dayIdentifier ?? "",
+        extra?.includePitch ?? false,
+        extra?.isFinalDay ?? false
+      ),
+    isOutputIncomplete: isChallengeDaySlidesIncomplete,
+    continuationHint: CHALLENGE_DAY_SLIDES_CONTINUATION_HINT,
   },
   webinar_script: {
     assetType: "webinar_script",

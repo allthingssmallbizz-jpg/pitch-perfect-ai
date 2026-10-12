@@ -31,7 +31,8 @@ export type AssetType =
   | "course_outline"
   | "course_module_slides"
   | "course_module_quiz"
-  | "course_module_workbook";
+  | "course_module_workbook"
+  | "challenge_day_slides";
 
 export type PresentationType =
   | "webinar"

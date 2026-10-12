@@ -15,11 +15,12 @@ export const runtime = "nodejs";
 // asset_type "ppt_outline" (its markdown structure is what parsePptOutline expects); every other
 // asset type still exports through PDF/.docx.
 //
-// Build Module Slides (Agent Cora's course-module teaching decks) reuses this same route —
-// its markdown deliberately uses the identical "Slide #: Title" / "On-slide content" /
-// "Speaker notes" labels parsePptOutline expects (see courseModuleSlides.ts), so no separate
-// parser or deck builder was needed, just letting this asset type through the check below.
-const PPTX_EXPORTABLE_ASSET_TYPES = ["ppt_outline", "course_module_slides"];
+// Build Module Slides (Agent Cora's course-module teaching decks) and Build Day Slides (Agent
+// Casey's challenge-day teaching decks) both reuse this same route — their markdown deliberately
+// uses the identical "Slide #: Title" / "On-slide content" / "Speaker notes" labels parsePptOutline
+// expects (see courseModuleSlides.ts and challengeDaySlides.ts), so no separate parser or deck
+// builder was needed, just letting these asset types through the check below.
+const PPTX_EXPORTABLE_ASSET_TYPES = ["ppt_outline", "course_module_slides", "challenge_day_slides"];
 
 export async function GET(req: NextRequest) {
   const generationId = req.nextUrl.searchParams.get("generationId");
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
   }
   if (!PPTX_EXPORTABLE_ASSET_TYPES.includes(generation.asset_type)) {
     return NextResponse.json(
-      { error: "Slide export is only available for Your Signature Webinar decks and Course Module Slides." },
+      { error: "Slide export is only available for Your Signature Webinar decks, Course Module Slides, and Build Day Slides." },
       { status: 400 }
     );
   }
@@ -128,7 +129,12 @@ export async function GET(req: NextRequest) {
   const pptx = buildDeck(slides, theme, brandName, scriptBySlideNumber, mediaBySlideNumber);
   const buffer = (await pptx.write({ outputType: "nodebuffer" })) as Buffer;
 
-  const filename = generation.asset_type === "course_module_slides" ? "course-module-slides.pptx" : "powerpoint-outline.pptx";
+  const filename =
+    generation.asset_type === "course_module_slides"
+      ? "course-module-slides.pptx"
+      : generation.asset_type === "challenge_day_slides"
+        ? "challenge-day-slides.pptx"
+        : "powerpoint-outline.pptx";
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

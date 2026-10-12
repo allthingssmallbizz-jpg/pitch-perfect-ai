@@ -57,6 +57,13 @@ import { downloadHtmlFile, openInBrowserTab } from "@/lib/browserFile";
 import { getPublicSiteUrl } from "@/lib/publishing";
 import type { PageStats } from "@/lib/analytics";
 import { COURSE_ASSET_TYPES, type CourseModuleRef } from "@/lib/ai/courseModules";
+import { type ChallengeDayRef } from "@/lib/ai/challengeDays";
+// Imported from the leaf module directly, not the "@/lib/ai/generators" barrel — that barrel
+// re-exports every single generator's prompt builder, and pulling it into this client component
+// drags all of their transitive imports into the browser bundle too (broke the build: Turbopack
+// couldn't bundle a node:fs import pulled in that way). courseModules.ts/ChallengeDayRef above
+// are already imported the same leaf-module way for the identical reason.
+import { CHALLENGE_LENGTHS, type ChallengeLength } from "@/lib/ai/generators/challengeOutline";
 import { parsePptOutline, parseWebinarScriptBySlideNumber } from "@/lib/ai/pptxParser";
 import { cleanSpokenScript } from "@/lib/ai/spokenScriptText";
 import PageEditPanel from "./PageEditPanel";
@@ -76,11 +83,16 @@ export type CompletedGeneration = PastGeneration & { approvedAt: string };
 // can run at all (see moduleIdentifier state below), unlike every other agent's plain Generate.
 const MODULE_SCOPED_ASSET_TYPES: AssetType[] = ["course_module_slides", "course_module_quiz", "course_module_workbook"];
 
-// Both write markdown in the exact same "Slide #: Title / On-slide content / Speaker notes" shape
-// (see pptOutline.ts and courseModuleSlides.ts) that parsePptOutline and the real .pptx export
-// already parse — the visual slide-by-slide preview below (SlidePreview.tsx) reuses that same
-// parser rather than a second format.
-const SLIDE_DECK_ASSET_TYPES: AssetType[] = ["ppt_outline", "course_module_slides"];
+// Agent Casey's own "one day at a time" generator — same shape as the module-scoped ones above
+// (a required "which day?" input, see dayIdentifier state below), just one asset type instead of
+// three since Casey doesn't have Cora's separate quiz/workbook siblings.
+const DAY_SCOPED_ASSET_TYPES: AssetType[] = ["challenge_day_slides"];
+
+// All three write markdown in the exact same "Slide #: Title / On-slide content / Speaker notes"
+// shape (see pptOutline.ts, courseModuleSlides.ts, challengeDaySlides.ts) that parsePptOutline
+// and the real .pptx export already parse — the visual slide-by-slide preview below
+// (SlidePreview.tsx) reuses that same parser rather than a second format.
+const SLIDE_DECK_ASSET_TYPES: AssetType[] = ["ppt_outline", "course_module_slides", "challenge_day_slides"];
 
 // Landing Page and Thank You Page are the generators whose content is a real HTML document, not
 // markdown — used both to build a clean preview snippet (raw tags would otherwise show up as
@@ -302,6 +314,7 @@ export default function GenerateClient({
   initialStats,
   initialPastGenerations,
   courseModules,
+  challengeDays,
   initialCompletedGenerations,
   projectName,
   initialCourseNaming,
@@ -331,6 +344,10 @@ export default function GenerateClient({
   // actual modules and powering "Build the next module" below. Empty for every other agent, and
   // for a module-scoped one whose outline hasn't been generated yet or didn't parse.
   courseModules: CourseModuleRef[];
+  // Agent Casey's own Build Day Slides, same reasoning as courseModules above — the real day
+  // list parsed out of this project's Challenge Outline. Empty for every other agent, and for
+  // Build Day Slides itself whose outline hasn't been generated yet or didn't parse.
+  challengeDays: ChallengeDayRef[];
   // Agent Cora's Completed Courses section — generations already marked "Completed," excluded
   // from initialPastGenerations above (see page.tsx's split). Empty for every non-Cora agent.
   initialCompletedGenerations: CompletedGeneration[];
@@ -438,6 +455,19 @@ export default function GenerateClient({
   // alone. Required (unlike courseLevel/customNaming above) since there's no sensible default —
   // "build slides for some module" isn't a real request.
   const [moduleIdentifier, setModuleIdentifier] = useState("");
+  // Challenge Outline's own per-generation choice (see challengeOutline.ts) — same reasoning as
+  // courseLevel above, not a saved project fact, since a member may reasonably want both a 3-day
+  // and a 5-day version. Harmless to hold on every other agent's page too.
+  const [challengeLength, setChallengeLength] = useState<ChallengeLength>("5");
+  // Build Day Slides' required "which day" input — same reasoning as moduleIdentifier above, just
+  // for Agent Casey's Challenge Outline instead of Cora's Course Outline.
+  const [dayIdentifier, setDayIdentifier] = useState("");
+  // Whether THIS day's deck should include the pitch/offer slides — defaulted on below (see the
+  // dayIdentifier select's onChange) whenever the chosen day is the challenge's actual final day,
+  // but left as a real checkbox rather than forced, since a member may want to start introducing
+  // the offer a day earlier (Day 4 of a 5-day challenge) without it being the hard close, or skip
+  // the pitch on the final day's deck entirely because they're pitching live instead.
+  const [includePitch, setIncludePitch] = useState(false);
   // Longer generators (PPT Outline's 60-90 slides especially) can genuinely take a few minutes —
   // Claude auto-continues in several sequential calls once it hits the per-call output cap. With
   // no feedback beyond a static "Building..." message, a run that's still legitimately working
@@ -839,6 +869,10 @@ export default function GenerateClient({
       );
       return;
     }
+    if (DAY_SCOPED_ASSET_TYPES.includes(assetType) && !dayIdentifier.trim()) {
+      toast.error("Say which day to build slides for first.");
+      return;
+    }
     // Snapshot exactly what's on screen right now, before any of it is touched — Stop puts this
     // straight back if the member cancels, so it never reads as "I lost my deck."
     previousGenerationRef.current = { content, generationId, publishSlug, publishedAt };
@@ -851,7 +885,17 @@ export default function GenerateClient({
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, assetType, mode, courseLevel, customNaming, moduleIdentifier: effectiveModuleIdentifier }),
+        body: JSON.stringify({
+          projectId,
+          assetType,
+          mode,
+          courseLevel,
+          customNaming,
+          moduleIdentifier: effectiveModuleIdentifier,
+          challengeLength,
+          dayIdentifier,
+          includePitch,
+        }),
         signal: abortController.signal,
       });
       const data = await res.json().catch(() => null);
@@ -1190,6 +1234,89 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           />
         </div>
       )}
+      {assetType === "challenge_outline" && (
+        <div className="mb-3">
+          <label htmlFor="challenge-length" className="mb-1 block text-xs font-medium text-muted-foreground">
+            Challenge length
+          </label>
+          <select
+            id="challenge-length"
+            value={challengeLength}
+            onChange={(e) => setChallengeLength(e.target.value as ChallengeLength)}
+            disabled={loading}
+            className="h-9 w-[220px] rounded-md border border-input bg-input/30 px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            {CHALLENGE_LENGTHS.map((len) => (
+              <option key={len} value={len}>
+                {len}-Day Challenge
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {DAY_SCOPED_ASSET_TYPES.includes(assetType) && (
+        <div className="mb-3">
+          <label htmlFor="day-identifier" className="mb-1 block text-xs font-medium text-muted-foreground">
+            Which day? <span className="text-primary">*</span>
+          </label>
+          {challengeDays.length > 0 ? (
+            <>
+              <p className="mb-1.5 text-xs text-muted-foreground">
+                Pulled straight from your Challenge Outline — pick the day Casey should build slides for.
+              </p>
+              <select
+                id="day-identifier"
+                value={dayIdentifier}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setDayIdentifier(value);
+                  // Default the pitch checkbox on only for the challenge's actual final day — a
+                  // member can still flip it for an earlier day (see includePitch state comment),
+                  // this is just a sensible starting point, not a lock.
+                  const dayNumber = Number(value.match(/day\s+(\d+)/i)?.[1]);
+                  const maxDay = challengeDays.length ? Math.max(...challengeDays.map((d) => d.number)) : undefined;
+                  setIncludePitch(Number.isFinite(dayNumber) && dayNumber === maxDay);
+                }}
+                disabled={loading}
+                className="w-full max-w-sm rounded-md border border-border bg-card px-3 py-2 text-sm"
+              >
+                <option value="">Choose a day...</option>
+                {challengeDays.map((d) => (
+                  <option key={d.number} value={d.title}>
+                    {d.title}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <>
+              <p className="mb-1.5 text-xs text-muted-foreground">
+                Type the day&apos;s number or name exactly as it appears in your Challenge Outline (e.g.
+                &quot;Day 3&quot; or &quot;Day 3: Building Your Offer&quot;) — Casey will find it and build slides for
+                that day only.
+              </p>
+              <Input
+                id="day-identifier"
+                value={dayIdentifier}
+                onChange={(e) => setDayIdentifier(e.target.value)}
+                disabled={loading}
+                placeholder="e.g. Day 3"
+                className="w-full max-w-xs"
+              />
+            </>
+          )}
+          <label className="mt-3 flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={includePitch}
+              onChange={(e) => setIncludePitch(e.target.checked)}
+              disabled={loading}
+              className="h-4 w-4 rounded border-border"
+            />
+            Make your offer on this day (adds the pitch/offer slides — typically Day 4 or Day 5)
+          </label>
+        </div>
+      )}
       {MODULE_SCOPED_ASSET_TYPES.includes(assetType) && (
         <div className="mb-3">
           <label htmlFor="module-identifier" className="mb-1 block text-xs font-medium text-muted-foreground">
@@ -1271,7 +1398,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
               <Copy className="mr-2 h-4 w-4" />
               {copied ? "Copied!" : "Copy"}
             </Button>
-            {(assetType === "ppt_outline" || assetType === "course_module_slides") && (
+            {isSlideDeckAsset && (
               <Button
                 variant="outline"
                 onClick={copyForGamma}
@@ -1367,7 +1494,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
                         Export .docx
                       </a>
                     </Button>
-                    {(assetType === "ppt_outline" || assetType === "course_module_slides") && (
+                    {isSlideDeckAsset && (
                       <Button variant="outline" asChild>
                         <a href={`/api/export/pptx?generationId=${generationId}`}>
                           <FileDown className="mr-2 h-4 w-4" />
@@ -1442,7 +1569,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
         )}
       </div>
 
-      {(assetType === "ppt_outline" || assetType === "course_module_slides") && content && (
+      {isSlideDeckAsset && content && (
         <p className="mb-4 -mt-2 text-xs text-muted-foreground">
           Heads up: <strong>Copy</strong> grabs this raw text as-is — on-slide content and speaker
           notes together, with no separation. Use <strong>Export .pptx (designed deck)</strong> for
@@ -1785,7 +1912,8 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           {(assetType === "course_outline" ||
             assetType === "webinar_outline" ||
             assetType === "vsl_script" ||
-            MODULE_SCOPED_ASSET_TYPES.includes(assetType)) &&
+            MODULE_SCOPED_ASSET_TYPES.includes(assetType) ||
+            DAY_SCOPED_ASSET_TYPES.includes(assetType)) &&
             generationId && (
               <TextEditPanel generationId={generationId} assetType={assetType} onApplied={handleAiEditApplied} />
             )}

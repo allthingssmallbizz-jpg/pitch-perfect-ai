@@ -15,6 +15,7 @@ import type { PriorGeneration } from "@/lib/ai/generators/shared";
 import { getAgent } from "@/lib/agents/config";
 import { recordGenerationVersion } from "@/lib/generations";
 import { projectNeedsDiscovery } from "@/lib/projects";
+import { parseChallengeDayList } from "@/lib/ai/challengeDays";
 import type { GenerationMode } from "@/types/database";
 
 export const runtime = "nodejs";
@@ -49,6 +50,17 @@ const requestSchema = z.object({
   // recent for this project." Omitted means that old implicit behavior, for backward
   // compatibility with any caller that doesn't pass it. Ignored by every other generator.
   sourceGenerationId: z.string().uuid().optional(),
+  // Challenge Outline's own per-generation length choice (3 or 5 days) — loosely validated here
+  // the same way courseLevel is, since an unrecognized value just falls back to a sensible
+  // default inside ASSET_GENERATORS.challenge_outline's buildPrompt. Ignored by every other
+  // generator.
+  challengeLength: z.string().optional(),
+  // Build Day Slides' required "which day" input — checked for real below (the challenge outline
+  // must actually contain a day matching this). Ignored by every other generator.
+  dayIdentifier: z.string().max(200).optional(),
+  // Build Day Slides only — whether THIS day's deck should include the pitch/offer slides (see
+  // challengeDaySlides.ts). Ignored by every other generator.
+  includePitch: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -66,15 +78,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { projectId, assetType, mode, courseLevel, customNaming, moduleIdentifier, sourceGenerationId } = parsed.data as {
-    projectId: string;
-    assetType: keyof typeof ASSET_GENERATORS;
-    mode: GenerationMode;
-    courseLevel?: string;
-    customNaming?: string;
-    moduleIdentifier?: string;
-    sourceGenerationId?: string;
-  };
+  const { projectId, assetType, mode, courseLevel, customNaming, moduleIdentifier, sourceGenerationId, challengeLength, dayIdentifier, includePitch } =
+    parsed.data as {
+      projectId: string;
+      assetType: keyof typeof ASSET_GENERATORS;
+      mode: GenerationMode;
+      courseLevel?: string;
+      customNaming?: string;
+      moduleIdentifier?: string;
+      sourceGenerationId?: string;
+      challengeLength?: string;
+      dayIdentifier?: string;
+      includePitch?: boolean;
+    };
 
   const generator = ASSET_GENERATORS[assetType];
 
@@ -216,6 +232,37 @@ export async function POST(req: NextRequest) {
     courseOutlineFullContent = outline.content;
   }
 
+  // Build Day Slides needs (a) which day to build for, and (b) the FULL text of an already-
+  // complete Challenge Outline to find that day inside — same reasoning as the module-scoped
+  // block above, kept separate since the source asset type and error copy both differ.
+  let challengeOutlineFullContent: string | undefined;
+  let isFinalDay = false;
+  if (assetType === "challenge_day_slides") {
+    if (!dayIdentifier?.trim()) {
+      return NextResponse.json({ error: "Say which day to build slides for first." }, { status: 400 });
+    }
+    const { data: outline } = await supabase
+      .from("generations")
+      .select("content")
+      .eq("project_id", projectId)
+      .eq("asset_type", "challenge_outline")
+      .eq("status", "complete")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!outline?.content) {
+      return NextResponse.json(
+        { error: "Generate your Challenge Outline first — Build Day Slides needs the actual challenge structure to build from." },
+        { status: 400 }
+      );
+    }
+    challengeOutlineFullContent = outline.content;
+    const days = parseChallengeDayList(outline.content);
+    const dayNumber = Number(dayIdentifier.match(/day\s+(\d+)/i)?.[1]);
+    const maxDay = days.length ? Math.max(...days.map((d) => d.number)) : undefined;
+    isFinalDay = Number.isFinite(dayNumber) && dayNumber === maxDay;
+  }
+
   // Persist whatever's currently in the "name the course/modules yourself" box back onto the
   // project itself — a course's own name is routinely different from whatever webinar/offer it's
   // based on, and retyping it on every single Regenerate (the previous behavior) was the reported
@@ -250,8 +297,11 @@ export async function POST(req: NextRequest) {
       // Persisted (not just used transiently to build the prompt) so a module-scoped generation
       // can be labeled with which module it was for later — see Agent Cora's Completed Courses
       // section (0039_course_completed.sql). Null for every other asset type, course_outline
-      // included (a course has one outline, not one per module).
-      module_identifier: moduleScoped ? moduleIdentifier : null,
+      // included (a course has one outline, not one per module). Build Day Slides reuses this
+      // same column for which day it was built for, rather than a second dedicated column — it's
+      // already a generic "which sub-unit was this for" field, and every existing consumer
+      // (Past generations list, VersionHistory) already just displays it as-is.
+      module_identifier: moduleScoped ? moduleIdentifier : assetType === "challenge_day_slides" ? dayIdentifier : null,
       // Persists exactly which ppt_outline deck this script was written for (see
       // 0043_webinar_script_source.sql) — always recorded, even when sourceGenerationId wasn't
       // explicitly passed, so every future consumer (export, Copy for Gamma, the slide preview)
@@ -301,6 +351,11 @@ export async function POST(req: NextRequest) {
       moduleIdentifier,
       courseOutlineFullContent,
       sourceDeckContent: webinarScriptSourceDeck?.content,
+      challengeLength,
+      dayIdentifier,
+      challengeOutlineFullContent,
+      includePitch,
+      isFinalDay,
     });
 
     const result = await generateCompleteAsset(
