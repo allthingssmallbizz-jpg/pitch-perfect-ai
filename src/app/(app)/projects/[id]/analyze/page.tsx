@@ -62,6 +62,14 @@ export default async function AnalyzePage({
       </p>
 
       <AnalyzeClient
+        // Without a key, navigating client-side between two projects' Analyze pages (e.g. right
+        // after duplicating one, to compare them) reuses this component instance instead of
+        // remounting it — its content/generationId state (useState(initialContent) etc.) only
+        // ever runs its initializer once, so it would keep whatever the previously-open project
+        // had, and autosave would then overwrite THAT project's generation using its stale,
+        // carried-over id instead of the one actually on screen now. Same fix as GenerateClient's
+        // own key in generate/[assetType]/page.tsx.
+        key={`${id}:${initialGenerationId ?? "new"}`}
         projectId={id}
         initialContent={initialContent}
         initialGenerationId={initialGenerationId}

@@ -180,7 +180,15 @@ export default async function ProjectPage({
               <span className="font-medium text-foreground">{intentAgent.name}</span>.
             </p>
           )}
-          <DiscoveryEntry project={project} redirectTo={intentHref} discoveryComplete={discoveryComplete} />
+          {/* Keyed by project id so navigating client-side between two projects' overview pages
+              (duplicating one and landing here, or switching projects via the sidebar) remounts
+              this instead of reusing the instance with the previous project's now-stale
+              uncontrolled form field values (defaultValue only applies at mount) still showing on
+              screen under the new project's own id. Same family of bug as GenerateClient's own
+              key in generate/[assetType]/page.tsx, just surfacing as stale displayed text here
+              rather than a misdirected save, since this form's own hidden projectId field is
+              controlled off the fresh prop either way. */}
+          <DiscoveryEntry key={project.id} project={project} redirectTo={intentHref} discoveryComplete={discoveryComplete} />
         </div>
 
         <div className="lg:col-span-3">

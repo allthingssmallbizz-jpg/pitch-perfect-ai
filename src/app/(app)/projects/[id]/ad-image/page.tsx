@@ -139,7 +139,13 @@ export default async function AdImagePage({
       </p>
 
       <AdImageClient
-        key={generationId ?? "new"}
+        // Project id is part of the key too, not just the generation id — see the identical
+        // comment on GenerateClient's own key in generate/[assetType]/page.tsx. Without it,
+        // opening Ad Images on a freshly duplicated project (which starts with none generated,
+        // same as the original before its first one) reused the original's already-mounted
+        // component instance instead of remounting, so edits could autosave over the original's
+        // generation via its stale, carried-over id instead of the copy's.
+        key={`${id}:${generationId ?? "new"}`}
         projectId={id}
         initial={initial}
         initialPastGenerations={pastGenerations}

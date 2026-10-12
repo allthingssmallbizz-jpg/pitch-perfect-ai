@@ -413,7 +413,13 @@ export default async function GenerateAssetPage({
         // to a different generation via the "Past generations" list only ever changes the URL,
         // since useState(initialContent) etc. don't re-run their initializer on a prop change
         // alone. Same fix already applied to HeadlineLabClient for the identical symptom.
-        key={initialGenerationId ?? "new"}
+        // Project id is part of the key too, not just the generation id — reported: duplicating a
+        // project, then opening the SAME asset type on both the original and the copy (common
+        // right after duplicating, to compare them) landed on the same "new" key whenever neither
+        // had a generation yet, so navigating between them client-side reused the component
+        // instance instead of remounting — edits then autosaved using the stale generationId left
+        // over from whichever project was open first, silently overwriting it instead of the copy.
+        key={`${id}:${initialGenerationId ?? "new"}`}
         projectId={id}
         assetType={generator.assetType}
         generatorLabel={generator.label}
