@@ -44,7 +44,7 @@ Attention → Curiosity → Understanding → Belief → Confidence → Commitme
 21. Guarantee — transfer risk from buyer to seller
 22. Scarcity — the Fast Action Bonus (reserved for whoever acts fastest, revealed right after the price — never part of Stage 19's own stack/total) if one exists, plus other authentic limitations
 23. Urgency — why delay costs more than action, tied to the Fast Action Bonus's own qualifying condition when one was given
-24. Call To Action — one clear, simple next step
+24. Call To Action — opens with a required Two Paths beat (never skipped, never folded into Stage 21's guarantee or Stage 22-23's urgency): lay out two explicit paths forward — path one, take everything just taught and go try to implement it alone (a genuinely valid choice); path two, work with the presenter/the presenter's team instead, who has already walked this exact path and knows the real blueprint, putting the audience in the strongest position to actually get the result faster and with less trial and error — only then, one clear, simple next step
 25. Reinforcement Close — final reminder of the transformation ahead
 
 ## Three types of resistance to resolve (never attack — resolve naturally before asked)

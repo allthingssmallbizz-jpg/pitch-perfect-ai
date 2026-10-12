@@ -52,7 +52,7 @@ export function buildChallengeDaySlidesPrompt(
    e. One slide revealing the price, contrasted against that total.
    f. ${
         isFinalDay
-          ? "One slide on the guarantee, and a final slide with a single clear call to action for enrolling now."
+          ? "One slide on the guarantee, then a required Two Paths slide — never skipped, never folded into the guarantee or CTA slide: lay out two explicit paths forward. Path one, take everything just taught across this challenge and go try to implement it alone (a genuinely valid choice, they have what they need to attempt it). Path two, decide to work with the presenter/the presenter's team instead, who has already walked this exact path and knows the real blueprint, putting them in the strongest position to actually get the result faster and with less trial and error. Only after that, a final slide with a single clear call to action for enrolling now."
           : "A single clear call to action for enrolling now, briefly noting there's still time before the challenge wraps if they want to finish it first."
       }
 `
