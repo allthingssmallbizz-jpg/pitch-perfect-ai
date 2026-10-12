@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   }
   if (!PPTX_EXPORTABLE_ASSET_TYPES.includes(generation.asset_type)) {
     return NextResponse.json(
-      { error: "Slide export is only available for Your Signature Webinar decks, Course Module Slides, and Build Day Slides." },
+      { error: "Slide export is only available for Your Signature Webinar decks, Course Module Slides, and Build Challenge Day Slides." },
       { status: 400 }
     );
   }

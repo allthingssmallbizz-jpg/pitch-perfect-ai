@@ -20,9 +20,10 @@ import { parseVideoEmbedUrl, upsertVideoEmbed, removeVideoEmbed } from "@/lib/vi
 // directly so Your Signature Webinar (Polly) picks up the change, instead of backing all the way
 // out to Discovery for a small wording fix. VSL Script (Agent Vicky) followed the same way —
 // fixing a line that still narrates its own structure, or any other small wording issue, without
-// a full Regenerate. Build Day Slides (Agent Casey) followed the same reasoning as Cora's three
-// module-scoped tools — fixing a wrong speaker note or beat on one day's deck without a full
-// Regenerate.
+// a full Regenerate. Challenge Outline and Build Challenge Day Slides (Agent Casey) followed the
+// same reasoning — Challenge Outline like Webinar Outline/Course Outline (its own root asset
+// other builds read from), Build Challenge Day Slides like Cora's three module-scoped tools
+// (fixing a wrong speaker note or beat on one day's deck without a full Regenerate).
 const TEXT_EDITABLE_ASSET_TYPES = [
   "course_outline",
   "webinar_outline",
@@ -30,6 +31,7 @@ const TEXT_EDITABLE_ASSET_TYPES = [
   "course_module_slides",
   "course_module_quiz",
   "course_module_workbook",
+  "challenge_outline",
   "challenge_day_slides",
 ];
 

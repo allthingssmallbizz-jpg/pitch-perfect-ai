@@ -252,7 +252,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
     if (!outline?.content) {
       return NextResponse.json(
-        { error: "Generate your Challenge Outline first — Build Day Slides needs the actual challenge structure to build from." },
+        { error: "Generate your Challenge Outline first — Build Challenge Day Slides needs the actual challenge structure to build from." },
         { status: 400 }
       );
     }

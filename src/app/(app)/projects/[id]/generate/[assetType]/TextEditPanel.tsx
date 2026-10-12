@@ -35,6 +35,7 @@ const CONTENT_LABELS: Partial<Record<AssetType, string>> = {
   course_module_slides: "module's slides",
   course_module_quiz: "module's quiz",
   course_module_workbook: "module's workbook",
+  challenge_outline: "challenge outline",
   challenge_day_slides: "day's slides",
 };
 
@@ -45,6 +46,7 @@ const PLACEHOLDERS: Partial<Record<AssetType, string>> = {
   course_module_slides: `e.g. "Rewrite the speaker notes on Slide 7 to explain the pricing objection" or "Add a slide after Slide 10 covering follow-up emails" or "Fix the bullet on Slide 4, it's inaccurate"`,
   course_module_quiz: `e.g. "Add a question about handling the pricing objection" or "Fix the answer key for question 3" or "Remove question 5, it doesn't fit this module"`,
   course_module_workbook: `e.g. "Add a reflection prompt after Lesson 2" or "Fix the completion checklist at the end" or "Make the pricing worksheet more specific"`,
+  challenge_outline: `e.g. "Change the daily action on Day 2 to something simpler" or "Make Day 4 the pitch day instead of Day 5" or "Add a leaderboard to the engagement mechanics section"`,
   challenge_day_slides: `e.g. "Rewrite the speaker notes on Slide 5 to teach the daily action more clearly" or "Add a slide expanding on the belief shift" or "Make the pitch slides less salesy"`,
 };
 
@@ -59,6 +61,8 @@ const PERMANENCE_HINTS: Partial<Record<AssetType, string>> = {
     " For a change you want to stick permanently (and also show up when you build or rebuild Your Signature Webinar from this), add it to this project's Discovery Notes instead.",
   vsl_script:
     " For a change you want to stick permanently, add it to this project's Discovery Notes instead — Regenerate starts this script over fresh from Discovery, so a one-off edit here wouldn't carry forward either way.",
+  challenge_outline:
+    " For a change you want to stick permanently (and also show up in every day's slides you build from this), add it to this project's Discovery Notes instead.",
   challenge_day_slides:
     " If you want a change to also apply the next time you rebuild this day from scratch, update the Challenge Outline itself too — this only fixes the copy you already have.",
 };

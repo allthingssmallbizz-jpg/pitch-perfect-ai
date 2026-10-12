@@ -223,7 +223,7 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
   },
   challenge_day_slides: {
     assetType: "challenge_day_slides",
-    label: "Build Day Slides",
+    label: "Build Challenge Day Slides",
     description: "Turns one day of an existing Challenge Outline into a real, presentable slide-by-slide session deck — with a pitch option for Day 4/5.",
     creditCost: CHALLENGE_DAY_SLIDES_CREDIT_COST,
     maxOutputTokens: CHALLENGE_DAY_SLIDES_MAX_OUTPUT_TOKENS,

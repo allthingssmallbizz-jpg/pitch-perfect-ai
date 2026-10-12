@@ -108,7 +108,7 @@ const CREATE_LABELS: Record<CreateAssetType, string> = {
   course_module_slides: "Module Slides",
   course_module_quiz: "Module Quiz",
   course_module_workbook: "Module Workbook",
-  challenge_day_slides: "Day Slides",
+  challenge_day_slides: "Challenge Day Slides",
 };
 
 // The same robot-mascot avatar AgentBadge uses elsewhere (see getAgentAvatarDataUri), just at

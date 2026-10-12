@@ -424,7 +424,7 @@ export default async function GenerateAssetPage({
               className="flex items-center gap-1.5 rounded-full bg-red-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-500"
             >
               <MonitorPlay className="h-3.5 w-3.5" />
-              Build Day Slides
+              Build Challenge Day Slides
             </Link>
           )}
         </div>
