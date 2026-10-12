@@ -1,5 +1,6 @@
 import type { Project } from "@/types/database";
 import { formatDiscoveryBlock, formatPriorGenerationsBlock, type PriorGeneration } from "./shared";
+import { parseChallengeDayList } from "../challengeDays";
 
 export const CHALLENGE_CREDIT_COST = 3;
 export const CHALLENGE_MAX_OUTPUT_TOKENS = 5000;
@@ -9,6 +10,24 @@ export type ChallengeLength = (typeof CHALLENGE_LENGTHS)[number];
 export function isChallengeLength(value: string): value is ChallengeLength {
   return (CHALLENGE_LENGTHS as readonly string[]).includes(value);
 }
+
+// Reported: a member asked for a 5-day challenge and got only 4 — Claude had judged itself
+// "done" a day short (stop_reason "end_turn", not "max_tokens"), the same class of failure
+// PPT Outline's own PPT_OUTLINE_MIN_ACCEPTABLE_SLIDES catches for a fixed slide-count floor.
+// This can't use a fixed floor the same way, though — a genuinely finished 3-day challenge
+// must never be flagged incomplete just for having fewer than 5 days. So this checks the
+// ACTUAL requested length (extra.challengeLength, the same value buildChallengeOutlinePrompt
+// above was given) against how many of parseChallengeDayList's real, numbered days actually
+// came back, rather than any one fixed number. Falls back to treating a missing/unrecognized
+// challengeLength as "5" — the prompt's own default — so this still catches a bare "it stopped
+// early" even on a request that somehow arrives without it.
+export function isChallengeOutlineIncomplete(content: string, extra?: { challengeLength?: string }): boolean {
+  const requested = Number(extra?.challengeLength && isChallengeLength(extra.challengeLength) ? extra.challengeLength : "5");
+  return parseChallengeDayList(content).length < requested;
+}
+
+export const CHALLENGE_OUTLINE_CONTINUATION_HINT =
+  "You stopped short of the full requested challenge length — at least one day is still missing. Keep writing through the remaining day(s) with the exact same `Day #: Theme` heading format and the same depth (teaching beat, daily action, engagement prompt, belief being built) as every day already written, then the final day's pitch section and the engagement mechanics section if you haven't reached those yet.";
 
 // The other classic engagement-funnel format alongside a Webinar or VSL: a free multi-day
 // "challenge" that delivers a real quick win each day, builds a habit of showing up, and pitches

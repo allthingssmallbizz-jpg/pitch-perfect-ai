@@ -345,7 +345,7 @@ export async function POST(req: NextRequest) {
       priorGenerations.push({ assetType: row.asset_type, content: row.content! });
     }
 
-    const userPrompt = generator.buildPrompt(project, priorGenerations, {
+    const generatorExtra = {
       courseLevel,
       customNaming,
       moduleIdentifier,
@@ -356,15 +356,21 @@ export async function POST(req: NextRequest) {
       challengeOutlineFullContent,
       includePitch,
       isFinalDay,
-    });
+    };
+    const userPrompt = generator.buildPrompt(project, priorGenerations, generatorExtra);
 
+    // Threaded through explicitly (not just `generator.isOutputIncomplete` by itself) so a check
+    // like Challenge Outline's own — "did this actually produce the number of days that was
+    // REQUESTED" — can see that request (generatorExtra.challengeLength) instead of only the
+    // generated content. See isChallengeOutlineIncomplete's own comment for the real failure
+    // (a 5-day request coming back with only 4 days) this exists to catch.
     const result = await generateCompleteAsset(
       systemPrompt,
       userPrompt,
       generator.maxOutputTokens,
       undefined,
       undefined,
-      generator.isOutputIncomplete,
+      (content) => generator.isOutputIncomplete?.(content, generatorExtra) ?? false,
       generator.continuationHint
     );
 

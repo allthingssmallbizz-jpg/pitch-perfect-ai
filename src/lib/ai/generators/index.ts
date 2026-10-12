@@ -20,6 +20,8 @@ import {
   CHALLENGE_CREDIT_COST,
   CHALLENGE_MAX_OUTPUT_TOKENS,
   isChallengeLength,
+  isChallengeOutlineIncomplete,
+  CHALLENGE_OUTLINE_CONTINUATION_HINT,
 } from "./challengeOutline";
 import {
   buildChallengeDaySlidesPrompt,
@@ -129,7 +131,11 @@ export interface AssetGenerator {
   // for a generator with a hard, checkable length requirement the prompt alone can't reliably
   // enforce (PPT Outline's 60-90 slides), this catches Claude stopping on its own well short of
   // that instead of only catching a hard max_tokens cutoff. Most generators don't need this.
-  isOutputIncomplete?: (content: string) => boolean;
+  // `extra` is the same object buildPrompt above gets — Challenge Outline's own check needs it to
+  // know how many days were actually REQUESTED (challengeLength), not just some fixed floor,
+  // since "stopped one day short of a 5-day challenge" isn't detectable any other way. Every
+  // other generator's existing check ignores the second param entirely.
+  isOutputIncomplete?: (content: string, extra?: BuildPromptExtra) => boolean;
   continuationHint?: string;
 }
 
@@ -220,6 +226,8 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
         priorGenerations,
         extra?.challengeLength && isChallengeLength(extra.challengeLength) ? extra.challengeLength : undefined
       ),
+    isOutputIncomplete: isChallengeOutlineIncomplete,
+    continuationHint: CHALLENGE_OUTLINE_CONTINUATION_HINT,
   },
   challenge_day_slides: {
     assetType: "challenge_day_slides",
