@@ -203,11 +203,25 @@ export default function TtsPlayer({
     setStatus("loading");
     setFloaterOpen(true);
 
+    // Reported: between chunks, playback would go dead silent for 30-60 seconds before the next
+    // part started — most noticeable listening with the screen off (a member specifically
+    // mentioned listening in the car), where a backgrounded tab is exactly when a fetch this
+    // slow is most likely. The old loop never started fetching chunk i+1 until chunk i's audio
+    // had already finished playing, so 100% of that next chunk's real OpenAI TTS synthesis time
+    // landed as dead air the member just sat through — easy to mistake for "it cut off the last
+    // word and froze," since the next chunk picks up again once it finally arrives. Kicking off
+    // chunk i+1's fetch the moment chunk i starts playing instead gives it the entire length of
+    // that playback (often a minute or more) to finish in the background, so by the time chunk i
+    // actually ends, i+1 is usually already sitting there ready to play immediately.
+    let prefetched: { index: number; promise: Promise<Blob> } | null = null;
+
     for (let i = startIdx; i < chunks.length; i++) {
       if (stoppedRef.current) return;
       setIndex(i);
       try {
-        const blob = await fetchChunk(chunks[i]);
+        const blob =
+          prefetched && prefetched.index === i ? await prefetched.promise : await fetchChunk(chunks[i]);
+        prefetched = null;
         if (stoppedRef.current) return;
 
         if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
@@ -219,6 +233,19 @@ export default function TtsPlayer({
         audio.src = url;
 
         setStatus("playing");
+
+        // Fire-and-forget: resolved/rejected later, right when the loop actually reaches i + 1 —
+        // a rejection here (a network error during the prefetch) surfaces through that same
+        // try/catch below exactly like today's "fetch right before playing" failure does, just
+        // deferred rather than silently swallowed. The extra no-op .catch() only stops the
+        // browser logging an "unhandled rejection" for the in-between case where this chunk never
+        // actually gets reached at all (Stop/Pause-and-walk-away while this one's still playing)
+        // — the real await below still sees and handles the same rejection either way.
+        if (i + 1 < chunks.length) {
+          const promise = fetchChunk(chunks[i + 1]);
+          promise.catch(() => {});
+          prefetched = { index: i + 1, promise };
+        }
 
         const tokens = tokenizeWithOffsets(chunks[i]);
         const totalChars = chunks[i].length || 1;
