@@ -83,6 +83,22 @@ function stripSlideSelfReferences(text: string): string {
     .trim();
 }
 
+// Reported: Read Aloud was literally saying the words "Speaker notes" before reading the note
+// itself. parsePptOutline (pptxParser.ts) normally strips that field's own label line entirely —
+// but its fallback path for a label that drifted from the exact expected shape (an extra word, no
+// colon, wrapped differently) routes the WHOLE line through looksLikeSpokenProse instead, and a
+// long enough label can read as prose and get absorbed into `.notes` label text and all, exactly
+// the same class of "the structural scaffolding leaked into the spoken content" bug this whole
+// file exists to catch. Defensive, not a fix to the parser itself (which plenty else — the real
+// .pptx export, the slide preview — also depends on and shouldn't be touched speculatively):
+// strips a leading field-label fragment straight off the extracted text before it's ever spoken.
+const FIELD_LABEL_PREFIX =
+  /^\s*\*{0,2}\s*(?:speaker'?s?\s+notes|on-?slide\s+content)\*{0,2}\s*(?:\([^)]*\))?\s*[:.\-–]?\s*/i;
+
+function stripLeadingFieldLabel(text: string): string {
+  return text.replace(FIELD_LABEL_PREFIX, "").trim();
+}
+
 // Reported need: Read Aloud on Your Signature Webinar should work as a rehearsal/practice mode —
 // hearing just the title and speaker notes of each slide, back to back, is what actually sounds
 // like a presenter running through the talk, since the on-slide bullets are what the AUDIENCE
@@ -92,7 +108,11 @@ function stripSlideSelfReferences(text: string): string {
 // identical either way. Bullets are dropped entirely, on purpose.
 function extractSlideTitlesAndNotes(markdown: string): string {
   return parsePptOutline(markdown)
-    .map((slide) => stripSlideSelfReferences([slide.title, slide.notes].filter((part) => part.trim()).join(". ")))
+    .map((slide) => {
+      const title = stripLeadingFieldLabel(slide.title);
+      const notes = stripLeadingFieldLabel(slide.notes);
+      return stripSlideSelfReferences([title, notes].filter((part) => part.trim()).join(". "));
+    })
     .filter((part) => part.trim())
     .join("\n\n");
 }
