@@ -61,25 +61,32 @@ export function stripMarkdownSyntax(md: string): string {
 
 // Reported: with the practice-mode reduction below, listening still occasionally caught a
 // speaker note announcing its own place in the deck — "slide 13," "slide 13 through 14,"
-// "moving on to the next slide" — something no real presenter actually says out loud live; it's
-// planning language, the same class of self-reference webinarScript.ts's own prompt already
-// bans in its spoken script. pptOutline.ts's own (much shorter) speaker-notes instruction now
-// bans it too, but this is the defensive half of that fix: it catches the stray reference any
-// already-generated deck still has, or a future one that drifts from the instruction anyway,
-// without needing a Regenerate first. "slide(s)" is specific enough to this exact context that
-// stripping it is never going to collide with genuine unrelated spoken content.
+// "moving on to the next slide," and (reported separately, same root cause) "Phase 1," "Phase
+// 2" — something no real presenter actually says out loud live; it's planning language, the
+// same class of self-reference webinarScript.ts's own prompt already bans in its spoken script.
+// pptOutline.ts's own speaker-notes instruction now bans all of this too, but this is the
+// defensive half of that fix: it catches the stray reference any already-generated deck still
+// has, or a future one that drifts from the instruction anyway, without needing a Regenerate
+// first. "slide(s)"/"phase" are specific enough to this exact context that stripping them is
+// never going to collide with genuine unrelated spoken content — unlike "day"/"module"/"part",
+// which real marketing copy says all the time ("by day 30," "part two of your results"), so
+// those PPWOS/PPSOS-style labels are deliberately NOT included here despite being the same kind
+// of structural term elsewhere in this app (see SECTION_HEADING in pptxParser.ts).
 const SLIDE_NUMBER_REFERENCE = /\bslides?\s*#?\s*\d+\s*(?:(?:through|to|and)\s*\d+|[-–—]\s*\d+)?\b/gi;
+const PHASE_NUMBER_REFERENCE = /\bphase\s*#?\s*\d+\s*(?:(?:through|to|and)\s*\d+|[-–—]\s*\d+)?\b/gi;
 const NEXT_OR_THIS_SLIDE_PHRASE =
   /\b(?:(?:let'?s\s+)?(?:move|moving|moves|go(?:ing)?)\s+(?:on\s+)?to\s+)?(?:the\s+)?next\s+slide\b|\bon\s+this\s+slide\b/gi;
 
-function stripSlideSelfReferences(text: string): string {
+function stripStructuralSelfReferences(text: string): string {
   return text
     .replace(SLIDE_NUMBER_REFERENCE, "")
+    .replace(PHASE_NUMBER_REFERENCE, "")
     .replace(NEXT_OR_THIS_SLIDE_PHRASE, "")
     .replace(/[ \t]{2,}/g, " ")
     .replace(/\s+([.,!?])/g, "$1")
     .replace(/([.,!?])[ \t]*[.,]+/g, "$1")
     .replace(/^[ \t]*[.,]\s*/gm, "")
+    .replace(/^[ \t]*[-–—]\s*/gm, "")
     .trim();
 }
 
@@ -111,7 +118,7 @@ function extractSlideTitlesAndNotes(markdown: string): string {
     .map((slide) => {
       const title = stripLeadingFieldLabel(slide.title);
       const notes = stripLeadingFieldLabel(slide.notes);
-      return stripSlideSelfReferences([title, notes].filter((part) => part.trim()).join(". "));
+      return stripStructuralSelfReferences([title, notes].filter((part) => part.trim()).join(". "));
     })
     .filter((part) => part.trim())
     .join("\n\n");
