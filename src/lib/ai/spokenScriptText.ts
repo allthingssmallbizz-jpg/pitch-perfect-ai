@@ -59,6 +59,30 @@ export function stripMarkdownSyntax(md: string): string {
     .trim();
 }
 
+// Reported: with the practice-mode reduction below, listening still occasionally caught a
+// speaker note announcing its own place in the deck — "slide 13," "slide 13 through 14,"
+// "moving on to the next slide" — something no real presenter actually says out loud live; it's
+// planning language, the same class of self-reference webinarScript.ts's own prompt already
+// bans in its spoken script. pptOutline.ts's own (much shorter) speaker-notes instruction now
+// bans it too, but this is the defensive half of that fix: it catches the stray reference any
+// already-generated deck still has, or a future one that drifts from the instruction anyway,
+// without needing a Regenerate first. "slide(s)" is specific enough to this exact context that
+// stripping it is never going to collide with genuine unrelated spoken content.
+const SLIDE_NUMBER_REFERENCE = /\bslides?\s*#?\s*\d+\s*(?:(?:through|to|and)\s*\d+|[-–—]\s*\d+)?\b/gi;
+const NEXT_OR_THIS_SLIDE_PHRASE =
+  /\b(?:(?:let'?s\s+)?(?:move|moving|moves|go(?:ing)?)\s+(?:on\s+)?to\s+)?(?:the\s+)?next\s+slide\b|\bon\s+this\s+slide\b/gi;
+
+function stripSlideSelfReferences(text: string): string {
+  return text
+    .replace(SLIDE_NUMBER_REFERENCE, "")
+    .replace(NEXT_OR_THIS_SLIDE_PHRASE, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\s+([.,!?])/g, "$1")
+    .replace(/([.,!?])[ \t]*[.,]+/g, "$1")
+    .replace(/^[ \t]*[.,]\s*/gm, "")
+    .trim();
+}
+
 // Reported need: Read Aloud on Your Signature Webinar should work as a rehearsal/practice mode —
 // hearing just the title and speaker notes of each slide, back to back, is what actually sounds
 // like a presenter running through the talk, since the on-slide bullets are what the AUDIENCE
@@ -68,7 +92,7 @@ export function stripMarkdownSyntax(md: string): string {
 // identical either way. Bullets are dropped entirely, on purpose.
 function extractSlideTitlesAndNotes(markdown: string): string {
   return parsePptOutline(markdown)
-    .map((slide) => [slide.title, slide.notes].filter((part) => part.trim()).join(". "))
+    .map((slide) => stripSlideSelfReferences([slide.title, slide.notes].filter((part) => part.trim()).join(". ")))
     .filter((part) => part.trim())
     .join("\n\n");
 }
