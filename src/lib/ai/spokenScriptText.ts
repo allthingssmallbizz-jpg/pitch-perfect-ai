@@ -1,4 +1,5 @@
 import type { AssetType } from "@/types/database";
+import { parsePptOutline } from "./pptxParser";
 
 // Turns a generated "word-for-word spoken script" asset's raw markdown into exactly what should
 // be spoken or pasted elsewhere — never the structural scaffolding that organizes the document
@@ -58,17 +59,34 @@ export function stripMarkdownSyntax(md: string): string {
     .trim();
 }
 
+// Reported need: Read Aloud on Your Signature Webinar should work as a rehearsal/practice mode —
+// hearing just the title and speaker notes of each slide, back to back, is what actually sounds
+// like a presenter running through the talk, since the on-slide bullets are what the AUDIENCE
+// reads off the screen, never something a presenter speaks out loud themselves. Reusing
+// parsePptOutline (the exact same parser the real .pptx export and the in-app slide preview
+// already rely on) rather than a second ad-hoc parser, since the deck's markdown shape is
+// identical either way. Bullets are dropped entirely, on purpose.
+function extractSlideTitlesAndNotes(markdown: string): string {
+  return parsePptOutline(markdown)
+    .map((slide) => [slide.title, slide.notes].filter((part) => part.trim()).join(". "))
+    .filter((part) => part.trim())
+    .join("\n\n");
+}
+
 // The single entry point Copy and Read Aloud both use. A no-op beyond stripMarkdownSyntax for
-// every asset type except the two real "word-for-word spoken script" formats, so every other
-// asset's Copy/Read Aloud behavior is completely unchanged. assetType is optional so callers with
-// no real AssetType to hand it (e.g. the Social Compare / Analyzer tools' own TtsPlayer uses)
-// don't need updating just to keep passing a type-check.
+// every asset type except the "word-for-word spoken script" formats and Your Signature Webinar's
+// own practice-mode reduction, so every other asset's Copy/Read Aloud behavior is completely
+// unchanged. assetType is optional so callers with no real AssetType to hand it (e.g. the Social
+// Compare / Analyzer tools' own TtsPlayer uses) don't need updating just to keep passing a
+// type-check.
 export function cleanSpokenScript(markdown: string, assetType?: AssetType): string {
   const withoutLabels =
     assetType === "vsl_script"
       ? stripVslBeatLabels(markdown)
       : assetType === "webinar_script"
         ? stripWebinarScriptSlideHeadings(markdown)
-        : markdown;
+        : assetType === "ppt_outline"
+          ? extractSlideTitlesAndNotes(markdown)
+          : markdown;
   return stripMarkdownSyntax(withoutLabels);
 }
