@@ -735,6 +735,9 @@ export default function GenerateClient({
     setGeneratingWebinarDeck(true);
     setElapsedSeconds(0);
     setError(null);
+    // Recorded before the request goes out so a dropped-connection recovery check below only
+    // ever matches the "ppt_outline" generation THIS call kicked off, never an older one.
+    const attemptStartedAt = new Date().toISOString();
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -742,18 +745,20 @@ export default function GenerateClient({
         body: JSON.stringify({ projectId, assetType: "ppt_outline", mode }),
       });
       const data = await res.json().catch(() => null);
-      // A response that isn't even valid JSON (data === null here) isn't a normal validation
-      // error — the route always returns JSON, success or failure. It means the platform cut the
-      // request off before the server could respond at all (most commonly a hosting-plan function
-      // time limit — a 60-90 slide deck can run past it — see the maxDuration comment in
-      // src/app/api/generate/route.ts), so say that plainly instead of a generic fallback that
-      // gives no clue what actually happened.
+      // A response that isn't even valid JSON (data === null here) means the connection dropped
+      // before a reply could arrive — that does NOT stop the generation server-side (see
+      // attemptRecovery/pollForRecovery above), so this checks whether it finished anyway
+      // instead of dead-ending on "retrying won't help."
       if (!data) {
-        throw new Error(
-          `The server didn't respond (HTTP ${res.status}) — this usually means the generation ran past your hosting plan's time limit for a single request.`
-        );
+        await recoverWebinarDeck(attemptStartedAt);
+        return;
       }
-      if (!res.ok) throw new Error(data.error || "Could not generate your webinar.");
+      if (!res.ok) {
+        const message = data.error || "Could not generate your webinar.";
+        toast.error(message);
+        setError(`Your signature webinar didn't finish generating: ${message} You were not charged credits — use the button above to try again.`);
+        return;
+      }
       // No longer an automatic router.push() the moment this resolves — a 60-90 slide deck can
       // take a few minutes, and a member demoing live needs to keep moving through the platform
       // during that wait, not get silently yanked to a different page later wherever they
@@ -782,19 +787,39 @@ export default function GenerateClient({
       // props around it) so that button appears right here the moment this succeeds, without
       // waiting on the toast at all.
       router.refresh();
-    } catch (e) {
-      // A toast alone isn't enough here — a 60-90 slide deck can take a few minutes, and if a
-      // member looks away during that wait (or the toast auto-dismisses), a toast-only error
-      // reads as total silence: the button just stops spinning with no visible reason, which is
-      // exactly what got reported as "it finished but never took me to the webinar." The banner
-      // below (shared with `run()`/save — see `{error && ...}` further down this page) stays on
-      // screen until they act, so a failed/timed-out request can never look identical to success.
-      const message = e instanceof Error ? e.message : "Could not generate your webinar.";
-      toast.error(message);
-      setError(`Your signature webinar didn't finish generating: ${message} You were not charged credits — use the button above to try again.`);
+    } catch {
+      // The fetch itself failed (connection dropped before any response at all) — same
+      // dropped-connection scenario as the `!data` case above, just surfacing as a thrown
+      // exception instead of an unparseable body depending on exactly when the connection died.
+      await recoverWebinarDeck(attemptStartedAt);
     } finally {
       setGeneratingWebinarDeck(false);
     }
+  }
+
+  // See pollForRecovery above — generateWebinarNow's own recovery check, scoped to the
+  // "ppt_outline" it just kicked off rather than this page's own assetType ("webinar_outline").
+  async function recoverWebinarDeck(startedAt: string) {
+    const result = await pollForRecovery("ppt_outline", startedAt);
+    if (result.status === "aborted") return;
+    if (result.status === "complete") {
+      toast.success("Your signature webinar is ready!", {
+        description: "Keep going with your demo — pick it up whenever you're ready.",
+        action: {
+          label: "View it",
+          onClick: () => router.push(`/projects/${projectId}/generate/ppt_outline?generationId=${result.generationId}`),
+        },
+        duration: 45000,
+      });
+      router.refresh();
+      return;
+    }
+    const message =
+      result.status === "failed"
+        ? result.error || "Generation failed."
+        : "Still couldn't confirm whether that finished after the connection dropped — check Past Generations in a minute, or try again.";
+    toast.error(message);
+    setError(`Your signature webinar didn't finish generating: ${message}${result.status === "failed" ? " You were not charged credits — use the button above to try again." : ""}`);
   }
 
   // Same chained-generation pattern one more time, one step further: Your Webinar (the slide
@@ -808,6 +833,7 @@ export default function GenerateClient({
     setGeneratingScript(true);
     setElapsedSeconds(0);
     setError(null);
+    const attemptStartedAt = new Date().toISOString();
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -819,14 +845,18 @@ export default function GenerateClient({
         body: JSON.stringify({ projectId, assetType: "webinar_script", mode, sourceGenerationId: generationId }),
       });
       const data = await res.json().catch(() => null);
-      // See generateWebinarNow above: a non-JSON response means the platform cut the request off
-      // before the server could reply at all, most commonly a hosting-plan function time limit.
+      // See generateWebinarNow/recoverWebinarDeck above — a non-JSON response means the
+      // connection dropped before a reply could arrive, not that the generation itself stopped.
       if (!data) {
-        throw new Error(
-          `The server didn't respond (HTTP ${res.status}) — this usually means the generation ran past your hosting plan's time limit for a single request.`
-        );
+        await recoverScript(attemptStartedAt);
+        return;
       }
-      if (!res.ok) throw new Error(data.error || "Could not create your script.");
+      if (!res.ok) {
+        const message = data.error || "Could not create your script.";
+        toast.error(message);
+        setError(`Your script didn't finish generating: ${message} You were not charged credits — use the button above to try again.`);
+        return;
+      }
       // See generateWebinarNow above — no forced navigate-away, just a toast reachable from
       // wherever the demo has since moved on to.
       toast.success("Your script is ready!", {
@@ -841,16 +871,36 @@ export default function GenerateClient({
       // matchingPage so the "View Agent Polly's Webinar Script" button appears right here on
       // this deck's own page the moment it's done, not only reachable through the toast.
       router.refresh();
-    } catch (e) {
-      // Same reasoning as generateWebinarNow above — a script for a 60-90 slide deck is another
-      // multi-minute generation, so a persistent banner (not just a toast) is what keeps a
-      // failed/timed-out request from looking identical to a completed one that simply didn't navigate.
-      const message = e instanceof Error ? e.message : "Could not create your script.";
-      toast.error(message);
-      setError(`Your script didn't finish generating: ${message} You were not charged credits — use the button above to try again.`);
+    } catch {
+      await recoverScript(attemptStartedAt);
     } finally {
       setGeneratingScript(false);
     }
+  }
+
+  // See pollForRecovery above — createScriptNow's own recovery check, scoped to the
+  // "webinar_script" it just kicked off rather than this page's own assetType ("ppt_outline").
+  async function recoverScript(startedAt: string) {
+    const result = await pollForRecovery("webinar_script", startedAt);
+    if (result.status === "aborted") return;
+    if (result.status === "complete") {
+      toast.success("Your script is ready!", {
+        description: "Keep going with your demo — pick it up whenever you're ready.",
+        action: {
+          label: "View it",
+          onClick: () => router.push(`/projects/${projectId}/generate/webinar_script?generationId=${result.generationId}`),
+        },
+        duration: 45000,
+      });
+      router.refresh();
+      return;
+    }
+    const message =
+      result.status === "failed"
+        ? result.error || "Generation failed."
+        : "Still couldn't confirm whether that finished after the connection dropped — check Past Generations in a minute, or try again.";
+    toast.error(message);
+    setError(`Your script didn't finish generating: ${message}${result.status === "failed" ? " You were not charged credits — use the button above to try again." : ""}`);
   }
 
   // Accepts an override so "Build the next module" (see below) can set moduleIdentifier and
@@ -997,44 +1047,68 @@ export default function GenerateClient({
   // and recovers it automatically — exactly as if the original response had just arrived late.
   // `loading` (and its elapsed-time counter) stays on through all of this on purpose: the member
   // should see this as still working, not as having failed and gone quiet.
-  async function attemptRecovery(startedAt: string) {
+  // Shared by attemptRecovery (below, for the main Generate/Regenerate flow) and the two chained
+  // "build the next asset" flows — generateWebinarNow and createScriptNow further down — which
+  // poll the SAME /api/generate/recover endpoint but for a DIFFERENT assetType than this page's
+  // own (e.g. this page is the Webinar Blueprint, but generateWebinarNow is waiting on a
+  // "ppt_outline" it just kicked off). Doesn't touch any UI state itself — callers decide what a
+  // completed/failed/timed-out/aborted result means for their own flow.
+  type RecoveryResult =
+    | { status: "complete"; generationId: string; content: string }
+    | { status: "failed"; error?: string }
+    | { status: "timeout" }
+    | { status: "aborted" };
+
+  async function pollForRecovery(targetAssetType: AssetType, startedAt: string): Promise<RecoveryResult> {
     const POLL_INTERVAL_MS = 10000;
     // ~4 minutes of polling — comfortably past the 300s server-side ceiling (see
     // src/app/api/generate/route.ts's maxDuration) a generation is allowed to actually run for.
     const MAX_ATTEMPTS = 24;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-      if (abortControllerRef.current?.signal.aborted) return;
+      if (abortControllerRef.current?.signal.aborted) return { status: "aborted" };
       try {
         const res = await fetch(
-          `/api/generate/recover?projectId=${encodeURIComponent(projectId)}&assetType=${encodeURIComponent(assetType)}&after=${encodeURIComponent(startedAt)}`
+          `/api/generate/recover?projectId=${encodeURIComponent(projectId)}&assetType=${encodeURIComponent(targetAssetType)}&after=${encodeURIComponent(startedAt)}`
         );
         const data = await res.json().catch(() => null);
         if (!data) continue;
         if (data.status === "complete" && typeof data.content === "string") {
-          if (mountedRef.current) {
-            setError(null);
-            applyGeneratedResult(data, moduleIdentifier);
-            toast.success(`${generatorLabel} finished in the background after the connection dropped!`);
-          } else {
-            toast.success(`${generatorLabel} is ready!`, {
-              description: "It finished in the background after your connection dropped earlier.",
-              action: { label: "View it", onClick: () => router.push(urlWithGeneration(data.generationId)) },
-              duration: 45000,
-            });
-          }
-          return;
+          return { status: "complete", generationId: data.generationId, content: data.content };
         }
         if (data.status === "failed") {
-          if (mountedRef.current) setError(data.error || "Generation failed.");
-          else toast.error(`${generatorLabel} didn't finish generating: ${data.error || "Generation failed."}`);
-          return;
+          return { status: "failed", error: data.error };
         }
         // "pending" (still genuinely in flight) or "not_found" (the request died before the
         // pending row was even created) — keep polling.
       } catch {
         // A transient hiccup checking status — try again next interval rather than giving up.
       }
+    }
+    return { status: "timeout" };
+  }
+
+  async function attemptRecovery(startedAt: string) {
+    const result = await pollForRecovery(assetType, startedAt);
+    if (result.status === "aborted") return;
+    if (result.status === "complete") {
+      if (mountedRef.current) {
+        setError(null);
+        applyGeneratedResult(result, moduleIdentifier);
+        toast.success(`${generatorLabel} finished in the background after the connection dropped!`);
+      } else {
+        toast.success(`${generatorLabel} is ready!`, {
+          description: "It finished in the background after your connection dropped earlier.",
+          action: { label: "View it", onClick: () => router.push(urlWithGeneration(result.generationId)) },
+          duration: 45000,
+        });
+      }
+      return;
+    }
+    if (result.status === "failed") {
+      if (mountedRef.current) setError(result.error || "Generation failed.");
+      else toast.error(`${generatorLabel} didn't finish generating: ${result.error || "Generation failed."}`);
+      return;
     }
     if (mountedRef.current) {
       setError(
