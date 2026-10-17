@@ -300,10 +300,12 @@ export default async function AdminPage({
       </div>
 
       <div className="card-elevated mb-8 rounded-2xl border-destructive/40 p-5">
-        <h2 className="font-display font-semibold">Before video analysis or long generations work reliably</h2>
+        <h2 className="font-display font-semibold">Before video analysis works reliably</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Deliberately not upgraded yet to avoid a monthly cost before launch — but this is no
-          longer just about video. Do these when you&apos;re ready:
+          <span className="font-medium text-foreground">Vercel Pro is done</span> — upgraded, so
+          the 300-second request ceiling the code already asks for (PPT Outline, video analysis,
+          any generation needing several sequential AI calls) now actually applies instead of
+          being capped at Hobby&apos;s hard 60 seconds. One left:
         </p>
         <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
           <li>
@@ -311,23 +313,7 @@ export default async function AdminPage({
             tier&apos;s 1GB storage and low upload-size limit will reject most videos. Settings →
             Storage → &quot;Upload file size limit&quot; needs raising after upgrading.
           </li>
-          <li>
-            <span className="font-medium text-foreground">Vercel Pro</span> (~$20/mo) — Free
-            (Hobby) tier caps a single generation request at 60 seconds, regardless of what the
-            code requests. Video analysis needs longer than that, and so does a genuinely large
-            text generation — the PPT outline&apos;s required 60-90 slides, or a 7-email sequence
-            that needs to auto-continue, can both take several sequential AI calls that add up to
-            more than 60 seconds. On the free tier, a generation that runs past that gets killed
-            mid-request: it looks like &quot;wrote nothing&quot; or &quot;didn&apos;t save&quot;
-            to the member, when what actually happened is the platform cut it off before it
-            could finish and record the result.
-          </li>
         </ul>
-        <p className="mt-3 text-xs text-muted-foreground">
-          Shorter generators (webinar outline, sales page, landing page, ad copy) usually finish
-          well under 60 seconds and are fine either way — it&apos;s specifically the PPT outline
-          and video analysis that need the longer ceiling Vercel Pro allows.
-        </p>
       </div>
 
       <div className="card-elevated mb-8 rounded-2xl p-5">
