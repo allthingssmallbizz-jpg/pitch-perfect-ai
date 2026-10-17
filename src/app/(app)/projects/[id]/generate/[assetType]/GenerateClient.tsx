@@ -878,6 +878,10 @@ export default function GenerateClient({
     previousGenerationRef.current = { content, generationId, publishSlug, publishedAt };
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
+    // Recorded before the request goes out so a dropped-connection recovery check (see
+    // attemptRecovery below) only ever matches a generation created by THIS attempt, never an
+    // older one already sitting in Past Generations.
+    const attemptStartedAt = new Date().toISOString();
     setLoading(true);
     setElapsedSeconds(0);
     setError(null);
@@ -899,17 +903,18 @@ export default function GenerateClient({
         signal: abortController.signal,
       });
       const data = await res.json().catch(() => null);
-      // A non-JSON response (data === null) means the platform cut the request off before the
-      // server could reply at all — /api/generate always returns JSON, success or failure — most
-      // commonly a hosting-plan function time limit (see the maxDuration comment in
-      // src/app/api/generate/route.ts). Previously this fell into the catch block below and
-      // showed a generic "Network error — try again," which repeats verbatim on every retry with
-      // no clue anything is actually wrong, let alone why — this used to be reported as the agent
-      // just refusing to generate anything.
+      // A non-JSON response (data === null) means the connection to our own server dropped
+      // before a reply could arrive — most commonly a laptop going to sleep mid-generation
+      // (closing the lid tears down the live connection), but could also be a hosting-plan
+      // function time limit (see the maxDuration comment in src/app/api/generate/route.ts).
+      // Either way, that does NOT stop the generation itself — it's already running
+      // server-side, independent of this one request's own connection staying open (the exact
+      // "it keeps running, you just stop watching" behavior stopGenerating already relies on
+      // below) — so this checks whether it actually finished anyway instead of immediately
+      // telling the member to Regenerate, which would risk stacking a second real generation on
+      // top of a first one that may well complete fine on its own.
       if (!data) {
-        const message = `The server didn't respond (HTTP ${res.status}) — this usually means the generation ran past your hosting plan's time limit for a single request. Retrying won't help until that's raised.`;
-        if (mountedRef.current) setError(message);
-        else toast.error(`${generatorLabel} didn't finish generating: ${message}`);
+        await attemptRecovery(attemptStartedAt);
         return;
       }
       if (!res.ok) {
@@ -925,35 +930,7 @@ export default function GenerateClient({
       // one, with nothing on screen to match it). Not mounted means the toast below is the
       // entire notification, not a supplement to it.
       if (mountedRef.current) {
-        setContent(data.content);
-        setTtsStartText(null);
-        setGenerationId(data.generationId);
-        // A brand-new generation has no edit applied to it yet — whatever was true of the
-        // previous one this just replaced no longer applies.
-        setHasAppliedEdit(false);
-        if (assetType === "webinar_outline") setWebinarPromptOpen(true);
-        if (assetType === "ppt_outline") setScriptPromptOpen(true);
-        // A fresh generation is a brand-new row — never already published under this id.
-        setPublishSlug(null);
-        setPublishedAt(null);
-        const previewSource = isWebPageAsset ? stripHtmlTags(String(data.content)) : String(data.content).replace(/\s+/g, " ").trim();
-        setPastGenerations((prev) => [
-          {
-            id: data.generationId,
-            createdAt: new Date().toISOString(),
-            preview: previewSource.slice(0, 120),
-            moduleIdentifier: MODULE_SCOPED_ASSET_TYPES.includes(assetType) ? effectiveModuleIdentifier.trim() || null : null,
-          },
-          ...prev,
-        ]);
-        // A plain browser History API call, not router.replace() — this page reads searchParams
-        // server-side, so router.replace() would force Next.js to re-fetch and re-render the
-        // whole server tree for the route right after we just set the freshly-generated content
-        // in local state, racing against it (and, worse, potentially racing the database write
-        // that just happened — a stale re-read could reflect the row before it finished saving).
-        // All this needs to do is update the address bar so a refresh doesn't lose track of which
-        // generation is showing; it doesn't need — and must not trigger — any re-render.
-        window.history.replaceState(null, "", urlWithGeneration(data.generationId));
+        applyGeneratedResult(data, effectiveModuleIdentifier);
       } else {
         toast.success(`${generatorLabel} is ready!`, {
           description: "Keep going with your demo — pick it up whenever you're ready.",
@@ -966,12 +943,103 @@ export default function GenerateClient({
       // nothing more to show here, and definitely not the generic "Network error" banner, which
       // would read as a real failure right on top of a deliberate cancel.
       if (e instanceof DOMException && e.name === "AbortError") return;
-      // A genuine network-level failure (not the non-JSON-response case above, which is handled
-      // separately) — still mounted gets the usual inline banner; already navigated away gets
-      // nothing further, since there's no finished result waiting for them to come back to.
-      if (mountedRef.current) setError("Network error — try again.");
+      // A genuine fetch-level failure (the request never even got a response to parse) — the
+      // same dropped-connection scenario as the !data case above, just surfacing as a thrown
+      // exception instead of an unparseable body depending on exactly when the connection died.
+      await attemptRecovery(attemptStartedAt);
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Applies a successful generation result to this page's own state — shared by run()'s normal,
+  // on-time response AND attemptRecovery's late one, so a result that only shows up because the
+  // member's connection dropped and later got checked for lands exactly the same way a result
+  // that arrived right on time would.
+  function applyGeneratedResult(data: { generationId: string; content: string }, moduleIdentifierUsed: string) {
+    setContent(data.content);
+    setTtsStartText(null);
+    setGenerationId(data.generationId);
+    // A brand-new generation has no edit applied to it yet — whatever was true of the
+    // previous one this just replaced no longer applies.
+    setHasAppliedEdit(false);
+    if (assetType === "webinar_outline") setWebinarPromptOpen(true);
+    if (assetType === "ppt_outline") setScriptPromptOpen(true);
+    // A fresh generation is a brand-new row — never already published under this id.
+    setPublishSlug(null);
+    setPublishedAt(null);
+    const previewSource = isWebPageAsset ? stripHtmlTags(String(data.content)) : String(data.content).replace(/\s+/g, " ").trim();
+    setPastGenerations((prev) => [
+      {
+        id: data.generationId,
+        createdAt: new Date().toISOString(),
+        preview: previewSource.slice(0, 120),
+        moduleIdentifier: MODULE_SCOPED_ASSET_TYPES.includes(assetType) ? moduleIdentifierUsed.trim() || null : null,
+      },
+      ...prev,
+    ]);
+    // A plain browser History API call, not router.replace() — this page reads searchParams
+    // server-side, so router.replace() would force Next.js to re-fetch and re-render the
+    // whole server tree for the route right after we just set the freshly-generated content
+    // in local state, racing against it (and, worse, potentially racing the database write
+    // that just happened — a stale re-read could reflect the row before it finished saving).
+    // All this needs to do is update the address bar so a refresh doesn't lose track of which
+    // generation is showing; it doesn't need — and must not trigger — any re-render.
+    window.history.replaceState(null, "", urlWithGeneration(data.generationId));
+  }
+
+  // Reported: a laptop going to sleep mid-generation drops the connection to /api/generate long
+  // before a response can arrive, surfacing as a dead-end error even though the generation kept
+  // running on the server the whole time — a serverless function's execution isn't tied to the
+  // original client connection staying open. Rather than tell the member to Regenerate (risking
+  // a second real generation stacked on top of a first that may well finish on its own), this
+  // polls for a few minutes to see whether THIS specific attempt's generation actually completed,
+  // and recovers it automatically — exactly as if the original response had just arrived late.
+  // `loading` (and its elapsed-time counter) stays on through all of this on purpose: the member
+  // should see this as still working, not as having failed and gone quiet.
+  async function attemptRecovery(startedAt: string) {
+    const POLL_INTERVAL_MS = 10000;
+    // ~4 minutes of polling — comfortably past the 300s server-side ceiling (see
+    // src/app/api/generate/route.ts's maxDuration) a generation is allowed to actually run for.
+    const MAX_ATTEMPTS = 24;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      if (abortControllerRef.current?.signal.aborted) return;
+      try {
+        const res = await fetch(
+          `/api/generate/recover?projectId=${encodeURIComponent(projectId)}&assetType=${encodeURIComponent(assetType)}&after=${encodeURIComponent(startedAt)}`
+        );
+        const data = await res.json().catch(() => null);
+        if (!data) continue;
+        if (data.status === "complete" && typeof data.content === "string") {
+          if (mountedRef.current) {
+            setError(null);
+            applyGeneratedResult(data, moduleIdentifier);
+            toast.success(`${generatorLabel} finished in the background after the connection dropped!`);
+          } else {
+            toast.success(`${generatorLabel} is ready!`, {
+              description: "It finished in the background after your connection dropped earlier.",
+              action: { label: "View it", onClick: () => router.push(urlWithGeneration(data.generationId)) },
+              duration: 45000,
+            });
+          }
+          return;
+        }
+        if (data.status === "failed") {
+          if (mountedRef.current) setError(data.error || "Generation failed.");
+          else toast.error(`${generatorLabel} didn't finish generating: ${data.error || "Generation failed."}`);
+          return;
+        }
+        // "pending" (still genuinely in flight) or "not_found" (the request died before the
+        // pending row was even created) — keep polling.
+      } catch {
+        // A transient hiccup checking status — try again next interval rather than giving up.
+      }
+    }
+    if (mountedRef.current) {
+      setError(
+        "Still couldn't confirm whether that finished after the connection dropped — check Past Generations below in a minute, or try Regenerate again."
+      );
     }
   }
 
