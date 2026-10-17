@@ -250,6 +250,7 @@ export async function duplicateProject(_prevState: unknown, formData: FormData) 
     scarcity_urgency: original.scarcity_urgency,
     cta: original.cta,
     funnel_type: original.funnel_type,
+    cta_url: original.cta_url,
     discovery_notes: original.discovery_notes,
     course_naming: original.course_naming,
     mode: original.mode,
@@ -446,6 +447,7 @@ export async function updateProjectDiscovery(_prevState: unknown, formData: Form
     scarcity_urgency: text("scarcity_urgency"),
     cta: text("cta"),
     funnel_type: text("funnel_type"),
+    cta_url: text("cta_url"),
     discovery_notes: text("discovery_notes"),
     mode: (formData.get("mode") === "coach" ? "coach" : "expert") as "coach" | "expert",
   };

@@ -134,6 +134,15 @@ export function formatDiscoveryBlock(project: Project): string {
     formatFastActionBonusBlock(project),
     field("Primary call to action", project.cta),
     field("Funnel type (what the CTA leads to)", getFunnelTypeLabel(project.funnel_type)),
+    // Reported need: a close ending in "click the link below" or "the link is in the chat" has
+    // nothing to click in a live or recorded presentation — there usually isn't an actual
+    // clickable link on screen the way there would be under a YouTube video or email. When this
+    // is filled in, every generator with a real call-to-action should say the exact URL out loud/
+    // on-screen, not gesture at a link that may not exist in that format. Never invent one when
+    // this is blank — fall back to the plain CTA text above instead ("go book your call now").
+    project.cta_url?.trim()
+      ? `CTA link (the real URL to send people to — state this EXACT link directly in the call-to-action, e.g. "go to ${project.cta_url.trim()} right now"): ${project.cta_url.trim()}`
+      : "CTA link: (not provided — do not invent one; the call-to-action should use the plain CTA text above instead, with no specific URL stated)",
     "",
     // This used to render as just one more labeled field among ~24 others ("Additional discovery
     // notes: ..."), indistinguishable from customer-voice flavor text like pain points or

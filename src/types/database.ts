@@ -185,6 +185,11 @@ export type Project = {
   // Which conversion pattern this offer's CTA actually leads to — drives the Thank You Page
   // generator's branching (see src/lib/funnelType.ts). Empty string means not yet chosen.
   funnel_type: string;
+  // The real destination link (checkout, booking, or registration page) the CTA above sends
+  // people to — read by every generator via formatDiscoveryBlock so a close can state the exact
+  // URL instead of a vague "click the link below," which has nothing to click in a live or
+  // recorded presentation. Optional free text, empty string means not provided.
+  cta_url: string;
   discovery_notes: string;
   // Agent Cora's persisted "name the course/modules yourself" override (see
   // courseOutline.ts buildCourseOutlinePrompt) — a course's own title/module names, distinct

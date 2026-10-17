@@ -81,4 +81,8 @@ export const FIELD_EDUCATION: Record<string, FieldEducation> = {
   cta: {
     why: "Every asset needs to end pointing at exactly one action. A vague or missing CTA is one of the most common reasons a page with great copy still doesn't convert — people rarely do the next right thing unless they're told exactly what it is.",
   },
+  cta_url: {
+    why: "In a live or recorded webinar, VSL, or challenge, there's usually nothing on screen to actually click — so a close that says \"click the link below\" leaves people with no idea where \"below\" even is. Give it the real link and every close says the exact URL out loud instead, the way a real presenter would read a link on screen.",
+    usedIn: "Your Signature Webinar, the Webinar Blueprint, VSL Script, and Challenge Outline/Build Day Slides closes.",
+  },
 };

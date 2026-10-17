@@ -819,6 +819,14 @@ export default function DiscoveryForm({
             ))}
           </select>
         </div>
+        <Field
+          label="CTA link (URL)"
+          name="cta_url"
+          defaultValue={project.cta_url}
+          textarea={false}
+          placeholder="e.g. https://yoursite.com/checkout"
+          hint="The actual checkout, booking, or registration page people click through to — no AI Assist here, since only you have the real link. Reported need: a close ending in 'click the link below' has nothing to click in a live or recorded presentation — give this the real link and every close (webinar, VSL, challenge) states it directly instead ('go to [this exact link] right now'). Leave blank if you'll paste the link into chat/comments yourself instead."
+        />
       </Section>
 
       <Field
