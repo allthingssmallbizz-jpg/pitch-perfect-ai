@@ -141,7 +141,13 @@ export function formatDiscoveryBlock(project: Project): string {
     // on-screen, not gesture at a link that may not exist in that format. Never invent one when
     // this is blank — fall back to the plain CTA text above instead ("go book your call now").
     project.cta_url?.trim()
-      ? `CTA link (the real URL to send people to — state this EXACT link directly in the call-to-action, e.g. "go to ${project.cta_url.trim()} right now"): ${project.cta_url.trim()}`
+      ? `CTA link (the real URL to send people to — state this EXACT link directly in the call-to-action, e.g. "go to ${project.cta_url.trim()} right now"): ${project.cta_url.trim()}${
+          project.funnel_type === "webinar_registration"
+            ? " — note: this project's funnel type is webinar/challenge registration, which is a DIFFERENT, earlier link (how people got INTO this webinar/challenge) than this one. This CTA link is specifically for the webinar/challenge's OWN closing pitch — whatever it actually asks people to do once they've decided to buy (a checkout, a booking page, etc.) — never confuse the two or state this link as if it were the registration step."
+            : project.funnel_type === "tripwire"
+              ? " — this is THIS tripwire offer's own checkout page specifically, not the bigger upsell that follows it (that upsell lives on the Thank You Page after this purchase, not in this presentation's own close)."
+              : ""
+        }`
       : "CTA link: (not provided — do not invent one; the call-to-action should use the plain CTA text above instead, with no specific URL stated)",
     "",
     // This used to render as just one more labeled field among ~24 others ("Additional discovery

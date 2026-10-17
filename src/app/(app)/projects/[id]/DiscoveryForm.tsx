@@ -24,7 +24,7 @@ import WebsiteImportDialog from "@/components/WebsiteImportDialog";
 import OfferBuilderDialog from "@/components/OfferBuilderDialog";
 import DeleteProjectButton from "@/components/DeleteProjectButton";
 import WhyThisMatters from "@/components/WhyThisMatters";
-import { FUNNEL_TYPES } from "@/lib/funnelType";
+import { FUNNEL_TYPES, type FunnelType } from "@/lib/funnelType";
 import { useFormDraft } from "@/hooks/useFormDraft";
 
 const AWARENESS_LEVELS = ["Unaware", "Problem-Aware", "Solution-Aware", "Product-Aware", "Most Aware"];
@@ -60,6 +60,21 @@ const DISCOVERY_FIELD_NAMES = [
   "funnel_type",
   "discovery_notes",
 ];
+
+// Reported need: "Checkout," "Tripwire," and "Book a call" all end in a real link, but it's not
+// the SAME link — a member choosing Tripwire needs to know this means the tripwire's own
+// checkout page specifically (not the bigger upsell that follows it on the Thank You Page), and
+// Webinar/challenge registration needs to know this slot is for the webinar's own CLOSING pitch
+// link, not the registration page they're already thinking about when they pick that option.
+// Reacts to the funnelType state above so whichever choice is currently selected gets its own
+// specific answer to "what exactly do I paste in here," instead of one generic description.
+const CTA_URL_HINTS: Record<FunnelType | "", string> = {
+  book_call: "You picked Book a Call — paste the real link where someone actually books time with you (your Calendly, GHL booking page, etc.). Every close states this exact link.",
+  checkout: "You picked Checkout / Direct Purchase — paste the real checkout/order page URL. Every close states this exact link.",
+  tripwire: "You picked Tripwire + Upsell — paste the URL for THIS tripwire's own checkout page specifically (the low-ticket entry offer), not the bigger upsell that follows it — that upsell lives on the Thank You Page after this purchase, not here.",
+  webinar_registration: "You picked Webinar/Challenge Registration — this slot is NOT the registration page (that's a separate link on your actual registration/landing page, outside Discovery). This is for what the webinar/challenge's own CLOSING pitch sends people to afterward — your checkout, booking, or tripwire page, whichever one actually applies once they've decided to buy.",
+  "": "The actual checkout, booking, or registration page people click through to — no AI Assist here, since only you have the real link. Reported need: a close ending in 'click the link below' has nothing to click in a live or recorded presentation — give this the real link and every close (webinar, VSL, challenge) states it directly instead ('go to [this exact link] right now'). Leave blank if you'll paste the link into chat/comments yourself instead.",
+};
 
 function AssistButton({ onClick }: { onClick: () => void }) {
   return (
@@ -360,6 +375,13 @@ export default function DiscoveryForm({
   const [coreOfferValue, setCoreOfferValue] = useState(project.core_offer_value ?? "");
   const [stackItems, setStackItems] = useState<StackItem[]>(project.stack_items ?? []);
   const [fastActionBonuses, setFastActionBonuses] = useState<FastActionBonus[]>(project.fast_action_bonuses ?? []);
+  // Controlled for the same reason — reported need: a member choosing Tripwire vs. Book a Call
+  // vs. Checkout had no idea the CTA link field just below meant something different for each
+  // choice (which page, whose link). Tracking the live selection lets that field's own hint
+  // react and say exactly what to paste in for whichever funnel type is actually selected, not
+  // one generic description trying to cover all four at once. The <select> below still submits
+  // normally through its own name="funnel_type" DOM value — this is purely for the reactive hint.
+  const [funnelType, setFunnelType] = useState(project.funnel_type);
 
   function collectOtherAnswers(): Record<string, string> {
     const out: Record<string, string> = {};
@@ -809,6 +831,7 @@ export default function DiscoveryForm({
             id="funnel_type"
             name="funnel_type"
             defaultValue={project.funnel_type}
+            onChange={(e) => setFunnelType(e.target.value)}
             className="mt-1 flex h-9 w-full rounded-md border border-input bg-input/30 px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
           >
             <option value="">Select...</option>
@@ -825,7 +848,7 @@ export default function DiscoveryForm({
           defaultValue={project.cta_url}
           textarea={false}
           placeholder="e.g. https://yoursite.com/checkout"
-          hint="The actual checkout, booking, or registration page people click through to — no AI Assist here, since only you have the real link. Reported need: a close ending in 'click the link below' has nothing to click in a live or recorded presentation — give this the real link and every close (webinar, VSL, challenge) states it directly instead ('go to [this exact link] right now'). Leave blank if you'll paste the link into chat/comments yourself instead."
+          hint={CTA_URL_HINTS[funnelType as FunnelType | ""] ?? CTA_URL_HINTS[""]}
         />
       </Section>
 
