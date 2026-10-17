@@ -1913,6 +1913,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             assetType === "webinar_outline" ||
             assetType === "vsl_script" ||
             assetType === "challenge_outline" ||
+            assetType === "ppt_outline" ||
             MODULE_SCOPED_ASSET_TYPES.includes(assetType) ||
             DAY_SCOPED_ASSET_TYPES.includes(assetType)) &&
             generationId && (

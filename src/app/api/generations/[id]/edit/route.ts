@@ -23,7 +23,11 @@ import { parseVideoEmbedUrl, upsertVideoEmbed, removeVideoEmbed } from "@/lib/vi
 // a full Regenerate. Challenge Outline and Build Challenge Day Slides (Agent Casey) followed the
 // same reasoning — Challenge Outline like Webinar Outline/Course Outline (its own root asset
 // other builds read from), Build Challenge Day Slides like Cora's three module-scoped tools
-// (fixing a wrong speaker note or beat on one day's deck without a full Regenerate).
+// (fixing a wrong speaker note or beat on one day's deck without a full Regenerate). Your
+// Signature Webinar itself (ppt_outline, Agent Polly) was deliberately left off at first — its
+// own 60-90 slides made echoing the whole deck back look too large for this same path to handle
+// safely — but once asked for directly, the real fix was raising TEXT_EDIT_MAX_OUTPUT_TOKENS to
+// match PPT_OUTLINE_MAX_OUTPUT_TOKENS (see textEdit.ts) rather than leaving the tool missing.
 const TEXT_EDITABLE_ASSET_TYPES = [
   "course_outline",
   "webinar_outline",
@@ -33,6 +37,7 @@ const TEXT_EDITABLE_ASSET_TYPES = [
   "course_module_workbook",
   "challenge_outline",
   "challenge_day_slides",
+  "ppt_outline",
 ];
 
 export const runtime = "nodejs";

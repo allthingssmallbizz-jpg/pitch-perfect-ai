@@ -37,6 +37,7 @@ const CONTENT_LABELS: Partial<Record<AssetType, string>> = {
   course_module_workbook: "module's workbook",
   challenge_outline: "challenge outline",
   challenge_day_slides: "day's slides",
+  ppt_outline: "webinar deck",
 };
 
 const PLACEHOLDERS: Partial<Record<AssetType, string>> = {
@@ -48,6 +49,7 @@ const PLACEHOLDERS: Partial<Record<AssetType, string>> = {
   course_module_workbook: `e.g. "Add a reflection prompt after Lesson 2" or "Fix the completion checklist at the end" or "Make the pricing worksheet more specific"`,
   challenge_outline: `e.g. "Change the daily action on Day 2 to something simpler" or "Make Day 4 the pitch day instead of Day 5" or "Add a leaderboard to the engagement mechanics section"`,
   challenge_day_slides: `e.g. "Rewrite the speaker notes on Slide 5 to teach the daily action more clearly" or "Add a slide expanding on the belief shift" or "Make the pitch slides less salesy"`,
+  ppt_outline: `e.g. "Rewrite the title on Slide 42, it still says Stack Item" or "Add a bonus slide after Slide 50 for the private community" or "Shorten the speaker notes on Slide 12"`,
 };
 
 // The "want this to stick permanently" footnote — each root asset (Course Outline, Webinar
@@ -65,6 +67,8 @@ const PERMANENCE_HINTS: Partial<Record<AssetType, string>> = {
     " For a change you want to stick permanently (and also show up in every day's slides you build from this), add it to this project's Discovery Notes instead.",
   challenge_day_slides:
     " If you want a change to also apply the next time you rebuild this day from scratch, update the Challenge Outline itself too — this only fixes the copy you already have.",
+  ppt_outline:
+    " For a change you want to stick permanently, update the Webinar Blueprint (or this project's Discovery Notes, if there's no Blueprint) instead — Regenerate rebuilds this deck fresh from there, so a one-off edit here wouldn't carry forward either way.",
 };
 const DEFAULT_PERMANENCE_HINT =
   " If you want a change to also apply the next time you rebuild this module from scratch, update the Course Outline itself too — this only fixes the copy you already have.";
@@ -163,7 +167,7 @@ export default function TextEditPanel({
 
   return (
     <div className="card-elevated rounded-xl p-4">
-      {(assetType === "course_module_slides" || assetType === "challenge_day_slides") && (
+      {(assetType === "course_module_slides" || assetType === "challenge_day_slides" || assetType === "ppt_outline") && (
         <div className="mb-4 border-b border-border/60 pb-4">
           <p className="mb-1.5 flex items-center gap-1.5 text-sm font-medium">
             <RefreshCw className="h-4 w-4" />
