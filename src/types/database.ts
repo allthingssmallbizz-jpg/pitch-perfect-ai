@@ -261,6 +261,10 @@ export type Generation = {
   // 0043_webinar_script_source.sql). Null for every other asset type, and for a webinar_script
   // generated before this column existed.
   source_generation_id: string | null;
+  // Optional member-given label (see 0049_generation_title.sql) — e.g. running the same webinar
+  // three times with a "Book a Call," "Book Now," and "Tripwire" version to A/B test which
+  // converts better, then naming each one so it's findable in Past Generations. Null until named.
+  title: string | null;
 };
 
 export type GenerationVersionSource = "generate" | "edit" | "snapshot";

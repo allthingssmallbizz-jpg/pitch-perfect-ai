@@ -74,7 +74,17 @@ import { SLIDE_MEDIA_ASSET_TYPES } from "@/lib/ai/generators/slideMedia";
 // moduleIdentifier: which module this generation was built for (course_module_slides/quiz/
 // workbook only, from the persisted column — see 0039_course_completed.sql). Null for
 // course_outline and every non-Cora asset type.
-export type PastGeneration = { id: string; createdAt: string; preview: string; moduleIdentifier: string | null };
+// title: optional member-given label (see 0049_generation_title.sql) — lets a member running the
+// same webinar/VSL/etc. multiple times with a different offer (a "Book a Call" version, a
+// "Tripwire" version) to A/B test which converts better tell the runs apart in Past Generations
+// instead of guessing from the preview snippet or timestamp. Null until named.
+export type PastGeneration = {
+  id: string;
+  createdAt: string;
+  preview: string;
+  moduleIdentifier: string | null;
+  title: string | null;
+};
 // A generation a member has explicitly marked "Completed" (Agent Cora's Completed Courses
 // section) — same shape as PastGeneration plus when it was approved.
 export type CompletedGeneration = PastGeneration & { approvedAt: string };
@@ -526,6 +536,7 @@ export default function GenerateClient({
   const [completedGenerations, setCompletedGenerations] = useState<CompletedGeneration[]>(initialCompletedGenerations);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
   const isCourseAsset = COURSE_ASSET_TYPES.includes(assetType);
   // Web-page assets' content is a real HTML document — default to seeing it rendered as an
   // actual page. "inline" is a live, click-to-edit rendering of that same page (see
@@ -1025,6 +1036,7 @@ export default function GenerateClient({
         createdAt: new Date().toISOString(),
         preview: previewSource.slice(0, 120),
         moduleIdentifier: MODULE_SCOPED_ASSET_TYPES.includes(assetType) ? moduleIdentifierUsed.trim() || null : null,
+        title: null,
       },
       ...prev,
     ]);
@@ -1197,6 +1209,39 @@ export default function GenerateClient({
     }
   }
 
+  // Names a past generation — e.g. running the same webinar three times with a "Book a Call,"
+  // "Book Now," and "Tripwire" version to A/B test which converts better, then labeling each one
+  // so it's a glance away in Past Generations instead of a guess from the preview snippet or
+  // timestamp. A blank entry clears the name back to the default preview/timestamp display.
+  async function renamePast(target: PastGeneration) {
+    const next = window.prompt(
+      'Name this generation (e.g. "Book a Call version," "Tripwire version") — leave blank to clear it:',
+      target.title ?? ""
+    );
+    if (next === null) return;
+    const title = next.trim();
+    setRenamingId(target.id);
+    try {
+      const res = await fetch(`/api/generations/${target.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "Could not rename.");
+      function applyTitle<T extends PastGeneration>(g: T): T {
+        return g.id === target.id ? { ...g, title: title || null } : g;
+      }
+      setPastGenerations((prev) => prev.map(applyTitle));
+      setCompletedGenerations((prev) => prev.map(applyTitle));
+      toast.success(title ? "Renamed" : "Name cleared");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not rename.");
+    } finally {
+      setRenamingId(null);
+    }
+  }
+
   // Marks a generation "Completed" — moves it out of the ordinary Past generations list into its
   // own Completed section (see the render below), labeled with the course/module it belongs to.
   // No AI call, no credits — pure metadata, so there's nothing to await beyond the save itself.
@@ -1224,7 +1269,13 @@ export default function GenerateClient({
       if (!res.ok) throw new Error(data?.error || "Could not undo that.");
       setCompletedGenerations((prev) => prev.filter((g) => g.id !== target.id));
       setPastGenerations((prev) => [
-        { id: target.id, createdAt: target.createdAt, preview: target.preview, moduleIdentifier: target.moduleIdentifier },
+        {
+          id: target.id,
+          createdAt: target.createdAt,
+          preview: target.preview,
+          moduleIdentifier: target.moduleIdentifier,
+          title: target.title,
+        },
         ...prev,
       ]);
       toast.success("Moved back to Past generations");
@@ -1572,6 +1623,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
                           createdAt: new Date().toISOString(),
                           preview: content.replace(/\s+/g, " ").trim().slice(0, 120),
                           moduleIdentifier: MODULE_SCOPED_ASSET_TYPES.includes(assetType) ? moduleIdentifier.trim() || null : null,
+                          title: null,
                         };
                         approveGeneration(target);
                       }}
@@ -1923,8 +1975,19 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
                       </span>
                     )}
                   </div>
+                  {g.title && <div className="mt-0.5 truncate font-medium text-foreground">{g.title}</div>}
                   <div className="mt-0.5 truncate text-muted-foreground">{g.preview || "(empty)"}</div>
                 </button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  disabled={renamingId === g.id}
+                  onClick={() => renamePast(g)}
+                  title={g.title ? "Rename this generation" : "Name this generation"}
+                >
+                  {renamingId === g.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
+                </Button>
                 {isCourseAsset && (
                   <Button
                     variant="ghost"

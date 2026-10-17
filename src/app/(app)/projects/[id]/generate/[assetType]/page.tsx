@@ -160,7 +160,7 @@ export default async function GenerateAssetPage({
   // draft doesn't mean backing out to the project page and hunting for it.
   const { data: pastGenerationRows } = await supabase
     .from("generations")
-    .select("id, content, status, created_at, approved_at, module_identifier")
+    .select("id, content, status, created_at, approved_at, module_identifier, title")
     .eq("project_id", id)
     .eq("asset_type", generator.assetType)
     .eq("status", "complete")
@@ -177,6 +177,7 @@ export default async function GenerateAssetPage({
       createdAt: g.created_at,
       preview: cleaned.replace(/\s+/g, " ").trim().slice(0, 120),
       moduleIdentifier: g.module_identifier,
+      title: g.title,
     };
   }
 
