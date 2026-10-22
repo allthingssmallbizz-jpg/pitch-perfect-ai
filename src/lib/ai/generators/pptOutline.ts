@@ -89,3 +89,81 @@ For each slide output:
 
 This needs to be a full-length, effective webinar deck, not a summary outline: produce **60-90 slides** (err toward 75+ when the discovery brief supports it). Break every phase of the arc — opener/hook, credibility, each teaching point, transition, offer stack, guarantee, urgency, close/CTA — into real slide-by-slide pacing instead of compressing a phase into one or two slides. A slide with only one bare bullet, or a bullet that's just a topic label, is a failure to fix — every slide earns its place with real content, not a placeholder. Keep the deck non-repetitive across its full length (each slide's specific claim, not the same point restated) so the length comes from genuinely thorough pacing across the whole arc, not padding.`;
 }
+
+// Reported pattern, repeatedly, across several different projects/niches: a deck titles a run of
+// slides with an internal methodology/framework stage name instead of real content (first
+// "Stack Item"/"Full Stack Reveal", then "Foundation"/"False Belief"/"Reframe"/"Rhythm", then
+// "Case Study: Before"/"The Shift"/"The Results" and "Future Pace: 90 Days In"/"Beyond 90 Days").
+// No prompt wording can promise this never happens again for a niche/phrasing we haven't seen
+// yet — this is a best-effort, heuristic SAFETY NET on top of the prompt rule above, not a
+// replacement for it, meant to be surfaced to a member as a pre-flight check before they present a
+// deck live rather than relying on them to notice it themselves mid-presentation. Two signals,
+// since neither alone covers every real case we've already hit:
+// 1. A short title containing one of the exact terms already reported as a real failure.
+// 2. A short "Label: specific thing" title whose LABEL repeats verbatim across 2+ different
+//    slides — every real failure above (Stack Item, Case Study, Future Pace) had this exact
+//    shape, which is a structural signature independent of which specific words are used, so this
+//    has a real chance of catching a brand-new term in a niche we haven't seen yet, unlike #1.
+const KNOWN_STRUCTURAL_TITLE_TERMS = [
+  "big promise",
+  "capture attention",
+  "credibility bridge",
+  "pattern interrupt",
+  "stack item",
+  "full stack reveal",
+  "running stack",
+  "false belief",
+  "belief shift",
+  "vehicle belief",
+  "epiphany bridge",
+  "big domino",
+  "three secrets",
+  "case study",
+  "future pace",
+];
+
+export type TitleLeakFlag = { slideNumber: number; title: string; reason: string };
+
+export function findStructuralTitleLeaks(content: string): TitleLeakFlag[] {
+  const slides = parsePptOutline(content);
+  const flags: TitleLeakFlag[] = [];
+  const flaggedSlideNumbers = new Set<number>();
+
+  for (const slide of slides) {
+    const normalized = slide.title.toLowerCase();
+    const term = KNOWN_STRUCTURAL_TITLE_TERMS.find((t) => normalized.includes(t));
+    if (term) {
+      flags.push({
+        slideNumber: slide.number,
+        title: slide.title,
+        reason: `Contains "${term}" — a known internal framework term, not real slide content.`,
+      });
+      flaggedSlideNumbers.add(slide.number);
+    }
+  }
+
+  const labelGroups = new Map<string, { number: number; title: string }[]>();
+  for (const slide of slides) {
+    const match = slide.title.match(/^([^:]{2,30}):\s*\S.*/);
+    if (!match) continue;
+    const label = match[1].trim();
+    if (label.split(/\s+/).length > 4) continue;
+    const group = labelGroups.get(label.toLowerCase()) ?? [];
+    group.push({ number: slide.number, title: slide.title });
+    labelGroups.set(label.toLowerCase(), group);
+  }
+  for (const group of labelGroups.values()) {
+    if (group.length < 2) continue;
+    for (const slide of group) {
+      if (flaggedSlideNumbers.has(slide.number)) continue;
+      flags.push({
+        slideNumber: slide.number,
+        title: slide.title,
+        reason: `Shares its "${slide.title.split(":")[0].trim()}" label with ${group.length - 1} other slide(s) — looks like a repeated framework-stage label rather than this slide's own real content.`,
+      });
+      flaggedSlideNumbers.add(slide.number);
+    }
+  }
+
+  return flags.sort((a, b) => a.slideNumber - b.slideNumber);
+}

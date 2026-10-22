@@ -31,6 +31,7 @@ import {
   CheckCircle2,
   Undo,
   Square,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Dialog,
@@ -65,6 +66,7 @@ import { type ChallengeDayRef } from "@/lib/ai/challengeDays";
 // are already imported the same leaf-module way for the identical reason.
 import { CHALLENGE_LENGTHS, type ChallengeLength } from "@/lib/ai/generators/challengeOutline";
 import { parsePptOutline, parseWebinarScriptBySlideNumber } from "@/lib/ai/pptxParser";
+import { findStructuralTitleLeaks, type TitleLeakFlag } from "@/lib/ai/generators/pptOutline";
 import { cleanSpokenScript } from "@/lib/ai/spokenScriptText";
 import PageEditPanel from "./PageEditPanel";
 import TextEditPanel from "./TextEditPanel";
@@ -530,6 +532,12 @@ export default function GenerateClient({
   } | null>(null);
   const [copied, setCopied] = useState(false);
   const [copiedForGamma, setCopiedForGamma] = useState(false);
+  // Pre-flight check (see findStructuralTitleLeaks) — a heuristic scan for the "framework stage
+  // name used as a literal slide title" mistake, surfaced to a member before they present a deck
+  // live instead of relying on them to notice it themselves mid-presentation. null means "hasn't
+  // been run yet for the content currently on screen," not "nothing found."
+  const [titleLeakFlags, setTitleLeakFlags] = useState<TitleLeakFlag[] | null>(null);
+  const [titleLeakDialogOpen, setTitleLeakDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [pastGenerations, setPastGenerations] = useState<PastGeneration[]>(initialPastGenerations);
@@ -1386,6 +1394,12 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
     setTimeout(() => setCopiedForGamma(false), 1500);
   }
 
+  function checkForTitleLeaks() {
+    if (!content) return;
+    setTitleLeakFlags(findStructuralTitleLeaks(content));
+    setTitleLeakDialogOpen(true);
+  }
+
   return (
     <div>
       {assetType === "course_outline" && (
@@ -1599,6 +1613,16 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
               >
                 <Wand2 className="mr-2 h-4 w-4" />
                 {copiedForGamma ? "Copied!" : "Copy for Gamma"}
+              </Button>
+            )}
+            {assetType === "ppt_outline" && (
+              <Button
+                variant="outline"
+                onClick={checkForTitleLeaks}
+                title="Scans every slide title for signs it's naming an internal framework stage instead of real content, before you present it live"
+              >
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Check for Issues
               </Button>
             )}
             {generationId && (
@@ -1905,6 +1929,38 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
               <Sparkles className="mr-2 h-4 w-4" />
               {scriptActionLabel}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={titleLeakDialogOpen} onOpenChange={setTitleLeakDialogOpen}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {!titleLeakFlags || titleLeakFlags.length === 0 ? "No issues found" : `${titleLeakFlags.length} slide(s) to review`}
+            </DialogTitle>
+            <DialogDescription>
+              A best-effort scan for slide titles that name an internal framework stage
+              (&quot;Stack Item,&quot; &quot;Case Study: Before,&quot; &quot;Future
+              Pace&quot;) instead of this deck&apos;s own real content. It can miss real issues and
+              can flag a slide that&apos;s actually fine — review each one yourself rather than
+              trusting this alone.
+            </DialogDescription>
+          </DialogHeader>
+          {titleLeakFlags && titleLeakFlags.length > 0 && (
+            <ul className="space-y-3 text-sm">
+              {titleLeakFlags.map((flag) => (
+                <li key={flag.slideNumber} className="rounded-lg border border-border bg-card/30 px-3 py-2">
+                  <p className="font-medium">
+                    Slide {flag.slideNumber}: {flag.title}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{flag.reason}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setTitleLeakDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
