@@ -23,7 +23,17 @@ const SLIDE_HEADING = /^#{0,4}\s*\*{0,2}\s*slide\s+(\d+)\s*[:.\-–]?\s*(.*?)\*{
 // sharing this one function rather than a second copy of the regex.
 const SECTION_HEADING = /^(phase\s+\d+|day\s+\d+|part\s+\d+|module\s+\d+)\b/i;
 const CONTENT_LABEL = /^[-*]?\s*\*{0,2}\s*on-slide content\*{0,2}\s*[:.]?\s*(.*)$/i;
-const NOTES_LABEL = /^[-*]?\s*\*{0,2}\s*speaker notes\*{0,2}\s*[:.]?\s*(.*)$/i;
+// Also matches a bare "Notes:" label, not just "Speaker notes" — a real deck that had gone
+// through several "Add, remove, or change something" edit passes (each one echoing the entire
+// 60-90 slide document back) came back using the shorter "Notes:" label instead, which this
+// didn't recognize at all. Reported as Read Aloud's practice mode reading only headlines: with
+// no label match, a short, single-sentence note (the prompt explicitly asks for 1-3 CONCISE
+// sentences) also fails looksLikeSpokenProse's "2+ sentence enders or 220+ chars" fallback test,
+// so it silently became an on-slide BULLET instead of a note — excluded from practice mode
+// entirely, and, worse, leaking presenter-only text onto the visible slide in the real .pptx
+// export too. Matching "Notes" alone fixes both without needing the member to regenerate or
+// re-edit anything, since this re-parses the deck's existing stored markdown fresh every time.
+const NOTES_LABEL = /^[-*]?\s*\*{0,2}\s*(?:speaker'?s?\s+)?notes\*{0,2}\s*[:.]?\s*(.*)$/i;
 const BULLET_LINE = /^\s*[-*•]\s+(.*)$/;
 const SEPARATOR_LINE = /^-{3,}$/;
 
