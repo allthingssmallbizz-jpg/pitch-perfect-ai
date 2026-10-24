@@ -37,6 +37,22 @@ const NOTES_LABEL = /^[-*]?\s*\*{0,2}\s*(?:speaker'?s?\s+)?notes\*{0,2}\s*[:.]?\
 const BULLET_LINE = /^\s*[-*•]\s+(.*)$/;
 const SEPARATOR_LINE = /^-{3,}$/;
 
+// Reported: Read Aloud "jumping around" throughout a whole deck, heard as an abrupt, unrelated
+// phrase landing right before a slide's own title — traced to a real deck's markdown containing
+// standalone section-divider lines sitting BETWEEN slides, outside any "Slide #:"/"On-slide
+// content"/"Speaker notes" structure entirely — e.g. "PHASE 1 — OPENING (Slides 1-7)" before the
+// deck's first slide, and "Secret #1 — The Vehicle: ..." between two slides mid-deck. Nothing
+// recognized these as anything special, so the catch-all prose-absorption path below silently
+// tacked them onto whatever slide's notes came right before, meaning the presenter's own
+// rehearsal audio would say something like "...falls apart on its own. Secret #1 — The Vehicle:
+// Webinars Are Dead. The Night I Watched a Room Run to the Back..." right before the next slide's
+// real title — no slide actually skipped, just an internal planning label injected as a jarring
+// non-sequitur, over and over through the deck, which is exactly what reads as "jumping around."
+// Requires the dash directly after the number (not just the word+number) specifically so a real
+// sentence that happens to start the same way ("Day 30 is when everything changes for you")
+// still reads as ordinary content instead of getting silently dropped.
+const STRUCTURAL_DIVIDER_LINE = /^(?:phase|secret|day|part|module)\s*#?\s*\d+\s*[-–—]\s*.+$/i;
+
 // A real generation came back with every "Speaker notes" paragraph rendered ON the visible
 // slide instead of in PowerPoint's actual Notes pane — traced to Claude occasionally skipping
 // the "**Speaker notes**" label entirely (common enough across 60-90 repeated slides) and just
@@ -91,6 +107,7 @@ export function parsePptOutline(markdown: string): ParsedSlide[] {
       continue;
     }
     if (!current) continue;
+    if (STRUCTURAL_DIVIDER_LINE.test(line.trim())) continue;
 
     const content = line.match(CONTENT_LABEL);
     if (content) {
