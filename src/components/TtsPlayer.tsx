@@ -102,6 +102,21 @@ export default function TtsPlayer({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const stoppedRef = useRef(false);
+  // Reported: on a phone specifically, playback would jump around between unrelated parts of the
+  // deck very fast instead of reading in order. Root cause: the floating "follow" control (see
+  // floaterOpen below) renders a second Play button right where a thumb naturally rests after
+  // tapping the first one, and nothing stopped that from starting a SECOND playFrom loop while
+  // the first was still loading/playing — both loops then shared the same audioRef/objectUrlRef
+  // and raced each other reassigning audio.src and attaching/removing listeners, each using its
+  // own independent chunk index, so the member heard whichever loop's fetch happened to land last
+  // at any given moment, not a single coherent sequence. stoppedRef alone didn't fully guard
+  // against this either, since handlePrev/handleNext set it true then start a NEW playFrom 50ms
+  // later, which resets it back to false — a slow-to-notice old loop would see stoppedRef already
+  // cleared by the new run before it ever got to check it. This run-token is what actually makes
+  // only the most recent playFrom call own the shared audio element: every call captures its own
+  // id, and any earlier call still in flight bails out the moment a newer one has started, rather
+  // than racing it.
+  const playRunIdRef = useRef(0);
   // Which word (by index into the current chunk's tokenizeWithOffsets list) was last reported as
   // active — reset to -1 at the start of every chunk so its very first word always fires once,
   // even if it happens to land back on index 0 like the previous chunk's last reported word did.
@@ -199,6 +214,7 @@ export default function TtsPlayer({
       toast.error("Nothing to read yet.");
       return;
     }
+    const runId = ++playRunIdRef.current;
     stoppedRef.current = false;
     setStatus("loading");
     setFloaterOpen(true);
@@ -216,13 +232,13 @@ export default function TtsPlayer({
     let prefetched: { index: number; promise: Promise<Blob> } | null = null;
 
     for (let i = startIdx; i < chunks.length; i++) {
-      if (stoppedRef.current) return;
+      if (stoppedRef.current || runId !== playRunIdRef.current) return;
       setIndex(i);
       try {
         const blob =
           prefetched && prefetched.index === i ? await prefetched.promise : await fetchChunk(chunks[i]);
         prefetched = null;
-        if (stoppedRef.current) return;
+        if (stoppedRef.current || runId !== playRunIdRef.current) return;
 
         if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
         const url = URL.createObjectURL(blob);
@@ -251,6 +267,7 @@ export default function TtsPlayer({
         const totalChars = chunks[i].length || 1;
         lastWordIndexRef.current = -1;
         const onTimeUpdate = () => {
+          if (runId !== playRunIdRef.current) return;
           if (!tokens.length || !audio.duration || !Number.isFinite(audio.duration)) return;
           const charPos = (audio.currentTime / audio.duration) * totalChars;
           let lo = 0;
@@ -281,7 +298,7 @@ export default function TtsPlayer({
             resolve();
           };
           const onPause = () => {
-            if (stoppedRef.current) {
+            if (stoppedRef.current || runId !== playRunIdRef.current) {
               cleanup();
               resolve();
             }
@@ -295,17 +312,24 @@ export default function TtsPlayer({
           audio.addEventListener("pause", onPause);
         });
       } catch (e) {
+        if (runId !== playRunIdRef.current) return;
         toast.error(e instanceof Error ? e.message : "Voice playback failed");
         setStatus("idle");
         return;
       }
     }
+    if (runId !== playRunIdRef.current) return;
     setStatus("idle");
     setIndex(0);
     onActiveWordChange?.(null);
   }
 
   function handlePlay() {
+    // Ignores a second tap landing on the OTHER Play button (the main one and the floating
+    // "follow" control's own copy can both be on screen at once, right where a thumb naturally
+    // rests after the first tap on a phone) while a run is already loading/playing — see
+    // playRunIdRef above for why a second concurrent run is the actual bug, not just wasted work.
+    if (status === "loading" || status === "playing") return;
     if (status === "paused" && audioRef.current) {
       setStatus("playing");
       void audioRef.current.play();
