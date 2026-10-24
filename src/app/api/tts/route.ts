@@ -73,7 +73,17 @@ export async function POST(req: NextRequest) {
       headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" },
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Voice playback failed";
-    return NextResponse.json({ error: message }, { status: 502 });
+    // Reported: a member saw OpenAI's own raw error text in the app, including a direct link to
+    // THIS APP'S OWN OpenAI account billing page ("Add credits... at platform.openai.com/...") —
+    // confusing on its face (a member has no OpenAI account of their own to add credits to) and a
+    // real information leak (that link belongs to the app owner's account, not something any
+    // member should see or be told to act on). The real error is still logged server-side, where
+    // the owner can actually see and act on it (Vercel's function logs) — the member just never
+    // needs to know WHY it failed, only that it did.
+    console.error("TTS generation failed:", err);
+    return NextResponse.json(
+      { error: "Read Aloud is temporarily unavailable. Please try again in a few minutes." },
+      { status: 502 }
+    );
   }
 }

@@ -123,7 +123,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     return NextResponse.json({ slideNumber, kind: "image", url: signed?.signedUrl ?? null });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Could not generate that image.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    // Same reasoning as /api/tts's own fix — OpenAI's raw error text can include a direct link
+    // to THIS APP'S OWN OpenAI account billing page, which a member has no business seeing or
+    // being told to act on. Logged server-side instead, where the owner can actually see it.
+    console.error("Slide image generation failed:", err);
+    return NextResponse.json({ error: "Could not generate that image. Please try again in a few minutes." }, { status: 502 });
   }
 }
