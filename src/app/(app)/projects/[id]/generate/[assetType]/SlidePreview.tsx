@@ -103,10 +103,27 @@ export default function SlidePreview({
     return scriptBySlideNumber?.get(slideNumber) || fallback;
   }
 
+  // Reported: Read Aloud's practice mode (title + speaker notes only, see cleanSpokenScript/
+  // extractSlideTitlesAndNotes) silently stopped working the moment a member used "Read from
+  // here" on any slide past the very first one — this used to flatten each slide into
+  // `title/bullets/notes` joined by plain blank lines with no "Slide N:"/"On-slide content"/
+  // "Speaker notes" labels at all. extractSlideTitlesAndNotes re-parses whatever text it's given
+  // with parsePptOutline, which requires those exact labels to tell title/bullets/notes apart in
+  // the first place — fed this label-less text, it found zero slides and read back nothing,
+  // which a member reviewing a deck slide-by-slide on their phone (exactly where "Read from
+  // here" gets used, far more than always restarting from slide 1) would experience as the
+  // practice mode simply not working. Rebuilding the exact same labeled shape the real generator
+  // output has lets it re-parse correctly no matter which slide playback starts from.
   function buildReadFromText(fromNumber: number): string {
     return slides
       .filter((s) => s.number >= fromNumber)
-      .map((s) => [s.title, s.bullets.join(". "), resolvedNotes(s.number, s.notes)].filter(Boolean).join("\n\n"))
+      .map((s) => {
+        const bullets = s.bullets.map((b) => `- ${b}`).join("\n");
+        const notes = resolvedNotes(s.number, s.notes);
+        return [`Slide ${s.number}: ${s.title}`, bullets && `On-slide content:\n${bullets}`, notes && `Speaker notes: ${notes}`]
+          .filter(Boolean)
+          .join("\n");
+      })
       .join("\n\n");
   }
 
