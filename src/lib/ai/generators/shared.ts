@@ -77,7 +77,7 @@ function formatFastActionBonusBlock(project: Project): string {
 
   const lines = [
     "",
-    "FAST ACTION BONUS(ES) — reveal these AFTER the price, tied to acting right now; never fold them into the Value Stack above or reveal them before the price:",
+    "FAST ACTION BONUS(ES) — place these exactly where this asset's own sequencing rules say, tied to acting right now; never fold them into the Value Stack's own items/total, and never attach a price or price-change fact to them before the price has been revealed:",
   ];
   for (const item of items) {
     lines.push(
@@ -131,6 +131,7 @@ export function formatDiscoveryBlock(project: Project): string {
     field("Bonuses", project.bonuses),
     formatValueStackBlock(project),
     field("Scarcity / urgency", project.scarcity_urgency),
+    "(Note on the line above: in any asset that reveals the price at a specific moment — webinar, VSL, challenge pitch — a price-rise or price-change fact in it (\"price rising to $X,\" \"this price won't last\") is PRICE information and may only be stated AFTER the real price has been revealed. Seat/spot/cohort-size limits aren't price information and can be used earlier, but never with a price or dollar figure attached.)",
     formatFastActionBonusBlock(project),
     field("Primary call to action", project.cta),
     field("Funnel type (what the CTA leads to)", getFunnelTypeLabel(project.funnel_type)),
