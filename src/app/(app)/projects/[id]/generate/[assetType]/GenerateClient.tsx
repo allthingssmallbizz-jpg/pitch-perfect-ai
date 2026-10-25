@@ -66,7 +66,7 @@ import { type ChallengeDayRef } from "@/lib/ai/challengeDays";
 // are already imported the same leaf-module way for the identical reason.
 import { CHALLENGE_LENGTHS, type ChallengeLength } from "@/lib/ai/generators/challengeOutline";
 import { parsePptOutline, parseWebinarScriptBySlideNumber } from "@/lib/ai/pptxParser";
-import { findStructuralTitleLeaks, type TitleLeakFlag } from "@/lib/ai/generators/pptOutline";
+import { findStructuralTitleLeaks, findPrePriceLeaks, type TitleLeakFlag } from "@/lib/ai/generators/pptOutline";
 import { cleanSpokenScript } from "@/lib/ai/spokenScriptText";
 import PageEditPanel from "./PageEditPanel";
 import TextEditPanel from "./TextEditPanel";
@@ -1396,7 +1396,9 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
 
   function checkForTitleLeaks() {
     if (!content) return;
-    setTitleLeakFlags(findStructuralTitleLeaks(content));
+    setTitleLeakFlags(
+      [...findStructuralTitleLeaks(content), ...findPrePriceLeaks(content)].sort((a, b) => a.slideNumber - b.slideNumber)
+    );
     setTitleLeakDialogOpen(true);
   }
 
@@ -1942,9 +1944,10 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             <DialogDescription>
               A best-effort scan for slide titles that name an internal framework stage
               (&quot;Stack Item,&quot; &quot;Case Study: Before,&quot; &quot;Future
-              Pace&quot;) instead of this deck&apos;s own real content. It can miss real issues and
-              can flag a slide that&apos;s actually fine — review each one yourself rather than
-              trusting this alone.
+              Pace&quot;) instead of this deck&apos;s own real content, and for slides before
+              the price reveal that mention the price going up or changing. It can miss real
+              issues and can flag a slide that&apos;s actually fine — review each one yourself
+              rather than trusting this alone.
             </DialogDescription>
           </DialogHeader>
           {titleLeakFlags && titleLeakFlags.length > 0 && (
@@ -1952,7 +1955,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
               {titleLeakFlags.map((flag) => (
                 <li key={flag.slideNumber} className="rounded-lg border border-border bg-card/30 px-3 py-2">
                   <p className="font-medium">
-                    Slide {flag.slideNumber}: {flag.title}
+                    {flag.slideNumber > 0 ? `Slide ${flag.slideNumber}: ${flag.title}` : flag.title}
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">{flag.reason}</p>
                 </li>

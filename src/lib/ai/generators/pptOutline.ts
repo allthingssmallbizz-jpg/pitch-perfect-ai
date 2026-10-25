@@ -173,3 +173,58 @@ export function findStructuralTitleLeaks(content: string): TitleLeakFlag[] {
 
   return flags.sort((a, b) => a.slideNumber - b.slideNumber);
 }
+
+// Companion pre-flight check to findStructuralTitleLeaks: reported real failure — a slide BEFORE
+// the price reveal said the price would never be the same and would rise to $5,500 after the
+// cohort, referencing a price the audience hadn't seen yet. The prompt rules forbid this, but
+// like the title rule it's a best-effort instruction, so this is the code-level backstop. Needs a
+// reliable "this is where the price is about to be revealed" anchor: the required Value
+// Justification Question slide ("...would it be worth it?") sits right before the price slide, so
+// everything up to and including it is pre-price. If no such slide exists the check can't tell
+// where the price reveal is, and says so instead of guessing.
+const PRICE_FACT_PATTERNS: { pattern: RegExp; label: string }[] = [
+  { pattern: /never be the same/i, label: "\"never be the same\"" },
+  { pattern: /price[^.!?\n]{0,40}\b(go(?:es|ing)? up|rise[sn]?|rising|increase[sd]?|increasing|jump(?:s|ing)?|doubl(?:e|es|ing)|climb(?:s|ing)?)\b/i, label: "a price going up" },
+  { pattern: /(?:price|cost|investment)[^.!?\n]{0,30}(?:won'?t|will not|isn'?t going to|is not going to) (?:last|stay)/i, label: "\"the price won't last\"" },
+  { pattern: /\b(?:go(?:es|ing)? up|rise[sn]?|rising|increase[sd]?|jump(?:s|ing)?|moves? up|back up)\s+(?:to|by)\s+\$\s?\d/i, label: "a price rising to a dollar figure" },
+  { pattern: /\bafter (?:the|this) (?:cohort|challenge|launch|webinar|founding|enrollment|enrolment)[^.!?\n]{0,60}\$\s?\d/i, label: "an after-the-cohort dollar figure" },
+  { pattern: /\b(?:regular|normal|full|future|later|eventual|going) price\b/i, label: "a regular/future price" },
+  { pattern: /\bprice (?:increase|hike)\b/i, label: "a price increase" },
+  { pattern: /\b(?:costs?|priced at|payments? of|pay(?:ing)? just|only pay)\b[^.!?\n]{0,20}\$\s?\d/i, label: "what the offer costs" },
+];
+
+export function findPrePriceLeaks(content: string): TitleLeakFlag[] {
+  const slides = parsePptOutline(content);
+  const slideText = (s: (typeof slides)[number]) => [s.title, ...s.bullets, s.notes].join("\n");
+
+  const exact = slides.findIndex((s) => /although i'?m not going to charge you/i.test(slideText(s)));
+  const loose = slides.map((s, i) => (/would it be worth it/i.test(slideText(s)) ? i : -1)).filter((i) => i >= 0);
+  const anchor = exact >= 0 ? exact : loose.length ? loose[loose.length - 1] : -1;
+
+  if (anchor < 0) {
+    return [
+      {
+        slideNumber: 0,
+        title: "Whole deck",
+        reason:
+          "No \"would it be worth it?\" question slide was found right before the price reveal, so this check can't tell where the price is revealed or which slides count as pre-price. Add that slide (see Add, remove, or change something), then run this again.",
+      },
+    ];
+  }
+
+  const flags: TitleLeakFlag[] = [];
+  for (const slide of slides.slice(0, anchor + 1)) {
+    const text = slideText(slide);
+    for (const { pattern, label } of PRICE_FACT_PATTERNS) {
+      if (pattern.test(text)) {
+        flags.push({
+          slideNumber: slide.number,
+          title: slide.title,
+          reason: `Appears before the price is revealed but mentions ${label} — price information can only be stated after the real price has been shown.`,
+        });
+        break;
+      }
+    }
+  }
+  return flags;
+}
