@@ -15,6 +15,7 @@ import BioBlockedDialog from "@/components/BioBlockedDialog";
 import DiscoveryBlockedDialog from "@/components/DiscoveryBlockedDialog";
 import { Badge } from "@/components/ui/badge";
 import GenerateClient from "./GenerateClient";
+import type { SlideImageChoice } from "@/lib/presenterPhotos";
 
 // Your Webinar and its Script share the same agent (Polly) — same name, same emoji, same title
 // on both pages — which was exactly the problem: a member stepping away and coming back couldn't
@@ -105,22 +106,43 @@ export default async function GenerateAssetPage({
       }
     }
   }
-  // The presenter's own uploaded photos (see the Bio page's photo section), offered as "Add my
-  // photo" on any slide of a deck — usually the meet-the-presenter slide. Signed fresh per load.
-  let presenterPhotos: { path: string; url: string | null }[] = [];
-  if (
-    project.presenter_bio_profile_id &&
-    (["ppt_outline", "course_module_slides", "challenge_day_slides"] as string[]).includes(generator.assetType)
-  ) {
-    const { data: bioPhotos } = await supabase
-      .from("presenter_bio_profiles")
-      .select("presenter_photos")
-      .eq("id", project.presenter_bio_profile_id)
-      .maybeSingle();
-    const paths = bioPhotos?.presenter_photos ?? [];
-    if (paths.length) {
-      const { data: signed } = await supabase.storage.from("presenter-photos").createSignedUrls(paths, 3600);
-      presenterPhotos = paths.map((path) => ({ path, url: signed?.find((s) => s.path === path)?.signedUrl ?? null }));
+  // Images a member can place on any deck slide via "Add image": their own Bio photos (usually for
+  // the meet-the-presenter slide) and the product images attached to stack items/bonuses in
+  // Discovery (for each item's introduction slide). Signed fresh per load — both buckets are private.
+  const imageChoices: SlideImageChoice[] = [];
+  if ((["ppt_outline", "course_module_slides", "challenge_day_slides"] as string[]).includes(generator.assetType)) {
+    if (project.presenter_bio_profile_id) {
+      const { data: bioPhotos } = await supabase
+        .from("presenter_bio_profiles")
+        .select("presenter_photos")
+        .eq("id", project.presenter_bio_profile_id)
+        .maybeSingle();
+      const paths = bioPhotos?.presenter_photos ?? [];
+      if (paths.length) {
+        const { data: signed } = await supabase.storage.from("presenter-photos").createSignedUrls(paths, 3600);
+        paths.forEach((path, i) =>
+          imageChoices.push({
+            path,
+            url: signed?.find((s) => s.path === path)?.signedUrl ?? null,
+            label: `Your photo ${i + 1}`,
+          })
+        );
+      }
+    }
+    const offerItems = [...(project.stack_items ?? []), ...(project.fast_action_bonuses ?? [])].filter(
+      (item): item is typeof item & { image_path: string } => Boolean(item.image_path)
+    );
+    if (offerItems.length) {
+      const { data: signed } = await supabase.storage
+        .from("slide-images")
+        .createSignedUrls(offerItems.map((item) => item.image_path), 3600);
+      for (const item of offerItems) {
+        imageChoices.push({
+          path: item.image_path,
+          url: signed?.find((s) => s.path === item.image_path)?.signedUrl ?? null,
+          label: item.name.trim() || "Product image",
+        });
+      }
     }
   }
 
@@ -467,7 +489,7 @@ export default async function GenerateAssetPage({
       </div>
 
       <GenerateClient
-        presenterPhotos={presenterPhotos}
+        imageChoices={imageChoices}
         // Forces a full remount whenever the open generation changes (a fresh visit, opening a
         // past run, or a just-completed Regenerate updating the URL) — without this, switching
         // to a different generation via the "Past generations" list only ever changes the URL,

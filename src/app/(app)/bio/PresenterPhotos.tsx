@@ -5,24 +5,9 @@ import { ImagePlus, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { MAX_PRESENTER_PHOTOS } from "@/lib/presenterPhotos";
+import { downsizeToJpeg } from "@/lib/imageResize";
 
 type Photo = { path: string; url: string | null };
-
-// Phone photos are routinely 3-8MB, above the hosting platform's ~4.5MB request-body limit and
-// far bigger than a slide needs. Re-encoding through a canvas at 1600px max keeps them well
-// under that and keeps the exported .pptx small.
-async function downsizeToJpeg(file: File, maxDim = 1600): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  return await new Promise<Blob>((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not process that photo."))), "image/jpeg", 0.85)
-  );
-}
 
 export default function PresenterPhotos({ profileId, initialPhotos }: { profileId: string; initialPhotos: Photo[] }) {
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
@@ -68,7 +53,7 @@ export default function PresenterPhotos({ profileId, initialPhotos }: { profileI
     <div>
       <Label>Your photos (family, a candid shot)</Label>
       <p className="mt-0.5 text-xs text-muted-foreground">
-        Up to {MAX_PRESENTER_PHOTOS} real photos. Once your webinar deck is built, use &quot;Add my photo&quot; on any
+        Up to {MAX_PRESENTER_PHOTOS} real photos. Once your webinar deck is built, use &quot;Add image&quot; on any
         slide (usually your meet-the-presenter slide) to place one there — it shows in the preview and the PowerPoint
         download. Photos save as soon as you add them.
       </p>

@@ -72,6 +72,7 @@ import PageEditPanel from "./PageEditPanel";
 import TextEditPanel from "./TextEditPanel";
 import SlidePreview from "./SlidePreview";
 import { SLIDE_MEDIA_ASSET_TYPES } from "@/lib/ai/generators/slideMedia";
+import type { SlideImageChoice } from "@/lib/presenterPhotos";
 
 // moduleIdentifier: which module this generation was built for (course_module_slides/quiz/
 // workbook only, from the persisted column — see 0039_course_completed.sql). Null for
@@ -331,7 +332,7 @@ export default function GenerateClient({
   projectName,
   initialCourseNaming,
   webinarScriptContent,
-  presenterPhotos = [],
+  imageChoices = [],
 }: {
   projectId: string;
   assetType: AssetType;
@@ -378,8 +379,8 @@ export default function GenerateClient({
   // the .pptx export already does. Null for every other agent, and for ppt_outline itself until
   // a script has been created.
   webinarScriptContent: string | null;
-  // The presenter's own Bio photos, offered as "Add my photo" on deck slides (see SlidePreview).
-  presenterPhotos?: { path: string; url: string | null }[];
+  // Bio photos and Discovery product images, offered as "Add image" on deck slides (see SlidePreview).
+  imageChoices?: SlideImageChoice[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -2193,7 +2194,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
               generationId={generationId}
               mediaEnabled={SLIDE_MEDIA_ASSET_TYPES.includes(assetType)}
               scriptBySlideNumber={scriptBySlideNumber}
-              presenterPhotos={presenterPhotos}
+              imageChoices={imageChoices}
               onSelectSlide={selectTtsStart}
             />
           ) : (

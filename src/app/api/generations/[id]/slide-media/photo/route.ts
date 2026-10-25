@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getOwnedGeneration } from "@/lib/generations";
 import { parsePptOutline, classifySlideLayout } from "@/lib/ai/pptxParser";
-import { PRESENTER_PHOTO_LABEL } from "@/lib/presenterPhotos";
+import { PRESENTER_PHOTO_LABEL, OFFER_IMAGE_LABEL_PREFIX } from "@/lib/presenterPhotos";
 import type { AssetType } from "@/types/database";
 
 export const runtime = "nodejs";
@@ -15,8 +15,9 @@ const requestSchema = z.object({
   photoPath: z.string().min(1).max(500),
 });
 
-// Places one of the member's own presenter photos (uploaded on their Bio page) onto a slide —
-// typically the meet-the-presenter slide. Copies the file into the slide-images bucket and
+// Places one of the member's own uploaded images onto a slide — a presenter photo from their Bio
+// (typically for the meet-the-presenter slide) or a stack item/bonus product image from this
+// project's Discovery (for that item's introduction slide). Copies the file into the slide-images bucket and
 // records it as an ordinary slide_media image, so the existing preview, the remove button, and
 // the .pptx export all handle it with no special cases. A copy (not a reference) means deleting
 // the photo from the Bio later never breaks a deck that already uses it. No credits — no AI call.
@@ -48,6 +49,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const admin = createAdminClient();
+  let sourceBucket: "presenter-photos" | "slide-images";
+  let label: string;
   const { data: owningBio } = await admin
     .from("presenter_bio_profiles")
     .select("id")
@@ -55,10 +58,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .contains("presenter_photos", [photoPath])
     .limit(1)
     .maybeSingle();
-  if (!owningBio) return NextResponse.json({ error: "That photo isn't on your Bio anymore." }, { status: 404 });
+  if (owningBio) {
+    sourceBucket = "presenter-photos";
+    label = PRESENTER_PHOTO_LABEL;
+  } else {
+    const { data: project } = generation.project_id
+      ? await admin.from("projects").select("stack_items, fast_action_bonuses").eq("id", generation.project_id).maybeSingle()
+      : { data: null };
+    const item = [...(project?.stack_items ?? []), ...(project?.fast_action_bonuses ?? [])].find(
+      (i) => i.image_path === photoPath
+    );
+    if (!item) return NextResponse.json({ error: "That image isn't on your Bio or Discovery anymore." }, { status: 404 });
+    sourceBucket = "slide-images";
+    label = `${OFFER_IMAGE_LABEL_PREFIX}${item.name.trim() || "item"}`;
+  }
 
-  const { data: file, error: downloadError } = await admin.storage.from("presenter-photos").download(photoPath);
-  if (downloadError || !file) return NextResponse.json({ error: "Could not load that photo." }, { status: 500 });
+  const { data: file, error: downloadError } = await admin.storage.from(sourceBucket).download(photoPath);
+  if (downloadError || !file) return NextResponse.json({ error: "Could not load that image." }, { status: 500 });
 
   const isPng = photoPath.toLowerCase().endsWith(".png");
   const storagePath = `${userId}/${id}/${slideNumber}.${isPng ? "png" : "jpg"}`;
@@ -68,7 +84,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       contentType: isPng ? "image/png" : "image/jpeg",
       upsert: true,
     });
-  if (uploadError) return NextResponse.json({ error: "Could not add that photo." }, { status: 500 });
+  if (uploadError) return NextResponse.json({ error: "Could not add that image." }, { status: 500 });
 
   const { error: upsertError } = await admin.from("slide_media").upsert(
     {
@@ -79,12 +95,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       storage_path: storagePath,
       chart_type: null,
       chart_data: null,
-      prompt: PRESENTER_PHOTO_LABEL,
+      prompt: label,
     },
     { onConflict: "generation_id,slide_number" }
   );
-  if (upsertError) return NextResponse.json({ error: "Could not add that photo." }, { status: 500 });
+  if (upsertError) return NextResponse.json({ error: "Could not add that image." }, { status: 500 });
 
   const { data: signed } = await admin.storage.from("slide-images").createSignedUrl(storagePath, 3600);
-  return NextResponse.json({ slideNumber, kind: "image", url: signed?.signedUrl ?? null });
+  return NextResponse.json({ slideNumber, kind: "image", url: signed?.signedUrl ?? null, prompt: label });
 }

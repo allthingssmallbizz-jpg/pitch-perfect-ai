@@ -123,6 +123,9 @@ export type StackItem = {
   name: string;
   value: string;
   category?: "stack" | "bonus";
+  // Optional product image (a mockup, cover, screenshot) — a path in the slide-images bucket,
+  // uploaded from Discovery and placeable on the slide that introduces this item.
+  image_path?: string;
 };
 
 // A bonus reserved for whoever acts fastest (see 0046_bonus_category_and_fab.sql) — revealed
@@ -134,6 +137,8 @@ export type FastActionBonus = {
   name: string;
   value: string;
   condition: string;
+  // Optional product image — same as StackItem.image_path.
+  image_path?: string;
 };
 
 export type Project = {

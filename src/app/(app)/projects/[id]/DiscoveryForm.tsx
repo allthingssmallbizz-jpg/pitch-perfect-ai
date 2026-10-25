@@ -1,8 +1,10 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { createContext, useActionState, useContext, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Sparkles, Globe, Wand2, UserCircle, ArrowRight, TriangleAlert, Plus, X } from "lucide-react";
+import { Sparkles, Globe, Wand2, UserCircle, ArrowRight, TriangleAlert, Plus, X, ImagePlus, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { downsizeToJpeg } from "@/lib/imageResize";
 import type { Project, StackItem, FastActionBonus } from "@/types/database";
 import { updateProjectDiscovery } from "@/lib/actions/projects";
 import { getMissingRecommendedFieldLabels } from "@/lib/projects";
@@ -157,6 +159,89 @@ function Field({
   );
 }
 
+// Lets each item row upload/show its own product image without threading the project id and the
+// signed-URL cache through every editor's props.
+const OfferImageContext = createContext<{
+  projectId: string;
+  urls: Record<string, string>;
+  remember: (path: string, url: string) => void;
+} | null>(null);
+
+// One small thumbnail button per stack item / bonus / fast action bonus — a product image
+// (mockup, cover, screenshot) that can later be placed on the slide introducing that item via
+// "Add image" in the deck's slide view. Uploads immediately (so the path exists), but the path is
+// only saved onto the item when the Discovery form itself is saved, like every other field here.
+function ItemImageSlot({ path, onChange }: { path?: string; onChange: (path: string | undefined) => void }) {
+  const ctx = useContext(OfferImageContext);
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  if (!ctx) return null;
+  const url = path ? ctx.urls[path] : undefined;
+
+  async function handleFile(file: File) {
+    if (!ctx) return;
+    setUploading(true);
+    try {
+      const jpeg = await downsizeToJpeg(file);
+      const body = new FormData();
+      body.append("file", new File([jpeg], "image.jpg", { type: "image/jpeg" }));
+      const res = await fetch(`/api/projects/${ctx.projectId}/offer-images`, { method: "POST", body });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "Could not upload that image.");
+      if (data.url) ctx.remember(data.path, data.url);
+      onChange(data.path);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not upload that image.");
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading}
+        title={path ? "Replace product image" : "Add a product image"}
+        className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-md border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary"
+      >
+        {uploading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : url ? (
+          // eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL
+          <img src={url} alt="" className="h-full w-full object-cover" />
+        ) : path ? (
+          <ImagePlus className="h-4 w-4 text-primary" />
+        ) : (
+          <ImagePlus className="h-4 w-4" />
+        )}
+      </button>
+      {path && !uploading && (
+        <button
+          type="button"
+          onClick={() => onChange(undefined)}
+          title="Remove image"
+          className="absolute -right-1.5 -top-1.5 rounded-full bg-black/80 p-0.5 text-white"
+        >
+          <X className="h-2.5 w-2.5" />
+        </button>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) void handleFile(file);
+        }}
+      />
+    </div>
+  );
+}
+
 // One name+value row, reused for both the Stack Items and Bonuses groups below — the only
 // difference between the two groups is the `category` tag stamped onto new rows and the copy
 // around them, so one small presentational component covers both instead of two near-duplicates.
@@ -171,6 +256,7 @@ function StackRow({
 }) {
   return (
     <div className="flex gap-2">
+      <ItemImageSlot path={item.image_path} onChange={(image_path) => onChange({ image_path })} />
       <Input
         value={item.name}
         onChange={(e) => onChange({ name: e.target.value })}
@@ -227,6 +313,10 @@ function ValueStackEditor({
       <input type="hidden" name="stack_items" value={JSON.stringify(items)} />
 
       <Label>Stack items — core components of the offer, each with its own value</Label>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        Tap the image square on any row to add a product image (a mockup, cover, or screenshot) — you can then place it
+        on that item&apos;s slide with &quot;Add image&quot; in your deck&apos;s slide view.
+      </p>
       <p className="mt-0.5 text-xs text-muted-foreground">
         Pieces of the actual program/package itself (a module, a template library, a live
         implementation week) — introduced as &quot;included in the program,&quot; not as a separate gift.
@@ -305,6 +395,7 @@ function FastActionBonusEditor({
       <div className="mt-2 space-y-2">
         {items.map((item, i) => (
           <div key={i} className="flex flex-wrap gap-2">
+            <ItemImageSlot path={item.image_path} onChange={(image_path) => updateItem(i, { image_path })} />
             <Input
               value={item.name}
               onChange={(e) => updateItem(i, { name: e.target.value })}
@@ -375,6 +466,29 @@ export default function DiscoveryForm({
   const [coreOfferValue, setCoreOfferValue] = useState(project.core_offer_value ?? "");
   const [stackItems, setStackItems] = useState<StackItem[]>(project.stack_items ?? []);
   const [fastActionBonuses, setFastActionBonuses] = useState<FastActionBonus[]>(project.fast_action_bonuses ?? []);
+  // Signed thumbnail URLs for item images (the bucket is private). Fetched once for images saved
+  // in an earlier session; new uploads add their own URL as they land.
+  const [offerImageUrls, setOfferImageUrls] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const paths = [...(project.stack_items ?? []), ...(project.fast_action_bonuses ?? [])]
+      .map((item) => item.image_path)
+      .filter((p): p is string => Boolean(p));
+    if (paths.length === 0) return;
+    const query = paths.map((p) => `path=${encodeURIComponent(p)}`).join("&");
+    fetch(`/api/projects/${project.id}/offer-images?${query}`)
+      .then((res) => res.json())
+      .then((data: { urls?: Record<string, string> }) => {
+        if (data.urls) setOfferImageUrls((prev) => ({ ...data.urls, ...prev }));
+      })
+      .catch(() => {
+        // Thumbnails just don't show — the saved images themselves are unaffected.
+      });
+  }, [project.id, project.stack_items, project.fast_action_bonuses]);
+  const offerImageContext = {
+    projectId: project.id,
+    urls: offerImageUrls,
+    remember: (path: string, url: string) => setOfferImageUrls((prev) => ({ ...prev, [path]: url })),
+  };
   // Controlled for the same reason — reported need: a member choosing Tripwire vs. Book a Call
   // vs. Checkout had no idea the CTA link field just below meant something different for each
   // choice (which page, whose link). Tracking the live selection lets that field's own hint
@@ -796,7 +910,9 @@ export default function DiscoveryForm({
             className="mt-1"
           />
         </div>
-        <ValueStackEditor coreValue={coreOfferValue} items={stackItems} onItemsChange={setStackItems} />
+        <OfferImageContext.Provider value={offerImageContext}>
+          <ValueStackEditor coreValue={coreOfferValue} items={stackItems} onItemsChange={setStackItems} />
+        </OfferImageContext.Provider>
         <Field
           label="Scarcity / urgency"
           name="scarcity_urgency"
@@ -806,7 +922,9 @@ export default function DiscoveryForm({
           required
           onAssist={setAssistTarget}
         />
-        <FastActionBonusEditor items={fastActionBonuses} onItemsChange={setFastActionBonuses} />
+        <OfferImageContext.Provider value={offerImageContext}>
+          <FastActionBonusEditor items={fastActionBonuses} onItemsChange={setFastActionBonuses} />
+        </OfferImageContext.Provider>
         <Field
           label="Primary call to action"
           name="cta"

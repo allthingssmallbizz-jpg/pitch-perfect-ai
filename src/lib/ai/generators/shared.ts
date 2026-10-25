@@ -25,6 +25,11 @@ export function formatMoney(n: number): string {
 // itself reads differently when revealed ("included in the program") than a separate extra gift
 // ("and I'll also throw in...") — but both still count toward the one combined total. A missing
 // `category` (every item saved before this distinction existed) defaults to "stack".
+// A member-uploaded product image exists for this item (see the Discovery Value Stack editor) and
+// can be placed on its introduction slide — the model can't see it, so it only adjusts layout.
+const PRODUCT_IMAGE_NOTE =
+  " [has a real product image the member will place on this item's own introduction slide — keep that slide's on-slide text short so the image carries it; never describe what the image shows]";
+
 function formatValueStackBlock(project: Project): string {
   const coreValue = project.core_offer_value?.trim() ? parseMoney(project.core_offer_value) : null;
   const allItems = (project.stack_items ?? []).filter((item) => item.name?.trim() || item.value?.trim());
@@ -40,12 +45,12 @@ function formatValueStackBlock(project: Project): string {
   ];
   let total = coreValue ?? 0;
   for (const item of stackItems) {
-    lines.push(`Stack item (part of the core offer): ${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"}`);
+    lines.push(`Stack item (part of the core offer): ${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"}${item.image_path ? PRODUCT_IMAGE_NOTE : ""}`);
     const v = item.value?.trim() ? parseMoney(item.value) : null;
     if (v) total += v;
   }
   for (const item of bonusItems) {
-    lines.push(`Bonus (a separate extra, not part of the core offer): ${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"}`);
+    lines.push(`Bonus (a separate extra, not part of the core offer): ${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"}${item.image_path ? PRODUCT_IMAGE_NOTE : ""}`);
     const v = item.value?.trim() ? parseMoney(item.value) : null;
     if (v) total += v;
   }
@@ -81,7 +86,7 @@ function formatFastActionBonusBlock(project: Project): string {
   ];
   for (const item of items) {
     lines.push(
-      `${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"} — reserved for: ${item.condition?.trim() || "(no qualifying condition given — don't invent one, ask the member to add it)"}`
+      `${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"} — reserved for: ${item.condition?.trim() || "(no qualifying condition given — don't invent one, ask the member to add it)"}${item.image_path ? PRODUCT_IMAGE_NOTE : ""}`
     );
   }
   return lines.join("\n");

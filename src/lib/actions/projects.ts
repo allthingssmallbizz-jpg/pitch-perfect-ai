@@ -370,6 +370,13 @@ export async function duplicateProject(_prevState: unknown, formData: FormData) 
 // passed through as-is only when it's actually "stack" or "bonus" — anything else (a drifted
 // client, a hand-edited draft) is dropped rather than saved, so a bad value can't silently steer
 // the reveal wrong later; formatValueStackBlock defaults a missing category to "stack" when read.
+// Only ever a path our own upload route produced (see /api/projects/[id]/offer-images) — anything
+// else is dropped rather than saved, so a hand-edited draft can't point an item at another file.
+const OFFER_IMAGE_PATH = /^[0-9a-f-]{36}\/offer-items\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(?:jpg|png)$/;
+function offerImagePath(value: unknown): { image_path?: string } {
+  return typeof value === "string" && OFFER_IMAGE_PATH.test(value) ? { image_path: value } : {};
+}
+
 function parseStackItems(raw: string): StackItem[] {
   try {
     const parsed = JSON.parse(raw || "[]");
@@ -380,6 +387,7 @@ function parseStackItems(raw: string): StackItem[] {
         name: item.name,
         value: item.value,
         ...(item.category === "stack" || item.category === "bonus" ? { category: item.category } : {}),
+        ...offerImagePath(item.image_path),
       }));
   } catch {
     return [];
@@ -396,7 +404,7 @@ function parseFastActionBonuses(raw: string): FastActionBonus[] {
         (item): item is FastActionBonus =>
           typeof item?.name === "string" && typeof item?.value === "string" && typeof item?.condition === "string"
       )
-      .map((item) => ({ name: item.name, value: item.value, condition: item.condition }));
+      .map((item) => ({ name: item.name, value: item.value, condition: item.condition, ...offerImagePath(item.image_path) }));
   } catch {
     return [];
   }
