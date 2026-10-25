@@ -331,6 +331,7 @@ export default function GenerateClient({
   projectName,
   initialCourseNaming,
   webinarScriptContent,
+  presenterPhotos = [],
 }: {
   projectId: string;
   assetType: AssetType;
@@ -377,6 +378,8 @@ export default function GenerateClient({
   // the .pptx export already does. Null for every other agent, and for ppt_outline itself until
   // a script has been created.
   webinarScriptContent: string | null;
+  // The presenter's own Bio photos, offered as "Add my photo" on deck slides (see SlidePreview).
+  presenterPhotos?: { path: string; url: string | null }[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -2190,6 +2193,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
               generationId={generationId}
               mediaEnabled={SLIDE_MEDIA_ASSET_TYPES.includes(assetType)}
               scriptBySlideNumber={scriptBySlideNumber}
+              presenterPhotos={presenterPhotos}
               onSelectSlide={selectTtsStart}
             />
           ) : (

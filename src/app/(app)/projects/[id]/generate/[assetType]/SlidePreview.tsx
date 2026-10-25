@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ImagePlus, BarChart3, Loader2, X, RefreshCw, Volume2 } from "lucide-react";
+import { ImagePlus, BarChart3, Loader2, X, RefreshCw, Volume2, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { parsePptOutline, classifySlideLayout } from "@/lib/ai/pptxParser";
 import { SLIDE_IMAGE_CREDIT_COST, SLIDE_CHART_TYPES, SLIDE_CHART_MAX_POINTS } from "@/lib/ai/generators/slideMedia";
 import type { SlideChartType } from "@/types/database";
+import { PRESENTER_PHOTO_LABEL } from "@/lib/presenterPhotos";
 
 type SlideMediaItem = {
   slideNumber: number;
@@ -79,6 +80,7 @@ export default function SlidePreview({
   mediaEnabled,
   scriptBySlideNumber,
   onSelectSlide,
+  presenterPhotos = [],
 }: {
   markdown: string;
   generationId: string | null;
@@ -95,6 +97,10 @@ export default function SlidePreview({
   // everything" convention RichTextEditor's own callback uses) so GenerateClient can feed it
   // straight to TtsPlayer without any new wiring on that side.
   onSelectSlide?: (trailingText: string | null) => void;
+  // The presenter's own uploaded photos (see the Bio page) — when there are any, every content
+  // slide gets an "Add my photo" control, independent of mediaEnabled, so a real family photo can
+  // go on the meet-the-presenter slide of a webinar deck without turning on AI images there.
+  presenterPhotos?: { path: string; url: string | null }[];
 }) {
   const slides = parsePptOutline(markdown);
   const total = slides.length;
@@ -133,9 +139,12 @@ export default function SlidePreview({
   const [chartFormFor, setChartFormFor] = useState<number | null>(null);
   const [savingChartFor, setSavingChartFor] = useState<number | null>(null);
   const [chartDrafts, setChartDrafts] = useState<Record<number, ChartDraft>>({});
+  const [photoPickerFor, setPhotoPickerFor] = useState<number | null>(null);
+  const [placingPhotoFor, setPlacingPhotoFor] = useState<number | null>(null);
+  const photosEnabled = presenterPhotos.length > 0 && Boolean(generationId);
 
   useEffect(() => {
-    if (!mediaEnabled || !generationId) return;
+    if ((!mediaEnabled && !photosEnabled) || !generationId) return;
     let cancelled = false;
     fetch(`/api/generations/${generationId}/slide-media`)
       .then((res) => res.json())
@@ -150,7 +159,7 @@ export default function SlidePreview({
     return () => {
       cancelled = true;
     };
-  }, [mediaEnabled, generationId]);
+  }, [mediaEnabled, photosEnabled, generationId]);
 
   if (slides.length === 0) {
     return (
@@ -200,6 +209,31 @@ export default function SlidePreview({
       toast.error(e instanceof Error ? e.message : "Could not remove that.");
     } finally {
       setRemovingFor(null);
+    }
+  }
+
+  async function placePhoto(slideNumber: number, photoPath: string) {
+    if (!generationId) return;
+    setPlacingPhotoFor(slideNumber);
+    try {
+      const res = await fetch(`/api/generations/${generationId}/slide-media/photo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slideNumber, photoPath }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "Could not add that photo.");
+      setMediaBySlideNumber((prev) => {
+        const next = new Map(prev);
+        next.set(slideNumber, { slideNumber, kind: "image", url: data.url, chartType: null, chartData: null, prompt: PRESENTER_PHOTO_LABEL });
+        return next;
+      });
+      setPhotoPickerFor(null);
+      toast.success(`Photo added to Slide ${slideNumber}!`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not add that photo.");
+    } finally {
+      setPlacingPhotoFor(null);
     }
   }
 
@@ -265,7 +299,8 @@ export default function SlidePreview({
         {slides.map((slide, index) => {
           const layout = classifySlideLayout(index, total, slide.title);
           const media = mediaBySlideNumber.get(slide.number);
-          const showMediaControls = mediaEnabled && layout === "content" && generationId;
+          const showMediaControls = (mediaEnabled || photosEnabled) && layout === "content" && generationId;
+          const isPresenterPhoto = media?.kind === "image" && media.prompt === PRESENTER_PHOTO_LABEL;
           const draft = chartDrafts[slide.number];
           const notes = resolvedNotes(slide.number, slide.notes);
           const notesAreFullScript = Boolean(scriptBySlideNumber?.get(slide.number));
@@ -322,10 +357,10 @@ export default function SlidePreview({
                   {media ? (
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] text-muted-foreground">
-                        {media.kind === "image" ? "AI image added" : "Chart added"}
+                        {isPresenterPhoto ? "Your photo added" : media.kind === "image" ? "AI image added" : "Chart added"}
                       </span>
                       <div className="flex gap-1.5">
-                        {media.kind === "image" && (
+                        {media.kind === "image" && mediaEnabled && !isPresenterPhoto && (
                           <Button
                             type="button"
                             variant="ghost"
@@ -351,6 +386,33 @@ export default function SlidePreview({
                           onClick={() => removeMedia(slide.number)}
                         >
                           {removingFor === slide.number ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : photoPickerFor === slide.number ? (
+                    <div className="space-y-2">
+                      <p className="text-[11px] text-muted-foreground">Pick a photo for this slide:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {presenterPhotos.map((photo) => (
+                          <button
+                            key={photo.path}
+                            type="button"
+                            disabled={placingPhotoFor === slide.number}
+                            onClick={() => placePhoto(slide.number, photo.path)}
+                            className="h-14 w-14 overflow-hidden rounded-md border border-border hover:border-primary disabled:opacity-50"
+                          >
+                            {photo.url ? (
+                              // eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL
+                              <img src={photo.url} alt="Your photo" className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">Photo</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex justify-end">
+                        <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setPhotoPickerFor(null)}>
+                          {placingPhotoFor === slide.number ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Cancel"}
                         </Button>
                       </div>
                     </div>
@@ -403,6 +465,20 @@ export default function SlidePreview({
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-1.5">
+                      {photosEnabled && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setPhotoPickerFor(slide.number)}
+                        >
+                          <UserRound className="mr-1 h-3.5 w-3.5" />
+                          Add my photo
+                        </Button>
+                      )}
+                      {mediaEnabled && (
+                      <>
                       <Button
                         type="button"
                         variant="outline"
@@ -429,6 +505,8 @@ export default function SlidePreview({
                         <BarChart3 className="mr-1 h-3.5 w-3.5" />
                         Add chart
                       </Button>
+                      </>
+                      )}
                     </div>
                   )}
                 </div>

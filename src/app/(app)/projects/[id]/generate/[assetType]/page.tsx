@@ -105,6 +105,25 @@ export default async function GenerateAssetPage({
       }
     }
   }
+  // The presenter's own uploaded photos (see the Bio page's photo section), offered as "Add my
+  // photo" on any slide of a deck — usually the meet-the-presenter slide. Signed fresh per load.
+  let presenterPhotos: { path: string; url: string | null }[] = [];
+  if (
+    project.presenter_bio_profile_id &&
+    (["ppt_outline", "course_module_slides", "challenge_day_slides"] as string[]).includes(generator.assetType)
+  ) {
+    const { data: bioPhotos } = await supabase
+      .from("presenter_bio_profiles")
+      .select("presenter_photos")
+      .eq("id", project.presenter_bio_profile_id)
+      .maybeSingle();
+    const paths = bioPhotos?.presenter_photos ?? [];
+    if (paths.length) {
+      const { data: signed } = await supabase.storage.from("presenter-photos").createSignedUrls(paths, 3600);
+      presenterPhotos = paths.map((path) => ({ path, url: signed?.find((s) => s.path === path)?.signedUrl ?? null }));
+    }
+  }
+
   // Used to be a silent redirect straight back to the project page — now a blocking popup
   // rendered below, right on this page, so it's clear exactly why the agent didn't open instead
   // of landing back on the project with no explanation beyond an easy-to-miss banner.
@@ -448,6 +467,7 @@ export default async function GenerateAssetPage({
       </div>
 
       <GenerateClient
+        presenterPhotos={presenterPhotos}
         // Forces a full remount whenever the open generation changes (a fresh visit, opening a
         // past run, or a just-completed Regenerate updating the URL) — without this, switching
         // to a different generation via the "Past generations" list only ever changes the URL,

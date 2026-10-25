@@ -274,7 +274,9 @@ function addContentSlide(
     const box = { x: 7.85, y: 1.95, w: 4.6, h: 4.6 };
     if (media.kind === "image") {
       slide.addImage({
-        data: `image/png;base64,${media.base64}`,
+        // AI images are PNG, but a member's own uploaded photo (see slide-media/photo) is usually
+        // JPEG — base64 JPEG data always starts with "/9j/".
+        data: `${media.base64.startsWith("/9j/") ? "image/jpeg" : "image/png"};base64,${media.base64}`,
         ...box,
         sizing: { type: "cover", w: box.w, h: box.h },
         rounding: true,

@@ -41,9 +41,17 @@ export async function getPresenterBioBlock(
     field("Personal 'why'", data.presenter_mission_why),
     field("Media, speaking, or industry recognition", data.presenter_recognition),
     field("A relatable, human detail", data.presenter_relatable_detail),
+    field("Family and personal life (who they do this for)", data.presenter_family),
     field("Income goal — next 6 months", data.presenter_income_goal_6mo),
     field("Income goal — next 12 months", data.presenter_income_goal_12mo),
   ].filter((line): line is string => line !== null);
+
+  const photoCount = (data.presenter_photos ?? []).length;
+  if (photoCount > 0) {
+    lines.push(
+      `(They've uploaded ${photoCount} real personal/family photo${photoCount === 1 ? "" : "s"} to show on the meet-the-presenter slide — keep that slide's on-slide text short so the photo carries it. Never describe a photo's contents; you can't see it.)`
+    );
+  }
 
   if (data.presenter_income_goal_6mo.trim() || data.presenter_income_goal_12mo.trim()) {
     lines.push(
@@ -124,7 +132,7 @@ type PresenterBioFields = {
 // needs its own, stricter definition of "done." See isPresenterBioIncomplete.
 export function isPresenterBioEmpty(bio: PresenterBioFields | null | undefined): boolean {
   if (!bio) return true;
-  return Object.values(bio).every((v) => !v.trim());
+  return Object.values(bio).every((v) => typeof v !== "string" || !v.trim());
 }
 
 // The fields PresenterBioForm.tsx marks with a required red asterisk — the single source of

@@ -41,6 +41,7 @@ export async function updatePresenterBio(_prevState: unknown, formData: FormData
     presenter_mission_why: text("presenter_mission_why"),
     presenter_recognition: text("presenter_recognition"),
     presenter_relatable_detail: text("presenter_relatable_detail"),
+    presenter_family: text("presenter_family"),
     presenter_voice_tone: text("presenter_voice_tone"),
     presenter_voice_preferred_words: text("presenter_voice_preferred_words"),
     presenter_voice_forbidden_words: text("presenter_voice_forbidden_words"),

@@ -6,6 +6,8 @@ import { isPresenterBioIncomplete, getMissingBioFieldLabels } from "@/lib/ai/pre
 import StartHereBadge from "@/components/StartHereBadge";
 import DeleteProjectButton from "@/components/DeleteProjectButton";
 import PresenterBioForm from "../PresenterBioForm";
+import PresenterPhotos from "../PresenterPhotos";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function PresenterBioProfilePage({
   params,
@@ -38,6 +40,15 @@ export default async function PresenterBioProfilePage({
   if (!bio) notFound();
 
   const missingFields = getMissingBioFieldLabels(bio);
+
+  const photoPaths = bio.presenter_photos ?? [];
+  const { data: signedPhotos } = photoPaths.length
+    ? await createAdminClient().storage.from("presenter-photos").createSignedUrls(photoPaths, 3600)
+    : { data: [] };
+  const initialPhotos = photoPaths.map((path) => ({
+    path,
+    url: signedPhotos?.find((s) => s.path === path)?.signedUrl ?? null,
+  }));
 
   // Set by every hard "finish this bio first" redirect (generate/[assetType]/page.tsx,
   // ad-image/page.tsx) so Save can send them straight back instead of stranding them here — see
@@ -89,7 +100,12 @@ export default async function PresenterBioProfilePage({
         </div>
       </div>
 
-      <PresenterBioForm bio={bio} profileId={bio.id} redirectTo={returnTo} />
+      <PresenterBioForm
+        bio={bio}
+        profileId={bio.id}
+        redirectTo={returnTo}
+        photoSlot={<PresenterPhotos profileId={bio.id} initialPhotos={initialPhotos} />}
+      />
 
       {/* Landing here (right after creating a project, or bounced back by a "finish your bio
           first" gate) used to be a dead end for a project a member decided they didn't actually

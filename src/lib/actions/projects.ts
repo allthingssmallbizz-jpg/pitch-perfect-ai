@@ -208,6 +208,7 @@ export async function duplicateProject(_prevState: unknown, formData: FormData) 
         presenter_mission_why: originalBio.presenter_mission_why,
         presenter_recognition: originalBio.presenter_recognition,
         presenter_relatable_detail: originalBio.presenter_relatable_detail,
+        presenter_family: originalBio.presenter_family,
         presenter_voice_tone: originalBio.presenter_voice_tone,
         presenter_voice_preferred_words: originalBio.presenter_voice_preferred_words,
         presenter_voice_forbidden_words: originalBio.presenter_voice_forbidden_words,

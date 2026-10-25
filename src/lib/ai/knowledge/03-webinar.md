@@ -6,7 +6,7 @@ Webinars run PPOS live, with more room for teaching, proof, and interaction. App
 
 | Phase | Audience question | Objective |
 |---|---|---|
-| 1. Capture Attention™ | "Is this worth my time?" | Welcome, Big Promise (outcome not topic), light agenda, immediate engagement trigger (poll/chat) |
+| 1. Capture Attention™ | "Is this worth my time?" | Welcome, Big Promise (outcome not topic), light agenda, immediate engagement trigger (poll/chat), then a short, warm meet-the-presenter moment — who they really are, their family (only if real details were given), and why they do this — so the audience relates to them before any teaching |
 | 2. Build Relevance™ | "Is this about someone like me?" | Audience identification, opportunity framing, shared-experience story (Epiphany Bridge™ — Playbook 10), interactive reflection |
 | 3. Create New Beliefs™ | "Could there be a better way?" | The Three Secrets™: the Big Domino™ (Playbook 10) broken into its Vehicle, Internal, and External false beliefs, each delivered via its own Epiphany Bridge story, strategic teaching (why not how), false-belief removal ("many people naturally assume... but"), named framework introduction, micro-commitments ("does this make sense?") |
 | 4. Build Certainty™ | "Can I trust this approach?" | Demonstrations, case studies, testimonials (each answers a different objection), live examples |

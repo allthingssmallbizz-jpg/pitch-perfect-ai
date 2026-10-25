@@ -276,6 +276,12 @@ export const DISCOVERY_FIELD_GUIDANCE: Record<string, FieldGuidance> = {
     avoid: "Anything that's secretly another credibility flex. This should read as purely human, not another achievement.",
     exemplar: "I'm a terrible cook and have burned water — my husband does all the cooking and I take zero credit for it.",
   },
+  presenter_family: {
+    whatThisFieldIs: "The presenter's family and personal life — the people they do this for — used for a short, human 'meet the presenter' moment early in a webinar.",
+    whatGreatLooksLike: "- Real names and relationships (spouse/partner, kids, parents, grandkids)\n- One or two specific, warm details\n- Ties back to why they do this work, in a sentence",
+    avoid: "Inventing family members, or turning it into a long life story. Two to four sentences of real, specific detail is plenty.",
+    exemplar: "Married 19 years to my wife Tonya, and we have a daughter, Kayla, who's 14. Kayla is the reason I stopped trading every hour for a paycheck — I wanted her to see her dad build something of his own.",
+  },
 };
 
 export type DiscoveryAssistInput = {

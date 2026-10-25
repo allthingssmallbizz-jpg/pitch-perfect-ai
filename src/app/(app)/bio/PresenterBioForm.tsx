@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState, type ReactNode } from "react";
 import { Sparkles, Save } from "lucide-react";
 import type { PresenterBioProfile } from "@/types/database";
 import { updatePresenterBio } from "@/lib/actions/presenterBio";
@@ -37,6 +37,7 @@ const FIELD_NAMES = [
   "presenter_mission_why",
   "presenter_recognition",
   "presenter_relatable_detail",
+  "presenter_family",
   "presenter_voice_tone",
   "presenter_voice_preferred_words",
   "presenter_voice_forbidden_words",
@@ -114,10 +115,14 @@ export default function PresenterBioForm({
   bio,
   profileId,
   redirectTo = null,
+  photoSlot = null,
 }: {
   bio: PresenterBioProfile;
   profileId: string;
   redirectTo?: string | null;
+  // Rendered right under the family field. Passed in rather than built here because photo uploads
+  // save immediately through their own API route, independent of this form's Save button.
+  photoSlot?: ReactNode;
 }) {
   const [state, formAction, pending] = useActionState(updatePresenterBio, undefined);
   const [assistTarget, setAssistTarget] = useState<AssistTarget | null>(null);
@@ -449,6 +454,15 @@ export default function PresenterBioForm({
         required
         onAssist={setAssistTarget}
       />
+      <Field
+        label="Your family and personal life"
+        name="presenter_family"
+        defaultValue={bio?.presenter_family ?? ""}
+        placeholder="e.g. Married 19 years to Tonya, our daughter Kayla is 14 — she's the reason I do this."
+        hint="Used for a short 'meet the presenter' slide near the start of your webinar, so your audience gets to know the real you. Leave blank to skip family entirely — nothing gets made up."
+        onAssist={setAssistTarget}
+      />
+      {photoSlot}
       <div className="grid grid-cols-2 gap-4">
         <Field
           label="Income goal — next 6 months"

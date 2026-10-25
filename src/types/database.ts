@@ -392,6 +392,10 @@ export type PresenterBioProfile = {
   presenter_mission_why: string;
   presenter_recognition: string;
   presenter_relatable_detail: string;
+  // Family/personal life for the meet-the-presenter slide, and uploaded photos (storage paths in
+  // the presenter-photos bucket, max 3) — see 0050_presenter_family_and_photos.sql. Both optional.
+  presenter_family: string;
+  presenter_photos: string[];
   // This presenter's own voice, scoped to this one niche — distinct from the account-wide
   // BrandVoice above, which only has one slot per account. Same shape/reasoning as BrandVoice's
   // own voice fields (see getBrandVoiceBlock), just per-niche instead of per-account — see
