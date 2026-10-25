@@ -59,7 +59,7 @@ Build the offer section in this exact order, using the real items/values from th
 6. FAST ACTION BONUS (its real item, value, and qualifying condition from the discovery data when present — "and if you're one of the [condition], I'll also include [item], worth [value]" — never invented, never folded into the stack/total above) plus one to two more proof or story slides. Still no price.
 7. FULL STACK REVEAL #3 (the final pre-price anchor) — immediately before the price slide, display the complete stack and total one final time. This is deliberate: the audience remembers the last full thing they saw right before the price, so this reveal can never be skipped or merged into the price slide itself. Still no price.
 8. VALUE JUSTIFICATION QUESTION — required, its own dedicated slide, immediately after step 7 and immediately before the price slide, never skipped and never folded into either one. The question MUST be worded exactly this way, with the real total value from step 7 filled in — both on the slide and in the speaker notes: "Although I'm not going to charge you [total value] today, if I were to charge you that, would it be worth it?" Do not paraphrase it, soften it, or replace it with a different tie-down ("Everything I just showed you is worth... but if I did"); that exact "although I'm not going to charge you [value] today... if I were to charge you that, would it be worth it?" construction is the required wording — the classic tie-down question that gets the audience mentally agreeing to the value before the real price ever appears. A short lead-in naming the total ("Everything I've shown you adds up to [total value].") may come right before it, but the question itself stays word-for-word. This is a genuine question the slide/notes pose to the audience, not a rhetorical aside tucked into another slide — still no actual price (today's real number) anywhere on this slide.
-9. PRICE REVEAL — only now. A slide showing the total value visually struck through / crossed out, dropping to the actual founding price.
+9. PRICE REVEAL — only now. A slide showing the total value visually struck through / crossed out, dropping to the actual founding price. The price reveal is ALWAYS its own slide, alone — it never shares a slide with anything else: no Value Justification Question, no guarantee, no bonus or Fast Action Bonus, no urgency/price-rise/deadline message, no payment plan, no CTA or link, no extra bullets. Its only content is the price itself, shown against the crossed-out total it's dropping from. Everything that follows the price (why it won't last, the guarantee recap, Two Paths, CTA) starts on the NEXT slide. The notes for this slide just say the price out loud against the total ("So it's not [total value]... today it's just [price].") and nothing more.
 10. PRICE JUSTIFICATION + DECISION CLOSE — everything from here on is about the price just shown and the decision itself: why this price won't last (it rises later / a real deadline, tied to the Fast Action Bonus's own qualifying condition when one exists), the required **Two Paths** slide (see below), objection handling, an emotional close, and the single specific CTA repeated 2-3 times. Every one of those CTA repeats states the real CTA link from Discovery above directly and literally when one was given ("go to [that exact link] right now to join") — never a vague "click the link below" with no actual link on screen, since there usually isn't one in this format. If no CTA link was given, use the plain CTA text instead and don't invent a URL.
 
 How many FULL stack reveals (steps 3, 5, and 7 above) this close needs scales with the project's own price (the "Core offer price" field in Discovery above) — never generate a close where the complete stack appears only once:
@@ -193,6 +193,15 @@ const PRICE_FACT_PATTERNS: { pattern: RegExp; label: string }[] = [
   { pattern: /\b(?:costs?|priced at|payments? of|pay(?:ing)? just|only pay)\b[^.!?\n]{0,20}\$\s?\d/i, label: "what the offer costs" },
 ];
 
+const PRICE_SLIDE_EXTRAS: { pattern: RegExp; label: string }[] = [
+  { pattern: /would it be worth it/i, label: "the \"would it be worth it?\" question" },
+  { pattern: /\bguarantee/i, label: "the guarantee" },
+  { pattern: /\bbonus/i, label: "a bonus" },
+  { pattern: /never be the same|won'?t last|\b(?:go(?:es|ing)? up|rising|price (?:increase|hike))\b|\bdeadline\b/i, label: "urgency or price-rise talk" },
+  { pattern: /payment plan|\bper month\b|\/mo\b|\binstallments?\b/i, label: "a payment plan" },
+  { pattern: /https?:\/\/|\bwww\.|\.(?:com|co|io|app|net|org)\b|\b(?:join now|enroll now|sign up|click|go to)\b/i, label: "a call to action or link" },
+];
+
 export function findPrePriceLeaks(content: string): TitleLeakFlag[] {
   const slides = parsePptOutline(content);
   const slideText = (s: (typeof slides)[number]) => [s.title, ...s.bullets, s.notes].join("\n");
@@ -213,6 +222,20 @@ export function findPrePriceLeaks(content: string): TitleLeakFlag[] {
   }
 
   const flags: TitleLeakFlag[] = [];
+
+  // The price reveal must be alone on its own slide — the slide right after the question is it.
+  const priceSlide = slides[anchor + 1];
+  if (priceSlide) {
+    const extra = PRICE_SLIDE_EXTRAS.find(({ pattern }) => pattern.test(slideText(priceSlide)));
+    if (extra) {
+      flags.push({
+        slideNumber: priceSlide.number,
+        title: priceSlide.title,
+        reason: `This looks like the price reveal slide, but it also includes ${extra.label} — the price must be revealed alone on its own slide, with everything else moved to the next slide.`,
+      });
+    }
+  }
+
   for (const slide of slides.slice(0, anchor + 1)) {
     const text = slideText(slide);
     for (const { pattern, label } of PRICE_FACT_PATTERNS) {

@@ -1945,7 +1945,8 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
               A best-effort scan for slide titles that name an internal framework stage
               (&quot;Stack Item,&quot; &quot;Case Study: Before,&quot; &quot;Future
               Pace&quot;) instead of this deck&apos;s own real content, and for slides before
-              the price reveal that mention the price going up or changing. It can miss real
+              the price reveal that mention the price going up or changing, or a price reveal slide
+              that shares the slide with anything else. It can miss real
               issues and can flag a slide that&apos;s actually fine — review each one yourself
               rather than trusting this alone.
             </DialogDescription>
