@@ -49,6 +49,7 @@ export function buildChallengeDaySlidesPrompt(
    b. One slide introducing the core offer alone, with its own value if one was supplied.
    c. Batch any stack items + bonuses from the VALUE STACK discovery data into 1-3 cumulative recap slides (each showing everything revealed so far, growing batch to batch — see this project's Discovery data above for the real items/values; never invent ones that aren't there). Skip this step entirely if the discovery data has no stack items/bonuses.
    d. One slide totaling everything just stacked (the real computed number from Discovery, never invented) — skip if there was nothing to total.
+   d2. Required, its own slide — skip only if step d was skipped: the tie-down question, worded EXACTLY (real total filled in, on the slide and in the notes, never paraphrased): "Although I'm not going to charge you [total value] today, if I were to charge you that, would it be worth it?" No actual price on it.
    e. One slide revealing the price, contrasted against that total.
    f. ${
         isFinalDay
