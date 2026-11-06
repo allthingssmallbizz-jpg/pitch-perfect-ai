@@ -333,6 +333,7 @@ export default function GenerateClient({
   initialCourseNaming,
   webinarScriptContent,
   imageChoices = [],
+  strategyStatus,
 }: {
   projectId: string;
   assetType: AssetType;
@@ -381,6 +382,9 @@ export default function GenerateClient({
   webinarScriptContent: string | null;
   // Bio photos and Discovery product images, offered as "Add image" on deck slides (see SlidePreview).
   imageChoices?: SlideImageChoice[];
+  // Strategy Review checkpoint for presentation agents (see STRATEGY_GATED_ASSET_TYPES) — whether
+  // an approved Strategy Blueprint exists and whether Discovery changed after it was approved.
+  strategyStatus?: { gated: boolean; approvedVersion: number | null; changedSinceApproval: boolean };
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -542,6 +546,35 @@ export default function GenerateClient({
   // been run yet for the content currently on screen," not "nothing found."
   const [titleLeakFlags, setTitleLeakFlags] = useState<TitleLeakFlag[] | null>(null);
   const [titleLeakDialogOpen, setTitleLeakDialogOpen] = useState(false);
+  // "Continue without a strategy review", chosen explicitly via the checkpoint card below — kept for
+  // this browser tab only, so the choice is made consciously each session rather than forever.
+  const strategySkipKey = `pp-strategy-skip:${projectId}`;
+  const [skipStrategy, setSkipStrategy] = useState(false);
+  // Read after mount, not in the initializer, so the server-rendered HTML and the first client
+  // render agree (sessionStorage doesn't exist on the server).
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (window.sessionStorage.getItem(strategySkipKey) === "1") setSkipStrategy(true);
+    } catch {
+      // Storage blocked — the member just sees the checkpoint card again.
+    }
+  }, [strategySkipKey]);
+  const strategyBlocked = Boolean(strategyStatus?.gated && !strategyStatus.approvedVersion && !skipStrategy);
+  function continueWithoutStrategyReview() {
+    if (
+      !window.confirm(
+        "Generate without a Strategy Review? Your presentation will be built from your Discovery answers as they are, without the strategy checks for weak audience, unsupported claims, or invented scarcity."
+      )
+    )
+      return;
+    try {
+      window.sessionStorage.setItem(strategySkipKey, "1");
+    } catch {
+      // Private mode etc. — the choice still holds for this page view.
+    }
+    setSkipStrategy(true);
+  }
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [pastGenerations, setPastGenerations] = useState<PastGeneration[]>(initialPastGenerations);
@@ -717,7 +750,7 @@ export default function GenerateClient({
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, assetType: "thank_you_page", mode }),
+        body: JSON.stringify({ projectId, assetType: "thank_you_page", mode, skipStrategyReview: skipStrategy }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not generate the Thank You Page.");
@@ -765,7 +798,7 @@ export default function GenerateClient({
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, assetType: "ppt_outline", mode }),
+        body: JSON.stringify({ projectId, assetType: "ppt_outline", mode, skipStrategyReview: skipStrategy }),
       });
       const data = await res.json().catch(() => null);
       // A response that isn't even valid JSON (data === null here) means the connection dropped
@@ -865,7 +898,7 @@ export default function GenerateClient({
         // recent for this project" — a member viewing an older deck version they like (opened
         // via Past Generations) gets a script written for that specific one, not a different
         // version they don't actually want attached (see 0043_webinar_script_source.sql).
-        body: JSON.stringify({ projectId, assetType: "webinar_script", mode, sourceGenerationId: generationId }),
+        body: JSON.stringify({ projectId, assetType: "webinar_script", mode, sourceGenerationId: generationId, skipStrategyReview: skipStrategy }),
       });
       const data = await res.json().catch(() => null);
       // See generateWebinarNow/recoverWebinarDeck above — a non-JSON response means the
@@ -972,6 +1005,7 @@ export default function GenerateClient({
           challengeLength,
           dayIdentifier,
           includePitch,
+          skipStrategyReview: skipStrategy,
         }),
         signal: abortController.signal,
       });
@@ -1576,6 +1610,51 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           )}
         </div>
       )}
+      {strategyStatus?.gated &&
+        (strategyStatus.approvedVersion ? (
+          <div
+            className={`mb-4 rounded-xl border px-4 py-3 text-sm ${
+              strategyStatus.changedSinceApproval
+                ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+            }`}
+          >
+            {strategyStatus.changedSinceApproval ? (
+              <>
+                You edited Discovery after approving your strategy. This builds from the approved strategy (version{" "}
+                {strategyStatus.approvedVersion}), not the newer edits.{" "}
+                <Link href={`/projects/${projectId}/strategy`} className="font-medium underline">
+                  Re-review to include them
+                </Link>
+                .
+              </>
+            ) : (
+              <>
+                Building from your approved Strategy Blueprint (version {strategyStatus.approvedVersion}).{" "}
+                <Link href={`/projects/${projectId}/strategy`} className="underline">
+                  View strategy
+                </Link>
+              </>
+            )}
+          </div>
+        ) : strategyBlocked ? (
+          <div className="card-elevated mb-4 rounded-2xl border-primary/40 p-5">
+            <h2 className="font-display font-semibold">Review your strategy before building this</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              The Strategy Review checks your Discovery answers the way an experienced strategist would — a vague
+              audience, an unsupported claim, invented scarcity, an inflated bonus value — and helps you fix them
+              before they end up in a polished presentation.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button asChild>
+                <Link href={`/projects/${projectId}/strategy`}>Review my strategy</Link>
+              </Button>
+              <Button variant="outline" onClick={continueWithoutStrategyReview}>
+                Continue without a review
+              </Button>
+            </div>
+          </div>
+        ) : null)}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Button
           onClick={() => {
@@ -1594,7 +1673,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             }
             run();
           }}
-          disabled={loading}
+          disabled={loading || strategyBlocked}
         >
           <Sparkles className="mr-2 h-4 w-4" />
           {loading ? "Generating..." : content ? "Regenerate" : "Generate"}

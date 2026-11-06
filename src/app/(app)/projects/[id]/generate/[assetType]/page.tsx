@@ -16,6 +16,9 @@ import DiscoveryBlockedDialog from "@/components/DiscoveryBlockedDialog";
 import { Badge } from "@/components/ui/badge";
 import GenerateClient from "./GenerateClient";
 import type { SlideImageChoice } from "@/lib/presenterPhotos";
+import { getCurrentBlueprint, hashStrategyFields } from "@/lib/strategy/server";
+import { extractStrategyFields } from "@/lib/strategy/fields";
+import { STRATEGY_GATED_ASSET_TYPES } from "@/lib/strategy/schema";
 
 // Your Webinar and its Script share the same agent (Polly) — same name, same emoji, same title
 // on both pages — which was exactly the problem: a member stepping away and coming back couldn't
@@ -145,6 +148,17 @@ export default async function GenerateAssetPage({
       }
     }
   }
+
+  // Strategy Review checkpoint (see STRATEGY_GATED_ASSET_TYPES and /api/generate): whether this
+  // project has an approved Strategy Blueprint, and whether Discovery changed after it.
+  const approvedBlueprint = await getCurrentBlueprint(supabase, id);
+  const strategyStatus = {
+    gated: (STRATEGY_GATED_ASSET_TYPES as readonly string[]).includes(generator.assetType) && !bypassActive,
+    approvedVersion: approvedBlueprint?.blueprint_version ?? null,
+    changedSinceApproval: Boolean(
+      approvedBlueprint && approvedBlueprint.discovery_hash !== hashStrategyFields(extractStrategyFields(project))
+    ),
+  };
 
   // Used to be a silent redirect straight back to the project page — now a blocking popup
   // rendered below, right on this page, so it's clear exactly why the agent didn't open instead
@@ -490,6 +504,7 @@ export default async function GenerateAssetPage({
 
       <GenerateClient
         imageChoices={imageChoices}
+        strategyStatus={strategyStatus}
         // Forces a full remount whenever the open generation changes (a fresh visit, opening a
         // past run, or a just-completed Regenerate updating the URL) — without this, switching
         // to a different generation via the "Past generations" list only ever changes the URL,

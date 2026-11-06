@@ -476,6 +476,86 @@ export type SlideMedia = {
   created_at: string;
 };
 
+// Strategy Review & Offer Validation (see 0051_strategy_review.sql and src/lib/strategy/). Shapes
+// of the JSON columns live in src/lib/strategy/ so they're shared with the client.
+export type StrategyReadiness = "presentation_ready" | "improvements_recommended" | "needs_refinement" | "not_ready";
+export type StrategyEvidenceStatus =
+  | "verified"
+  | "client_reported"
+  | "proposed"
+  | "missing_evidence"
+  | "contradictory"
+  | "not_applicable";
+export type StrategySeverity = "critical" | "high" | "medium" | "low";
+export type StrategyApprovalStatus = "pending" | "accepted" | "rejected" | "needs_info" | "excluded" | "attested";
+
+export type StrategyReview = {
+  id: string;
+  project_id: string;
+  user_id: string;
+  review_version: number;
+  status: "pending" | "complete" | "failed";
+  input_fields: Record<string, unknown>;
+  carried_revisions: Record<string, { original: string; revised: string }>;
+  discovery_hash: string;
+  overall_score: number | null;
+  category_scores: unknown;
+  critical_count: number;
+  readiness_status: StrategyReadiness | null;
+  analysis: unknown;
+  error: string | null;
+  model: string | null;
+  cost_usd: number;
+  credits_charged: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type StrategyRecommendation = {
+  id: string;
+  review_id: string;
+  project_id: string;
+  user_id: string;
+  position: number;
+  field_id: string;
+  field_label: string;
+  original_answer: string;
+  issue: string;
+  explanation: string;
+  suggested_answer: string;
+  final_answer: string | null;
+  evidence_status: StrategyEvidenceStatus;
+  severity: StrategySeverity;
+  is_critical: boolean;
+  requires_confirmation: boolean;
+  follow_up_question: string | null;
+  approval_status: StrategyApprovalStatus;
+  client_note: string | null;
+  coach_messages: { role: "user" | "coach"; text: string; at: string }[];
+  decided_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type StrategyBlueprint = {
+  id: string;
+  project_id: string;
+  user_id: string;
+  review_id: string;
+  blueprint_version: number;
+  approved_fields: Record<string, unknown>;
+  blueprint: unknown;
+  selected_framework: string;
+  framework_reason: string;
+  excluded_claims: unknown;
+  warnings: unknown;
+  discovery_hash: string;
+  approved_at: string;
+  superseded_at: string | null;
+  generation_status: "not_generated" | "generated";
+  last_generated_at: string | null;
+};
+
 // Minimal Database type shape for @supabase/ssr / @supabase/supabase-js generics.
 // Matches the GenericSchema/GenericTable shape those packages expect (Row/Insert/Update/
 // Relationships, plus Views/Functions on the schema) — see
@@ -504,6 +584,9 @@ export type Database = {
       form_leads: Table<FormLead>;
       page_views: Table<PageView>;
       slide_media: Table<SlideMedia>;
+      strategy_reviews: Table<StrategyReview>;
+      strategy_recommendations: Table<StrategyRecommendation>;
+      strategy_blueprints: Table<StrategyBlueprint>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

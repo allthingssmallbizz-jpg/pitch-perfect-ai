@@ -16,10 +16,12 @@ export default function RoadmapSection({
   projectId,
   completeGenerations,
   discoveryComplete,
+  strategyApproved = false,
 }: {
   projectId: string;
   completeGenerations: CompleteGeneration[];
   discoveryComplete: boolean;
+  strategyApproved?: boolean;
 }) {
   function findLatest(assetTypes: AssetType[]): CompleteGeneration | null {
     return completeGenerations.find((g) => assetTypes.includes(g.asset_type)) ?? null;
@@ -28,6 +30,9 @@ export default function RoadmapSection({
   const stepStates = ROADMAP_STEPS.map((step) => {
     if (step.id === "offer") {
       return { step, complete: discoveryComplete, latest: null as CompleteGeneration | null };
+    }
+    if (step.id === "strategy") {
+      return { step, complete: strategyApproved, latest: null as CompleteGeneration | null };
     }
     const latest = findLatest(step.assetTypes);
     return { step, complete: Boolean(latest), latest };
@@ -62,6 +67,9 @@ export default function RoadmapSection({
           if (step.id === "offer") {
             href = "#discovery-form";
             ctaLabel = complete ? "Review" : "Fill in discovery";
+          } else if (step.id === "strategy") {
+            href = `/projects/${projectId}/strategy`;
+            ctaLabel = complete ? "View" : "Review strategy";
           } else if (complete && latest) {
             href = `/projects/${projectId}/generate/${latest.asset_type}?generationId=${latest.id}`;
             ctaLabel = "View";

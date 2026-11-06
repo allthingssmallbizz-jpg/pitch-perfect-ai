@@ -211,3 +211,63 @@ export async function generateCompleteAsset(
     stopReason,
   };
 }
+
+// Structured output for features that need machine-readable results (Strategy Review): Claude is
+// forced to call a single tool whose input schema is the zod schema, and the tool input is then
+// validated against that same schema. Malformed output gets one retry that names exactly what was
+// wrong; a second failure throws rather than passing unvalidated data along.
+export async function generateStructured<T>(
+  systemPrompt: string,
+  userPrompt: string,
+  maxOutputTokens: number,
+  tool: { name: string; description: string; schema: import("zod").ZodType<T> }
+): Promise<{ data: T; model: string; inputTokens: number; outputTokens: number; costUsd: number }> {
+  const { toJSONSchema } = await import("zod");
+  const anthropic = getClient();
+  const jsonSchema = toJSONSchema(tool.schema) as Record<string, unknown>;
+  delete jsonSchema.$schema;
+
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let model = DEFAULT_MODEL;
+  let lastError = "";
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const prompt =
+      attempt === 0
+        ? userPrompt
+        : `${userPrompt}\n\nYour previous response did not match the required schema (${lastError}). Call the ${tool.name} tool again with every required field present and correctly typed.`;
+    const message = await createMessage(anthropic, {
+      model: DEFAULT_MODEL,
+      max_tokens: maxOutputTokens,
+      system: systemParam(systemPrompt),
+      messages: [{ role: "user", content: prompt }],
+      tools: [
+        {
+          name: tool.name,
+          description: tool.description,
+          input_schema: jsonSchema as Anthropic.Tool["input_schema"],
+        },
+      ],
+      tool_choice: { type: "tool", name: tool.name },
+    });
+    inputTokens += message.usage.input_tokens;
+    outputTokens += message.usage.output_tokens;
+    model = message.model;
+
+    if (message.stop_reason === "max_tokens") {
+      lastError = "the response was cut off before it finished — be more concise";
+      continue;
+    }
+    const block = message.content.find((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
+    const parsed = tool.schema.safeParse(block?.input);
+    if (parsed.success) {
+      return { data: parsed.data, model, inputTokens, outputTokens, costUsd: estimateCostUsd(inputTokens, outputTokens) };
+    }
+    lastError = parsed.error.issues
+      .slice(0, 5)
+      .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+      .join("; ");
+  }
+  throw new Error(`The AI returned an unusable response (${lastError}). Please try again.`);
+}

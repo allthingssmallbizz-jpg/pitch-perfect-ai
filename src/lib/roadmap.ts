@@ -7,6 +7,7 @@ import type { GeneratorAssetType } from "@/lib/ai/generators";
 // with everything weighted equally.
 export type RoadmapStepId =
   | "offer"
+  | "strategy"
   | "core_presentation"
   | "landing_page"
   | "thank_you_page"
@@ -32,6 +33,13 @@ export const ROADMAP_STEPS: RoadmapStep[] = [
     id: "offer",
     title: "Define your offer",
     description: "Fill in your discovery brief — every asset below is built from this.",
+    assetTypes: [],
+  },
+  {
+    id: "strategy",
+    title: "Review & approve your strategy",
+    description:
+      "An AI strategist checks your offer, audience, proof, and claims, helps you strengthen them, then you approve the strategy your presentation is built from.",
     assetTypes: [],
   },
   {

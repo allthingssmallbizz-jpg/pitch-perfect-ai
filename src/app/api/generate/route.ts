@@ -17,6 +17,10 @@ import { recordGenerationVersion } from "@/lib/generations";
 import { projectNeedsDiscovery } from "@/lib/projects";
 import { parseChallengeDayList } from "@/lib/ai/challengeDays";
 import type { GenerationMode } from "@/types/database";
+import { getCurrentBlueprint } from "@/lib/strategy/server";
+import { applyApprovedFields } from "@/lib/strategy/fields";
+import { formatStrategyBlueprintBlock, type Blueprint } from "@/lib/strategy/blueprint";
+import { STRATEGY_GATED_ASSET_TYPES } from "@/lib/strategy/schema";
 
 export const runtime = "nodejs";
 // Without this, the function is bound by the hosting plan's default timeout — on Vercel's free
@@ -61,6 +65,9 @@ const requestSchema = z.object({
   // Build Day Slides only — whether THIS day's deck should include the pitch/offer slides (see
   // challengeDaySlides.ts). Ignored by every other generator.
   includePitch: z.boolean().optional(),
+  // Presentation agents only: the member explicitly chose to generate without an approved
+  // Strategy Review (see STRATEGY_GATED_ASSET_TYPES). Without it, those agents ask for a review first.
+  skipStrategyReview: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -78,7 +85,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { projectId, assetType, mode, courseLevel, customNaming, moduleIdentifier, sourceGenerationId, challengeLength, dayIdentifier, includePitch } =
+  const { projectId, assetType, mode, courseLevel, customNaming, moduleIdentifier, sourceGenerationId, challengeLength, dayIdentifier, includePitch, skipStrategyReview } =
     parsed.data as {
       projectId: string;
       assetType: keyof typeof ASSET_GENERATORS;
@@ -90,6 +97,7 @@ export async function POST(req: NextRequest) {
       challengeLength?: string;
       dayIdentifier?: string;
       includePitch?: boolean;
+      skipStrategyReview?: boolean;
     };
 
   const generator = ASSET_GENERATORS[assetType];
@@ -145,6 +153,28 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+
+  // Strategy Review checkpoint. When the member has an approved Strategy Blueprint, every agent
+  // generates from it: its frozen, approved answers replace the live Discovery answers (so later
+  // Discovery edits can't silently change an approved strategy), and its framework/claim rules are
+  // appended to the prompt. Presentation agents without an approved blueprint stop and ask for a
+  // review unless the member explicitly chose to continue without one.
+  const strategyBlueprint = await getCurrentBlueprint(supabase, projectId);
+  if (
+    !strategyBlueprint &&
+    (STRATEGY_GATED_ASSET_TYPES as readonly string[]).includes(assetType) &&
+    !skipStrategyReview &&
+    !bypassActive
+  ) {
+    return NextResponse.json(
+      {
+        error: "Review and approve your strategy first, or choose to generate without a review.",
+        code: "strategy_review_required",
+      },
+      { status: 409 }
+    );
+  }
+  const promptProject = strategyBlueprint ? applyApprovedFields(project, strategyBlueprint.approved_fields) : project;
 
   // A Webinar Script writes the talk-track for an existing slide deck, aligned 1:1 to its exact
   // slide numbers/titles (see buildWebinarScriptPrompt) — there's nothing to align to without one.
@@ -357,7 +387,15 @@ export async function POST(req: NextRequest) {
       includePitch,
       isFinalDay,
     };
-    const userPrompt = generator.buildPrompt(project, priorGenerations, generatorExtra);
+    const userPrompt =
+      generator.buildPrompt(promptProject, priorGenerations, generatorExtra) +
+      (strategyBlueprint
+        ? `\n${formatStrategyBlueprintBlock(
+            strategyBlueprint.blueprint as Blueprint,
+            strategyBlueprint.blueprint_version,
+            strategyBlueprint.approved_at
+          )}`
+        : "");
 
     // Threaded through explicitly (not just `generator.isOutputIncomplete` by itself) so a check
     // like Challenge Outline's own — "did this actually produce the number of days that was
@@ -405,6 +443,12 @@ export async function POST(req: NextRequest) {
 
     await recordGenerationVersion(generationId, user.id, finalContent, "generate", "Generated draft");
     await decrementCredits(user.id, generator.creditCost);
+    if (strategyBlueprint) {
+      await admin
+        .from("strategy_blueprints")
+        .update({ generation_status: "generated", last_generated_at: new Date().toISOString() })
+        .eq("id", strategyBlueprint.id);
+    }
 
     return NextResponse.json({
       generationId,

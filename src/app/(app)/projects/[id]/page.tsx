@@ -18,6 +18,7 @@ import DiscoveryWalkthroughVideo from "@/components/DiscoveryWalkthroughVideo";
 import ToolLink from "./ToolLink";
 import RoadmapSection from "./RoadmapSection";
 import DiscoveryEntry from "./DiscoveryEntry";
+import { getCurrentBlueprint } from "@/lib/strategy/server";
 
 export default async function ProjectPage({
   params,
@@ -139,6 +140,8 @@ export default async function ProjectPage({
     createAdminClient().from("admin_settings").select("discovery_video_url").eq("id", true).single(),
   ]);
 
+  const approvedBlueprint = await getCurrentBlueprint(supabase, project.id);
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       {bioBlockedButBypassed && project.presenter_bio_profile_id && (
@@ -156,6 +159,7 @@ export default async function ProjectPage({
         projectId={project.id}
         completeGenerations={completeGenerations ?? []}
         discoveryComplete={discoveryComplete}
+        strategyApproved={Boolean(approvedBlueprint)}
       />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
