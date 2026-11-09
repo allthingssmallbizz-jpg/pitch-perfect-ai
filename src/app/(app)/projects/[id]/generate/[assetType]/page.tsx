@@ -21,10 +21,9 @@ import { extractStrategyFields } from "@/lib/strategy/fields";
 import { STRATEGY_GATED_ASSET_TYPES } from "@/lib/strategy/schema";
 import { isOpenCritical, type Blueprint } from "@/lib/strategy/blueprint";
 
-// Your Webinar and its Script share the same agent (Polly) — same name, same emoji, same title
-// on both pages — which was exactly the problem: a member stepping away and coming back couldn't
-// tell at a glance which one they'd landed on. This is a small, deliberately narrow icon lookup
-// (not a full map for every generator) just for that one genuinely ambiguous pair.
+// Your Webinar (Agent Polly) and its Script (Agent Winnie) are a closely linked pair — a member
+// stepping away and coming back needs to tell at a glance which one they'd landed on. This is a
+// small, deliberately narrow icon lookup (not a full map for every generator) for that pair.
 const DELIVERABLE_ICON: Partial<Record<GeneratorAssetType, LucideIcon>> = {
   ppt_outline: MonitorPlay,
   webinar_script: ScrollText,
@@ -515,10 +514,8 @@ export default async function GenerateAssetPage({
           )}
         </div>
       </div>
-      {/* A bold, colored badge rather than the small muted-gray line this used to be — the plain
-          agent badge above reads identically ("Agent Polly, The Pitch Deck Pro") whether this is
-          Your Webinar or its Script, so this is the thing that actually says which one is on
-          screen at a glance, even after stepping away and coming back to it later. */}
+      {/* A bold, colored badge rather than the small muted-gray line this used to be — says which
+          deliverable is on screen at a glance, even after stepping away and coming back to it. */}
       <div className="mb-6 flex flex-wrap items-center gap-2">
         <Badge className="gap-1.5 px-3 py-1 text-sm">
           {(() => {

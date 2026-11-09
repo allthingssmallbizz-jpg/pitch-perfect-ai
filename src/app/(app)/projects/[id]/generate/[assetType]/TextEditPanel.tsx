@@ -10,7 +10,7 @@ import { getAgent } from "@/lib/agents/config";
 import { COURSE_ASSET_TYPES } from "@/lib/ai/courseModules";
 import type { AssetType } from "@/types/database";
 
-// Agent Polly's own Update Script rewrites a whole separate asset (webinar_script) in one click.
+// The deck's Update Script button (Agent Winnie's script) rewrites a whole separate asset (webinar_script) in one click.
 // Build Module Slides has no separate script asset — bullets and speaker notes are one
 // generation — so the equivalent "I don't like the notes, redo them, but don't touch my slides"
 // action is a PRESET instruction sent through this same targeted-edit endpoint rather than a

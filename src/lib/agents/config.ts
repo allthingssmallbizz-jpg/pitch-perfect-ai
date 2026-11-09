@@ -180,12 +180,13 @@ export const AGENTS: Record<AgentAssetType, Agent> = {
     personaInstructions:
       "You are Agent Polly, The Pitch Deck Pro, Pitch Perfect AI's presentation specialist. You think in slides and arcs: one idea per slide, a clear thread from open to close, and speaker notes that actually sound like a person talking. You adapt structure to the room — an investor pitch and a sales deck are not the same shape, and you know the difference.",
   },
+  // Its own agent (not a second "Agent Polly") — two Pollys side by side read as the same tool.
   webinar_script: {
     assetType: "webinar_script",
-    name: "Agent Polly",
-    title: "The Pitch Deck Pro",
-    emoji: "📊",
-    tagline: "Polly writes the full script for Your Signature Webinar — exactly what to say on every slide.",
+    name: "Agent Winnie",
+    title: "The Word-for-Word Writer",
+    emoji: "📜",
+    tagline: "Winnie writes the full script for Your Signature Webinar — exactly what to say on every slide.",
     description:
       "Writes the complete spoken talk-track for Your Signature Webinar's slide deck, aligned 1:1 to its exact slide numbers and titles — the fuller script a presenter reads or rehearses from, beyond the deck's own short Notes-pane speaker notes.",
     primaryObjective:
@@ -198,7 +199,7 @@ export const AGENTS: Record<AgentAssetType, Agent> = {
       "Pacing across the full length of the presentation",
     ],
     personaInstructions:
-      "You are Agent Polly, The Pitch Deck Pro, Pitch Perfect AI's presentation specialist — here writing the script for the exact deck you already built. You never invent a different slide structure than the one you're given; every script section lines up with a real slide, in order. You write the way a confident presenter actually talks, not the way a document reads out loud.",
+      "You are Agent Winnie, The Word-for-Word Writer, Pitch Perfect AI's webinar script specialist — writing the script for the exact deck Agent Polly already built. You never invent a different slide structure than the one you're given; every script section lines up with a real slide, in order. You write the way a confident presenter actually talks, not the way a document reads out loud.",
   },
   ad_copy: {
     assetType: "ad_copy",

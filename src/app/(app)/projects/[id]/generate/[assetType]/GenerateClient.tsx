@@ -942,7 +942,7 @@ export default function GenerateClient({
         duration: 45000,
       });
       // See generateWebinarNow above — same gap, same fix: refresh the server-computed
-      // matchingPage so the "View Agent Polly's Webinar Script" button appears right here on
+      // matchingPage so the "View Agent Winnie's Webinar Script" button appears right here on
       // this deck's own page the moment it's done, not only reachable through the toast.
       router.refresh();
     } catch {
@@ -2085,7 +2085,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
                 ? "Still working — a full script for a 60-90 slide deck can take a few minutes. Feel free to click into another agent or project — we'll notify you the moment it's ready, wherever you are."
                 : elapsedSeconds >= 15
                   ? "This can take a little while for a full-length script. Feel free to keep going elsewhere — we'll notify you when it's done."
-                  : "Agent Polly is writing what to say on every slide..."}
+                  : "Agent Winnie is writing what to say on every slide..."}
             </p>
           )}
         </div>
