@@ -618,13 +618,44 @@ export const TEMPLATES: Template[] = [
       guarantee:
         "Clear Answer Promise — within 2 business days of receiving your documents, you'll get a written side-by-side comparison of your funding options, or we'll tell you plainly what's holding things up. No pressure to move forward, ever. (Approval is never guaranteed and is always subject to lender underwriting.)",
       bonuses:
-        "- Funding Readiness Review — we check your credit profile, income documentation, and equity position before any application\n- Self-Employed Income Worksheet — how to present business income lenders can actually use\n- Debt Payoff Comparison — how your monthly cash flow would change under each funding path\n- Document checklist and secure upload portal",
+        "Every bonus below is a real service or tool the client actually receives, delivered by our team — not a discount, cash, or gift tied to closing a loan. Values reflect what comparable one-on-one reviews and tools cost on their own.\n- Funding Readiness Review — we check your credit profile, income documentation, and equity position before any application\n- Self-Employed Income Worksheet — how to present business income lenders can actually use\n- Debt Payoff Cash-Flow Comparison — how your monthly cash flow would change under each funding path\n- Business Credit Builder Roadmap — how to build business credit separate from your personal credit (education, not credit repair)\n- 12-Month Equity Check-Ups — a quarterly review so you know when a better option opens up\n- Fast action bonuses (Priority File Prep, CPA Tax Strategy Session, Renovation Budget Planner) — reserved for people who book within the stated window",
+      // The Value Stack: the core plan first, then each bonus revealed one at a time with its own
+      // value — the framework every Pitch Perfect webinar follows to build value (and a reason to
+      // act now) before the offer is revealed.
+      core_offer_value: "$1,500",
+      stack_items: [
+        { name: "1-on-1 Funding Strategy Session (60 minutes)", value: "$500", category: "stack" },
+        { name: "Written 3-Path Funding Comparison Report — HELOC vs. cash-out refinance vs. business funding", value: "$750", category: "stack" },
+        { name: "Lender Shopping across 30+ lenders, with one point of contact from first call to funding", value: "$1,000", category: "stack" },
+        { name: "Funding Readiness Review — credit profile, income documents, and equity checked before you apply", value: "$297", category: "bonus" },
+        { name: "Self-Employed Income Worksheet", value: "$97", category: "bonus" },
+        { name: "Debt Payoff Cash-Flow Comparison", value: "$197", category: "bonus" },
+        { name: "Business Credit Builder Roadmap", value: "$297", category: "bonus" },
+        { name: "12-Month Equity Check-Ups (quarterly reviews)", value: "$397", category: "bonus" },
+      ],
+      fast_action_bonuses: [
+        {
+          name: "Priority File Prep — your documents reviewed and your file prepared within 24 hours",
+          value: "$297",
+          condition: "The first 10 people who book a Funding Strategy Session this week",
+        },
+        {
+          name: "Tax Strategy Session with our partner CPA — how each funding path could affect your taxes",
+          value: "$250",
+          condition: "Book your session within 48 hours of this webinar",
+        },
+        {
+          name: "Renovation Budget Planner + contractor bid review (for homeowners using equity to renovate)",
+          value: "$197",
+          condition: "Book your session before midnight tonight",
+        },
+      ],
       scarcity_urgency:
-        "I personally lead every strategy session and keep my calendar to 12 sessions a week so every client gets real attention — when this week's sessions are booked, the next openings are the following week.",
+        "I personally lead every strategy session and keep my calendar to 12 sessions a week so every client gets real attention — when this week's sessions are booked, the next openings are the following week. The fast action bonuses are real and the deadlines are enforced: Priority File Prep goes to the first 10 people who book this week, the CPA Tax Strategy Session is only for people who book within 48 hours, and the Renovation Budget Planner ends at midnight tonight. Once a window closes, that bonus is gone — the strategy session itself stays free.",
       cta: "Book your free Funding Strategy Session",
       funnel_type: "book_call",
       discovery_notes:
-        "COMPLIANCE — follow these in every asset: (1) Never guarantee approval, a rate, or a payment; approval is always subject to underwriting. (2) Never quote specific interest rates, APRs, payment amounts, or 'as low as' terms — those trigger required lending disclosures; talk about comparing total cost instead. (3) Never promise to repair, fix, or raise anyone's credit score. (4) Include the presenter's NMLS ID and the Equal Housing Opportunity statement on the final slide, landing pages, and ads. (5) Be clear that a HELOC and a cash-out refinance are secured by the home, so the home is at risk if payments aren't made. (6) Don't disparage specific named lenders. Attendees are often nervous about being sold — lead with education and the honest comparison of all three paths (including when NOT to borrow), and position the strategy session as the natural next step to get their own numbers.",
+        "COMPLIANCE — follow these in every asset: (1) Never guarantee approval, a rate, or a payment; approval is always subject to underwriting. (2) Never quote specific interest rates, APRs, payment amounts, or 'as low as' terms — those trigger required lending disclosures; talk about comparing total cost instead. (3) Never promise to repair, fix, or raise anyone's credit score. (4) Include the presenter's NMLS ID and the Equal Housing Opportunity statement on the final slide, landing pages, and ads. (5) Be clear that a HELOC and a cash-out refinance are secured by the home, so the home is at risk if payments aren't made. (6) Don't disparage specific named lenders. (7) Bonuses must be education, tools, or services the team actually delivers — never cash, gift cards, or anything of value offered in exchange for closing a loan or for a referral. VALUE STACK: build the full stack — the core plan, then each bonus revealed one at a time with its value — and use the fast action bonuses (with their real, enforced deadlines) as the reason to book the strategy session now instead of 'someday.' Attendees are often nervous about being sold — lead with education and the honest comparison of all three paths (including when NOT to borrow), and position the strategy session as the natural next step to get their own numbers.",
     },
     presenterBio: {
       presenter_ihelp_audience: "homeowners and small business owners",
