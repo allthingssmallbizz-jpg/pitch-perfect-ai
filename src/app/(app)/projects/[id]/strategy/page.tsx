@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { projectNeedsDiscovery } from "@/lib/projects";
 import { loadStrategyState } from "@/lib/strategy/server";
 import StrategyClient from "./StrategyClient";
+import ProjectModeCard from "../ProjectModeCard";
 
 export const metadata = { title: "Strategy Review" };
 
@@ -44,6 +45,9 @@ export default async function StrategyPage({ params }: { params: Promise<{ id: s
         Before we build your presentation, we review your strategy, strengthen your positioning, and make sure your
         offer is clear and believable. Nothing here changes your Discovery answers — you approve every change.
       </p>
+      <div className="mt-4">
+        <ProjectModeCard projectId={id} isDemo={Boolean(project.is_demo)} returnTo={`/projects/${id}/strategy`} />
+      </div>
       <StrategyClient
         projectId={id}
         initialState={state}

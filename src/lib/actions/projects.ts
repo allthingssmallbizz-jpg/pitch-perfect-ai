@@ -577,5 +577,8 @@ export async function setProjectDemoMode(formData: FormData) {
     }
   }
   revalidatePath(`/projects/${projectId}`, "layout");
-  redirect(`/projects/${projectId}`);
+  // Return to whichever page the switch was on (project page or Strategy Review) — only this
+  // project's own pages are accepted.
+  const returnTo = String(formData.get("returnTo") || "");
+  redirect(returnTo.startsWith(`/projects/${projectId}`) ? returnTo : `/projects/${projectId}`);
 }

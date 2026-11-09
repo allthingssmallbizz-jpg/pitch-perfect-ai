@@ -5,7 +5,15 @@ import { Button } from "@/components/ui/button";
 // Demo mode vs. Live mode (see 0052_demo_mode.sql). Demo = example data used to show what a
 // finished presentation looks like: nothing blocks, every output is labeled Demo. Live = the real
 // thing: real proof only, and critical Strategy Review issues must be resolved before approval.
-export default function ProjectModeCard({ projectId, isDemo }: { projectId: string; isDemo: boolean }) {
+export default function ProjectModeCard({
+  projectId,
+  isDemo,
+  returnTo,
+}: {
+  projectId: string;
+  isDemo: boolean;
+  returnTo?: string;
+}) {
   return (
     <div
       className={`mb-6 rounded-2xl border p-4 ${
@@ -36,6 +44,7 @@ export default function ProjectModeCard({ projectId, isDemo }: { projectId: stri
         <form action={setProjectDemoMode}>
           <input type="hidden" name="projectId" value={projectId} />
           <input type="hidden" name="demo" value={isDemo ? "false" : "true"} />
+          {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
           <Button type="submit" size="sm" variant={isDemo ? "default" : "outline"}>
             {isDemo ? "Switch to Live mode" : "Switch to Demo mode"}
           </Button>
