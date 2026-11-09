@@ -35,22 +35,29 @@ function scoreColor(score: number) {
   return "text-red-400";
 }
 
-// Critical first, then undecided, then by the review's own order — the order the coach walks.
+// Critical first, then the review's own order. Stable (doesn't reshuffle as decisions are made),
+// so "Item 3 of 9" always means the same item and Previous/Next behave predictably.
 function coachingOrder(recs: StrategyRecommendation[]) {
   return [...recs].sort((a, b) => {
     if (a.is_critical !== b.is_critical) return a.is_critical ? -1 : 1;
-    const ap = a.approval_status === "pending" ? 0 : 1;
-    const bp = b.approval_status === "pending" ? 0 : 1;
-    if (ap !== bp) return ap - bp;
     return a.position - b.position;
   });
+}
+
+// The next undecided item after `fromIndex`, wrapping around; -1 when everything is decided.
+function nextUndecidedIndex(ordered: StrategyRecommendation[], fromIndex: number) {
+  for (let step = 1; step <= ordered.length; step++) {
+    const i = (fromIndex + step) % ordered.length;
+    if (ordered[i].approval_status === "pending") return i;
+  }
+  return -1;
 }
 
 export default function StrategyClient({ projectId, initialState, discoveryIncomplete }: Props) {
   const [state, setState] = useState<StrategyState>(initialState);
   const [running, setRunning] = useState(false);
   const [tab, setTab] = useState("review");
-  const [coachIndex, setCoachIndex] = useState(0);
+  const [currentId, setCurrentId] = useState<string | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
   const [approving, setApproving] = useState(false);
 
@@ -96,7 +103,7 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
       }
       if (!res.ok) throw new Error(data?.error || "The review couldn't be completed. Nothing was charged.");
       setState(data as StrategyState);
-      setCoachIndex(0);
+      setCurrentId(null);
       setAcknowledged(false);
       setTab("review");
       toast.success("Your strategy review is ready.");
@@ -122,6 +129,28 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
   }
 
   const ordered = useMemo(() => coachingOrder(recs), [recs]);
+  // Starts on the first undecided item; afterwards follows the member's own navigation.
+  const coachIndex = (() => {
+    const byId = currentId ? ordered.findIndex((r) => r.id === currentId) : -1;
+    if (byId >= 0) return byId;
+    const firstPending = ordered.findIndex((r) => r.approval_status === "pending");
+    return firstPending >= 0 ? firstPending : 0;
+  })();
+  const goTo = (i: number) => {
+    if (ordered[i]) setCurrentId(ordered[i].id);
+  };
+
+  // In Improve My Strategy, making a decision moves straight on to the next undecided item.
+  function onCoachRecUpdated(updated: StrategyRecommendation) {
+    const before = recs.find((r) => r.id === updated.id);
+    onRecUpdated(updated);
+    if (before?.approval_status === "pending" && updated.approval_status !== "pending") {
+      const nextOrdered = ordered.map((r) => (r.id === updated.id ? updated : r));
+      const idx = nextOrdered.findIndex((r) => r.id === updated.id);
+      const next = nextUndecidedIndex(nextOrdered, idx);
+      if (next >= 0) setCurrentId(nextOrdered[next].id);
+    }
+  }
   const decidedCount = recs.filter((r) => r.approval_status !== "pending").length;
   const criticalOpen = recs.filter(
     (r) => r.is_critical && !["accepted", "excluded", "attested"].includes(r.approval_status)
@@ -477,6 +506,27 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
 
             {/* ── Improve My Strategy (one item at a time) ───────── */}
             <TabsContent value="improve" className="mt-4 space-y-3">
+              <details className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm" open={decidedCount === 0}>
+                <summary className="cursor-pointer font-medium">How this works</summary>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                  <li>
+                    Each item is one suggestion for one Discovery answer. Pick an option and you&apos;ll move to the
+                    next item automatically. Your Discovery answers are never changed.
+                  </li>
+                  <li>
+                    <span className="text-foreground">Accept</span> uses the suggested wording.{" "}
+                    <span className="text-foreground">Fill in the blanks</span> appears when the suggestion has{" "}
+                    <mark className="rounded bg-amber-400/25 px-0.5 text-amber-200">[highlighted]</mark> parts only
+                    you know — replace them with your real details.{" "}
+                    <span className="text-foreground">Keep my original</span> leaves your answer as is.
+                  </li>
+                  <li>
+                    Only <span className="font-medium text-red-400">Critical</span> items must be answered before you
+                    approve: rewrite it, remove the claim, or confirm it&apos;s true and say briefly what proves it.
+                    Everything else is optional — use <span className="text-foreground">Skip for now</span>.
+                  </li>
+                </ul>
+              </details>
               {ordered.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No recommendations — your strategy is in great shape.</p>
               ) : (
@@ -490,7 +540,7 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
                         size="sm"
                         variant="outline"
                         disabled={coachIndex <= 0}
-                        onClick={() => setCoachIndex((i) => Math.max(0, i - 1))}
+                        onClick={() => goTo(coachIndex - 1)}
                       >
                         Previous
                       </Button>
@@ -498,9 +548,11 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
                         size="sm"
                         variant="outline"
                         disabled={coachIndex >= ordered.length - 1}
-                        onClick={() => setCoachIndex((i) => Math.min(ordered.length - 1, i + 1))}
+                        onClick={() => goTo(coachIndex + 1)}
                       >
-                        Next
+                        {ordered[coachIndex]?.approval_status === "pending" && !ordered[coachIndex]?.is_critical
+                          ? "Skip for now"
+                          : "Next"}
                       </Button>
                     </div>
                   </div>
@@ -509,11 +561,13 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
                   </div>
                   {(() => {
                     const current = ordered[Math.min(coachIndex, ordered.length - 1)];
-                    return <RecommendationCard key={current.id} rec={current} onUpdated={onRecUpdated} coaching />;
+                    return <RecommendationCard key={current.id} rec={current} onUpdated={onCoachRecUpdated} coaching />;
                   })()}
-                  {decidedCount === ordered.length && (
+                  {(decidedCount === ordered.length || criticalOpen === 0) && (
                     <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
-                      Every item has a decision.{" "}
+                      {decidedCount === ordered.length
+                        ? "Every item has a decision."
+                        : "All critical items are handled — the rest are optional."}{" "}
                       <button className="font-medium underline" onClick={() => setTab("approve")}>
                         Review and approve your strategy
                       </button>

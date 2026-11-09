@@ -24,6 +24,22 @@ export const DECISION_LABELS: Record<string, string> = {
   attested: "You vouched for this",
 };
 
+const BRACKET_RE = /\[[^\]]+\]/g;
+
+// The AI marks anything only the member can supply ("[your NMLS ID]", "[number of clients]") in
+// [brackets]. Highlighted so it's obvious what still needs their real details.
+function withBlanksHighlighted(text: string) {
+  return text.split(/(\[[^\]]+\])/g).map((part, i) =>
+    /^\[[^\]]+\]$/.test(part) ? (
+      <mark key={i} className="rounded bg-amber-400/25 px-0.5 text-amber-200">
+        {part}
+      </mark>
+    ) : (
+      part
+    )
+  );
+}
+
 type Props = {
   rec: StrategyRecommendation;
   onUpdated: (rec: StrategyRecommendation) => void;
@@ -82,6 +98,8 @@ export default function RecommendationCard({ rec, onUpdated, coaching = false }:
 
   const decided = rec.approval_status !== "pending";
   const hasSuggestion = Boolean(rec.suggested_answer.trim());
+  const suggestionBlanks = rec.suggested_answer.match(BRACKET_RE) ?? [];
+  const draftBlanks = draft.match(BRACKET_RE) ?? [];
 
   return (
     <div className={`rounded-xl border bg-card/40 p-4 ${rec.is_critical ? "border-red-500/40" : "border-border"}`}>
@@ -124,7 +142,13 @@ export default function RecommendationCard({ rec, onUpdated, coaching = false }:
           <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             Suggested revision {rec.requires_confirmation && <span className="normal-case text-amber-400">— needs your confirmation</span>}
           </p>
-          <p className="mt-1 whitespace-pre-line text-sm">{rec.suggested_answer}</p>
+          <p className="mt-1 whitespace-pre-line text-sm">{withBlanksHighlighted(rec.suggested_answer)}</p>
+          {suggestionBlanks.length > 0 && (
+            <p className="mt-2 text-xs text-amber-300">
+              The highlighted [blanks] are details only you know. To use this suggestion, click &quot;Fill in the
+              blanks&quot; and replace each one with your real information — or choose another option below.
+            </p>
+          )}
           {rec.evidence_status !== "not_applicable" && (
             <p className="mt-1 text-[11px] text-muted-foreground">Evidence status: {EVIDENCE_LABELS[rec.evidence_status]}</p>
           )}
@@ -182,9 +206,19 @@ export default function RecommendationCard({ rec, onUpdated, coaching = false }:
 
       {editing && (
         <div className="mt-3 space-y-2">
-          <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={4} className="text-sm" />
+          <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={5} className="text-sm" />
+          {draftBlanks.length > 0 ? (
+            <p className="text-xs text-amber-300">
+              Still to fill in: {draftBlanks.join(", ")} — replace each one (including the brackets) with your real
+              details. If you don&apos;t have that information, delete that part of the sentence.
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" disabled={busy !== null} onClick={() => decide({ action: "accept", finalAnswer: draft }, "edit")}>
+            <Button
+              size="sm"
+              disabled={busy !== null || draftBlanks.length > 0 || !draft.trim()}
+              onClick={() => decide({ action: "accept", finalAnswer: draft }, "edit")}
+            >
               {busy === "edit" && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
               Accept my edited version
             </Button>
@@ -204,7 +238,8 @@ export default function RecommendationCard({ rec, onUpdated, coaching = false }:
             placeholder="What backs this up? e.g. booking records, a supplier contract, a client's written results."
           />
           <p className="text-[11px] text-muted-foreground">
-            Your presentation will state this only as your own report — never as independently verified.
+            Briefly say what proves it (a few words is enough), then click Save. Your presentation will state this only
+            as your own report — never as independently verified.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" disabled={busy !== null || note.trim().length < 5} onClick={() => decide({ action: "attest", note }, "attest")}>
@@ -226,13 +261,24 @@ export default function RecommendationCard({ rec, onUpdated, coaching = false }:
             </Button>
           ) : (
             <>
-              {hasSuggestion && (
+              {hasSuggestion && suggestionBlanks.length === 0 && (
                 <Button size="sm" disabled={busy !== null} onClick={() => decide({ action: "accept" }, "accept")}>
                   {busy === "accept" && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
                   Accept
                 </Button>
               )}
-              {rec.field_id !== "general" && (
+              {hasSuggestion && suggestionBlanks.length > 0 && rec.field_id !== "general" && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setDraft(rec.suggested_answer);
+                    setEditing(true);
+                  }}
+                >
+                  Fill in the blanks
+                </Button>
+              )}
+              {rec.field_id !== "general" && !(hasSuggestion && suggestionBlanks.length > 0) && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -250,7 +296,7 @@ export default function RecommendationCard({ rec, onUpdated, coaching = false }:
                     Remove this claim
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setAttesting(true)}>
-                    I can back this up
+                    It&apos;s true — I can back it up
                   </Button>
                 </>
               ) : (
