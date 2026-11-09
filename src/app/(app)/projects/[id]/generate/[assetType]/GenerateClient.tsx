@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CRITICAL_RISK_EXPLANATION } from "@/lib/strategy/blueprint";
+import AgentAtWork from "@/components/AgentAtWork";
+import { AGENTS, getAgent } from "@/lib/agents/config";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import type { AssetType, GenerationMode } from "@/types/database";
@@ -2030,13 +2032,12 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             {generatingWebinarDeck ? "Building your signature webinar..." : "Generate Your Signature Webinar Now"}
           </Button>
           {generatingWebinarDeck && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              {elapsedSeconds >= 45
-                ? "Still working — a full 60-90 slide deck can take a few minutes. Feel free to click into another agent or project — we'll notify you the moment it's ready, wherever you are."
-                : elapsedSeconds >= 15
-                  ? "This can take a little while for a full-length deck. Feel free to keep going elsewhere — we'll notify you when it's done."
-                  : "Agent Polly is turning your blueprint into the full slide-by-slide deck..."}
-            </p>
+            <AgentAtWork
+              agent={AGENTS.ppt_outline}
+              task="deck"
+              deliverable="signature webinar"
+              elapsedSeconds={elapsedSeconds}
+            />
           )}
         </div>
       )}
@@ -2080,13 +2081,12 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             {generatingScript ? (hasWebinarScript ? "Updating your script..." : "Writing your script...") : scriptActionLabel}
           </Button>
           {generatingScript && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              {elapsedSeconds >= 45
-                ? "Still working — a full script for a 60-90 slide deck can take a few minutes. Feel free to click into another agent or project — we'll notify you the moment it's ready, wherever you are."
-                : elapsedSeconds >= 15
-                  ? "This can take a little while for a full-length script. Feel free to keep going elsewhere — we'll notify you when it's done."
-                  : "Agent Winnie is writing what to say on every slide..."}
-            </p>
+            <AgentAtWork
+              agent={AGENTS.webinar_script}
+              task="script"
+              deliverable="webinar script"
+              elapsedSeconds={elapsedSeconds}
+            />
           )}
         </div>
       )}
@@ -2261,18 +2261,29 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
 
       {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
 
-      {loading && !content && (
-        <div className="card-elevated rounded-2xl border-dashed p-10 text-center text-muted-foreground">
-          <p>Building your asset with the Pitch Perfect Method™...</p>
-          {elapsedSeconds >= 15 && (
-            <p className="mt-2 text-sm">
-              {elapsedSeconds >= 45
-                ? "Still working — longer assets like a full slide deck can take a few minutes. No need to refresh."
-                : "This can take a little while for longer assets. Hang tight..."}
-            </p>
-          )}
-        </div>
-      )}
+      {/* The agent doing the work pops up at a laptop and talks the member through the wait:
+          filling the empty placeholder on a first build, or as a corner pop-up on a Regenerate
+          (when the previous version is still on screen). */}
+      {loading &&
+        (() => {
+          const workingAgent = getAgent(assetType);
+          if (!workingAgent) {
+            return !content ? (
+              <div className="card-elevated rounded-2xl border-dashed p-10 text-center text-muted-foreground">
+                <p>Building your asset with the Pitch Perfect Method™...</p>
+              </div>
+            ) : null;
+          }
+          return (
+            <AgentAtWork
+              agent={workingAgent}
+              task={assetType === "ppt_outline" ? "deck" : assetType === "webinar_script" ? "script" : "other"}
+              deliverable={generatorLabel.toLowerCase()}
+              elapsedSeconds={elapsedSeconds}
+              variant={content ? "floating" : "inline"}
+            />
+          );
+        })()}
 
       {content && isWebPageAsset && (
         <div className="space-y-4">
