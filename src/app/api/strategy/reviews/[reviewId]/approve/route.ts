@@ -50,6 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rev
     score: review.overall_score ?? 0,
     recs: recs ?? [],
     discoveryChangedSinceReview: review.discovery_hash !== currentHash,
+    demo: Boolean(project.is_demo),
   });
   if (check.blockers.length) {
     return NextResponse.json({ error: "Resolve every critical issue before approving.", blockers: check.blockers }, { status: 400 });

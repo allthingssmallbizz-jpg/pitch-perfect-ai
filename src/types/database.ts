@@ -207,6 +207,9 @@ export type Project = {
   // getPresenterBioBlock treats null the same as "nothing to fold into the prompt."
   presenter_bio_profile_id: string | null;
   mode: GenerationMode;
+  // Demo mode (see 0052_demo_mode.sql): example data used to show what's possible — the Strategy
+  // Review never blocks and outputs are labeled Demo. False = Live mode, the normal strict rules.
+  is_demo: boolean;
   created_at: string;
   updated_at: string;
   // Soft-delete marker — null while active. "Delete project" sets this instead of removing the
@@ -222,6 +225,8 @@ export type Generation = {
   project_id: string | null;
   asset_type: AssetType;
   mode: GenerationMode;
+  // Built while the project was in Demo mode — labeled "Demo" wherever it's shown.
+  is_demo: boolean;
   status: GenerationStatus;
   content: string | null;
   // The pasted presentation script/transcript being analyzed — only set for

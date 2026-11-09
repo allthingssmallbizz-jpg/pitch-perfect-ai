@@ -87,6 +87,7 @@ export type PastGeneration = {
   preview: string;
   moduleIdentifier: string | null;
   title: string | null;
+  isDemo?: boolean;
 };
 // A generation a member has explicitly marked "Completed" (Agent Cora's Completed Courses
 // section) — same shape as PastGeneration plus when it was approved.
@@ -334,6 +335,7 @@ export default function GenerateClient({
   webinarScriptContent,
   imageChoices = [],
   strategyStatus,
+  demo,
 }: {
   projectId: string;
   assetType: AssetType;
@@ -384,7 +386,11 @@ export default function GenerateClient({
   imageChoices?: SlideImageChoice[];
   // Strategy Review checkpoint for presentation agents (see STRATEGY_GATED_ASSET_TYPES) — whether
   // an approved Strategy Blueprint exists and whether Discovery changed after it was approved.
-  strategyStatus?: { gated: boolean; approvedVersion: number | null; changedSinceApproval: boolean };
+  strategyStatus?: { gated: boolean; approvedVersion: number | null; changedSinceApproval: boolean; demo?: boolean };
+  // Demo mode (see 0052_demo_mode.sql): the project is running on example data, and/or the
+  // generation on screen was built in Demo mode. Either way it's labeled so a demo deck is never
+  // mistaken for one that's ready for a live webinar.
+  demo?: { projectIsDemo: boolean; generationIsDemo: boolean };
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -560,7 +566,14 @@ export default function GenerateClient({
       // Storage blocked — the member just sees the checkpoint card again.
     }
   }, [strategySkipKey]);
-  const strategyBlocked = Boolean(strategyStatus?.gated && !strategyStatus.approvedVersion && !skipStrategy);
+  const strategyBlocked = Boolean(
+    strategyStatus?.gated && !strategyStatus.approvedVersion && !skipStrategy && !strategyStatus.demo
+  );
+  // Demo mode: same checkpoint, but advisory — the Strategy Review is still the recommended next
+  // step after Discovery, and Generate stays available.
+  const strategySuggested = Boolean(
+    strategyStatus?.gated && !strategyStatus.approvedVersion && !skipStrategy && strategyStatus.demo
+  );
   function continueWithoutStrategyReview() {
     if (
       !window.confirm(
@@ -1610,6 +1623,22 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           )}
         </div>
       )}
+      {(demo?.projectIsDemo || (demo?.generationIsDemo && content)) && (
+        <div className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm">
+          <p className="font-semibold text-red-400">
+            {demo.projectIsDemo ? "DEMO MODE — example content" : "This version was built in Demo mode"}
+          </p>
+          <p className="mt-1 text-red-200/90">
+            Built from example data to show what&apos;s possible — great for demonstrating the framework. It is{" "}
+            <span className="font-semibold">not for a live webinar</span>: the proof, results, reviews, bonuses,
+            values, and deadlines are examples. Before presenting to real prospects, switch the project to Live mode,
+            replace every example with real, provable details, and complete the Strategy Review.
+          </p>
+          <Link href={`/projects/${projectId}`} className="mt-1 inline-block text-xs font-medium text-red-300 underline">
+            Demo/Live settings
+          </Link>
+        </div>
+      )}
       {strategyStatus?.gated &&
         (strategyStatus.approvedVersion ? (
           <div
@@ -1636,6 +1665,20 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
                 </Link>
               </>
             )}
+          </div>
+        ) : strategySuggested ? (
+          <div className="card-elevated mb-4 rounded-2xl border-primary/40 p-5">
+            <h2 className="font-display font-semibold">Next step: Strategy Review (Demo mode)</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              See the full scoreboard first — the readiness score, category scores, and every critical issue flagged in
+              this example data. In Demo mode nothing blocks you: the flags show what would have to be real and
+              provable before a live webinar, and you can generate the demo presentation at any time.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button asChild>
+                <Link href={`/projects/${projectId}/strategy`}>Run the Strategy Review</Link>
+              </Button>
+            </div>
           </div>
         ) : strategyBlocked ? (
           <div className="card-elevated mb-4 rounded-2xl border-primary/40 p-5">
@@ -2115,6 +2158,11 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
                     {g.id === generationId && (
                       <span className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                         Viewing
+                      </span>
+                    )}
+                    {g.isDemo && (
+                      <span className="shrink-0 rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-red-400">
+                        Demo
                       </span>
                     )}
                   </div>

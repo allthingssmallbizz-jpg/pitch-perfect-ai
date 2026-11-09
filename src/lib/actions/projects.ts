@@ -127,6 +127,8 @@ export async function createProjectFromTemplate(formData: FormData) {
       name: projectName,
       presenter_bio_profile_id: newProfile.id,
       ...template.answers,
+      // Templates are example data — they start in Demo mode (see 0052_demo_mode.sql).
+      is_demo: true,
     })
     .select("id")
     .single();
@@ -255,6 +257,7 @@ export async function duplicateProject(_prevState: unknown, formData: FormData) 
     discovery_notes: original.discovery_notes,
     course_naming: original.course_naming,
     mode: original.mode,
+    ...(original.is_demo ? { is_demo: true } : {}),
   };
   const { data: newProject, error: projectError } = await supabase
     .from("projects")
@@ -299,6 +302,7 @@ export async function duplicateProject(_prevState: unknown, formData: FormData) 
         project_id: newProject.id,
         asset_type: gen.asset_type,
         mode: gen.mode,
+        ...(gen.is_demo ? { is_demo: true } : {}),
         status: gen.status,
         content: gen.content,
         input_content: gen.input_content,
@@ -539,4 +543,39 @@ export async function restoreProject(formData: FormData) {
 
   revalidatePath("/dashboard");
   revalidatePath("/", "layout");
+}
+
+// Switches a project between Demo mode (example data: the Strategy Review never blocks, outputs are
+// labeled Demo) and Live mode (the normal, strict rules). Going Live also retires any strategy
+// approved while in Demo mode — a live presentation needs a fresh approval built on real details.
+export async function setProjectDemoMode(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const projectId = String(formData.get("projectId") || "");
+  const demo = formData.get("demo") === "true";
+  const { data: project } = await supabase
+    .from("projects")
+    .select("id, is_demo")
+    .eq("id", projectId)
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!project) redirect("/dashboard");
+
+  if (Boolean(project.is_demo) !== demo) {
+    await supabase.from("projects").update({ is_demo: demo }).eq("id", projectId).eq("user_id", user.id);
+    if (!demo) {
+      await createAdminClient()
+        .from("strategy_blueprints")
+        .update({ superseded_at: new Date().toISOString() })
+        .eq("project_id", projectId)
+        .is("superseded_at", null);
+    }
+  }
+  revalidatePath(`/projects/${projectId}`, "layout");
+  redirect(`/projects/${projectId}`);
 }

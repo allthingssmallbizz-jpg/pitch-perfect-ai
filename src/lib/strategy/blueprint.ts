@@ -56,17 +56,21 @@ export type ApprovalCheck = {
 
 // Critical issues must be resolved before approval: rewritten (accepted), removed from generated
 // content (excluded), or kept with the member's own attestation and evidence note (attested).
-// Leaving one pending, rejected, or "needs info" blocks approval.
+// Leaving one pending, rejected, or "needs info" blocks approval — in Live mode. In Demo mode
+// (example data, see 0052_demo_mode.sql) nothing blocks: each open critical issue becomes a
+// warning naming what would block a live presentation, so the demo can still be built and shown.
 export function checkApproval(input: {
   score: number;
   recs: RecLike[];
   discoveryChangedSinceReview: boolean;
+  demo?: boolean;
 }): ApprovalCheck {
   const blockers: string[] = [];
   const warnings: string[] = [];
   for (const rec of input.recs) {
     if (rec.is_critical && !["accepted", "excluded", "attested"].includes(rec.approval_status)) {
-      blockers.push(`Critical issue still open: ${rec.issue}`);
+      if (input.demo) warnings.push(`Demo only — would block a Live presentation: ${rec.issue}`);
+      else blockers.push(`Critical issue still open: ${rec.issue}`);
     }
   }
   if (input.score < 70) warnings.push(`Strategy readiness score is ${input.score}/100 — below the recommended 70.`);

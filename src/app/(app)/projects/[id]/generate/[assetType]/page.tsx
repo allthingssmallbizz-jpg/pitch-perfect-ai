@@ -154,6 +154,9 @@ export default async function GenerateAssetPage({
   const approvedBlueprint = await getCurrentBlueprint(supabase, id);
   const strategyStatus = {
     gated: (STRATEGY_GATED_ASSET_TYPES as readonly string[]).includes(generator.assetType) && !bypassActive,
+    // Demo mode still walks through the Strategy Review as the next step after Discovery (so the
+    // scoreboard and critical flags are seen), it just never blocks generating.
+    demo: Boolean(project.is_demo),
     approvedVersion: approvedBlueprint?.blueprint_version ?? null,
     changedSinceApproval: Boolean(
       approvedBlueprint && approvedBlueprint.discovery_hash !== hashStrategyFields(extractStrategyFields(project))
@@ -172,6 +175,7 @@ export default async function GenerateAssetPage({
   let initialGenerationId: string | null = null;
   let initialPublishSlug: string | null = null;
   let initialPublishedAt: string | null = null;
+  let initialIsDemo = false;
 
   // If no specific generation is requested in the URL, fall back to the most recent complete one
   // for this project+assetType — so landing on an agent's page after it already has finished
@@ -207,6 +211,7 @@ export default async function GenerateAssetPage({
       initialGenerationId = generation.id;
       initialPublishSlug = generation.publish_slug;
       initialPublishedAt = generation.published_at;
+      initialIsDemo = Boolean(generation.is_demo);
     }
   }
 
@@ -215,7 +220,8 @@ export default async function GenerateAssetPage({
   // draft doesn't mean backing out to the project page and hunting for it.
   const { data: pastGenerationRows } = await supabase
     .from("generations")
-    .select("id, content, status, created_at, approved_at, module_identifier, title")
+    // "*" rather than a column list so this keeps working whether or not 0052 (is_demo) has run.
+    .select("*")
     .eq("project_id", id)
     .eq("asset_type", generator.assetType)
     .eq("status", "complete")
@@ -233,6 +239,7 @@ export default async function GenerateAssetPage({
       preview: cleaned.replace(/\s+/g, " ").trim().slice(0, 120),
       moduleIdentifier: g.module_identifier,
       title: g.title,
+      isDemo: Boolean(g.is_demo),
     };
   }
 
@@ -505,6 +512,7 @@ export default async function GenerateAssetPage({
       <GenerateClient
         imageChoices={imageChoices}
         strategyStatus={strategyStatus}
+        demo={{ projectIsDemo: Boolean(project.is_demo), generationIsDemo: initialIsDemo }}
         // Forces a full remount whenever the open generation changes (a fresh visit, opening a
         // past run, or a just-completed Regenerate updating the URL) — without this, switching
         // to a different generation via the "Past generations" list only ever changes the URL,

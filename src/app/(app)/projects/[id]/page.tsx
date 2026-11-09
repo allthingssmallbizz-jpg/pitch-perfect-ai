@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import AgentBadge from "@/components/AgentBadge";
 import BioBlockedDialog from "@/components/BioBlockedDialog";
 import DuplicateProjectButton from "@/components/DuplicateProjectButton";
+import ProjectModeCard from "./ProjectModeCard";
 import DiscoveryWalkthroughVideo from "@/components/DiscoveryWalkthroughVideo";
 import ToolLink from "./ToolLink";
 import RoadmapSection from "./RoadmapSection";
@@ -155,6 +156,8 @@ export default async function ProjectPage({
         <DuplicateProjectButton projectId={project.id} />
       </div>
 
+      <ProjectModeCard projectId={project.id} isDemo={Boolean(project.is_demo)} />
+
       <RoadmapSection
         projectId={project.id}
         completeGenerations={completeGenerations ?? []}
@@ -292,6 +295,11 @@ export default async function ProjectPage({
                       {getAgent(g.asset_type) ? `${getAgent(g.asset_type)!.emoji} ` : ""}
                       {getAssetLabel(g.asset_type)}{" "}
                       <span className="text-muted-foreground">· {g.mode}</span>
+                      {g.is_demo && (
+                        <span className="ml-2 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-red-400">
+                          Demo
+                        </span>
+                      )}
                     </span>
                     <span
                       className={

@@ -91,6 +91,45 @@ function AssistButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+// Demo mode (see 0052_demo_mode.sql): a project running on example data, usually from a template.
+// Fields that carry claims a live webinar can only make with real evidence get a red *DEMO marker.
+const DemoContext = createContext(false);
+const DEMO_EXAMPLE_FIELDS = new Set([
+  "existing_assets",
+  "outcomes",
+  "proof",
+  "price",
+  "guarantee",
+  "bonuses",
+  "core_offer_value",
+  "stack_items",
+  "fast_action_bonuses",
+  "scarcity_urgency",
+]);
+
+function DemoTag({ field }: { field: string }) {
+  const demo = useContext(DemoContext);
+  if (!demo || !DEMO_EXAMPLE_FIELDS.has(field)) return null;
+  return (
+    <span
+      className="ml-1 text-xs font-bold text-red-500"
+      title="Demo example only — replace with real, provable details before using this in a live webinar."
+    >
+      *DEMO
+    </span>
+  );
+}
+
+function DemoNote({ field }: { field: string }) {
+  const demo = useContext(DemoContext);
+  if (!demo || !DEMO_EXAMPLE_FIELDS.has(field)) return null;
+  return (
+    <p className="mt-0.5 text-[11px] text-red-400">
+      Demo example only — not for a live webinar. Use only real, provable details here when you go live.
+    </p>
+  );
+}
+
 function Field({
   label,
   name,
@@ -126,6 +165,7 @@ function Field({
         <Label htmlFor={name}>
           {label}
           {required && <span className="text-primary"> *</span>}
+          <DemoTag field={name} />
         </Label>
         {onAssist && (
           <AssistButton
@@ -134,6 +174,7 @@ function Field({
         )}
       </div>
       {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
+      <DemoNote field={name} />
       <WhyThisMatters fieldKey={name} />
       {textarea ? (
         <Textarea
@@ -312,7 +353,11 @@ function ValueStackEditor({
     <div>
       <input type="hidden" name="stack_items" value={JSON.stringify(items)} />
 
-      <Label>Stack items — core components of the offer, each with its own value</Label>
+      <Label>
+        Stack items — core components of the offer, each with its own value
+        <DemoTag field="stack_items" />
+      </Label>
+      <DemoNote field="stack_items" />
       <p className="mt-0.5 text-xs text-muted-foreground">
         Tap the image square on any row to add a product image (a mockup, cover, or screenshot) — you can then place it
         on that item&apos;s slide with &quot;Add image&quot; in your deck&apos;s slide view.
@@ -385,7 +430,11 @@ function FastActionBonusEditor({
   return (
     <div>
       <input type="hidden" name="fast_action_bonuses" value={JSON.stringify(items)} />
-      <Label>Fast Action Bonus(es) — reserved for whoever acts fastest</Label>
+      <Label>
+        Fast Action Bonus(es) — reserved for whoever acts fastest
+        <DemoTag field="fast_action_bonuses" />
+      </Label>
+      <DemoNote field="fast_action_bonuses" />
       <p className="mt-0.5 text-xs text-muted-foreground">
         Revealed AFTER the price, to drive acting right now — separate from the Value Stack
         above. Needs a real qualifying condition (&quot;the first 5 people,&quot; &quot;within 15
@@ -583,7 +632,16 @@ export default function DiscoveryForm({
     // delete with the "isn't fully filled out" warning instead of ever running deleteProject.
     // Wanting to delete a project you no longer plan to finish is exactly the case that gate was
     // never meant to catch.
+    <DemoContext.Provider value={Boolean(project.is_demo)}>
     <div className="card-elevated space-y-6 rounded-2xl p-6">
+    {project.is_demo && (
+      <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+        <span className="font-semibold text-red-400">Demo mode.</span> These answers are example data to show
+        what&apos;s possible. Fields marked <span className="font-bold text-red-400">*DEMO</span> hold example proof,
+        results, bonuses, values, and deadlines — fine for a demo, never for a live webinar. Going live? Replace them
+        with real, provable details and switch the project to Live mode.
+      </p>
+    )}
     <form
       id="discovery-form"
       ref={formRef}
@@ -896,7 +954,10 @@ export default function DiscoveryForm({
           onAssist={setAssistTarget}
         />
         <div>
-          <Label htmlFor="core_offer_value">Core offer value</Label>
+          <Label htmlFor="core_offer_value">
+            Core offer value
+            <DemoTag field="core_offer_value" />
+          </Label>
           <p className="mt-0.5 text-xs text-muted-foreground">
             What the core product/offer itself is worth, before any bonus — introduced first in
             the stack reveal. Leave blank if you&apos;d rather not put a number on it.
@@ -1056,5 +1117,6 @@ export default function DiscoveryForm({
         </DialogContent>
       </Dialog>
     </div>
+    </DemoContext.Provider>
   );
 }

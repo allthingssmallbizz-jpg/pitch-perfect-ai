@@ -18,6 +18,11 @@ export default function TemplatesPage() {
             Pre-filled example briefs for common situations. Clone one, tweak the details in the
             discovery form, then generate.
           </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            <span className="font-semibold text-red-400">Templates open in Demo mode</span> — the proof, results,
+            bonuses, and values are examples, so you can build and share a complete demo presentation right away.
+            Switch the project to Live mode and replace the examples with real details before presenting it live.
+          </p>
         </div>
       </div>
 

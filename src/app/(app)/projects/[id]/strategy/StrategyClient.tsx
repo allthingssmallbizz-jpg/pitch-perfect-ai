@@ -24,6 +24,9 @@ type Props = {
   projectId: string;
   initialState: StrategyState;
   discoveryIncomplete: boolean;
+  // Demo mode (example data): nothing blocks approval — open critical issues are shown as what
+  // would block a Live presentation instead.
+  isDemo?: boolean;
 };
 
 const POLL_MS = 5000;
@@ -53,7 +56,7 @@ function nextUndecidedIndex(ordered: StrategyRecommendation[], fromIndex: number
   return -1;
 }
 
-export default function StrategyClient({ projectId, initialState, discoveryIncomplete }: Props) {
+export default function StrategyClient({ projectId, initialState, discoveryIncomplete, isDemo = false }: Props) {
   const [state, setState] = useState<StrategyState>(initialState);
   const [running, setRunning] = useState(false);
   const [tab, setTab] = useState("review");
@@ -163,6 +166,7 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
       score: review.overall_score ?? 0,
       recs,
       discoveryChangedSinceReview: state.discoveryChangedSinceReview,
+      demo: isDemo,
     });
     try {
       const { blueprint } = buildBlueprint({
@@ -175,7 +179,7 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
     } catch {
       return { check, blueprint: null };
     }
-  }, [review, analysis, recs, state.discoveryChangedSinceReview]);
+  }, [review, analysis, recs, state.discoveryChangedSinceReview, isDemo]);
 
   async function approve() {
     if (!review) return;
@@ -226,6 +230,14 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
         ))}
       </ol>
 
+      {isDemo && (
+        <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-100/90">
+          <span className="font-semibold text-red-400">Demo mode — nothing here blocks you.</span> This project uses
+          example data, so the review will flag example proof, results, and bonuses. In Demo mode those flags are
+          teaching points: they show exactly what would have to be real and provable before a live webinar. You can
+          approve and generate right away, or skip the review entirely and go straight to the agents.
+        </div>
+      )}
       {discoveryIncomplete && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
           Some Discovery questions are still blank. You can still run a review — missing answers will be flagged
@@ -304,7 +316,8 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
               {criticalOpen > 0 && (
                 <span className="flex items-center gap-1 rounded-full bg-red-500/15 px-3 py-1 text-xs font-medium text-red-400">
                   <AlertTriangle className="h-3.5 w-3.5" />
-                  {criticalOpen} critical {criticalOpen === 1 ? "issue" : "issues"} to resolve
+                  {criticalOpen} critical {criticalOpen === 1 ? "issue" : "issues"}{" "}
+                  {isDemo ? "(would block Live mode)" : "to resolve"}
                 </span>
               )}
               <Button size="sm" variant="outline" onClick={runReview} disabled={running}>
@@ -336,7 +349,11 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
 
               {recs.some((r) => r.is_critical) && (
                 <section>
-                  <h2 className="text-sm font-semibold text-red-400">Critical issues (must be resolved before approval)</h2>
+                  <h2 className="text-sm font-semibold text-red-400">
+                    {isDemo
+                      ? "Critical issues (would block a Live presentation — optional in Demo mode)"
+                      : "Critical issues (must be resolved before approval)"}
+                  </h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     These could create legal, ethical, or trust problems. They&apos;re listed separately from your
                     score.
@@ -521,9 +538,19 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
                     <span className="text-foreground">Keep my original</span> leaves your answer as is.
                   </li>
                   <li>
-                    Only <span className="font-medium text-red-400">Critical</span> items must be answered before you
-                    approve: rewrite it, remove the claim, or confirm it&apos;s true and say briefly what proves it.
-                    Everything else is optional — use <span className="text-foreground">Skip for now</span>.
+                    {isDemo ? (
+                      <>
+                        Demo mode: everything is optional, even{" "}
+                        <span className="font-medium text-red-400">Critical</span> items — they show what would have to
+                        be real before a live webinar. Use <span className="text-foreground">Skip for now</span> freely.
+                      </>
+                    ) : (
+                      <>
+                        Only <span className="font-medium text-red-400">Critical</span> items must be answered before
+                        you approve: rewrite it, remove the claim, or confirm it&apos;s true and say briefly what proves
+                        it. Everything else is optional — use <span className="text-foreground">Skip for now</span>.
+                      </>
+                    )}
                   </li>
                 </ul>
               </details>
@@ -550,7 +577,7 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
                         disabled={coachIndex >= ordered.length - 1}
                         onClick={() => goTo(coachIndex + 1)}
                       >
-                        {ordered[coachIndex]?.approval_status === "pending" && !ordered[coachIndex]?.is_critical
+                        {ordered[coachIndex]?.approval_status === "pending" && (isDemo || !ordered[coachIndex]?.is_critical)
                           ? "Skip for now"
                           : "Next"}
                       </Button>
@@ -563,11 +590,13 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
                     const current = ordered[Math.min(coachIndex, ordered.length - 1)];
                     return <RecommendationCard key={current.id} rec={current} onUpdated={onCoachRecUpdated} coaching />;
                   })()}
-                  {(decidedCount === ordered.length || criticalOpen === 0) && (
+                  {(decidedCount === ordered.length || criticalOpen === 0 || isDemo) && (
                     <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
                       {decidedCount === ordered.length
                         ? "Every item has a decision."
-                        : "All critical items are handled — the rest are optional."}{" "}
+                        : isDemo && criticalOpen > 0
+                          ? "Demo mode — you can approve any time."
+                          : "All critical items are handled — the rest are optional."}{" "}
                       <button className="font-medium underline" onClick={() => setTab("approve")}>
                         Review and approve your strategy
                       </button>

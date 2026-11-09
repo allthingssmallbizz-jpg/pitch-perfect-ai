@@ -164,7 +164,10 @@ export async function POST(req: NextRequest) {
     !strategyBlueprint &&
     (STRATEGY_GATED_ASSET_TYPES as readonly string[]).includes(assetType) &&
     !skipStrategyReview &&
-    !bypassActive
+    !bypassActive &&
+    // Demo mode (example data, see 0052_demo_mode.sql) never stops for the review — the point is
+    // to show what a finished presentation looks like, and every output is labeled Demo.
+    !project.is_demo
   ) {
     return NextResponse.json(
       {
@@ -324,6 +327,8 @@ export async function POST(req: NextRequest) {
       mode,
       status: "pending",
       credits_charged: generator.creditCost,
+      // Only written when true, so generating never depends on 0052_demo_mode.sql having run.
+      ...(project.is_demo ? { is_demo: true } : {}),
       // Persisted (not just used transiently to build the prompt) so a module-scoped generation
       // can be labeled with which module it was for later — see Agent Cora's Completed Courses
       // section (0039_course_completed.sql). Null for every other asset type, course_outline

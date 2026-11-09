@@ -48,6 +48,7 @@ export default async function StrategyPage({ params }: { params: Promise<{ id: s
         projectId={id}
         initialState={state}
         discoveryIncomplete={projectNeedsDiscovery(project)}
+        isDemo={Boolean(project.is_demo)}
       />
     </div>
   );
