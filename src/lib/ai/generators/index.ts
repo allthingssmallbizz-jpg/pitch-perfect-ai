@@ -36,6 +36,7 @@ import {
   WEBINAR_SCRIPT_MAX_OUTPUT_TOKENS,
   isWebinarScriptIncomplete,
   WEBINAR_SCRIPT_CONTINUATION_HINT,
+  type WebinarScriptRange,
 } from "./webinarScript";
 import {
   buildCourseOutlinePrompt,
@@ -106,6 +107,9 @@ type BuildPromptExtra = {
   // resolved explicitly by route.ts from a member-specified sourceGenerationId (see
   // 0043_webinar_script_source.sql) rather than implicitly "whichever deck is most recent."
   sourceDeckContent?: string;
+  // Webinar Script only — which section of the deck this request writes (long decks are written
+  // in parallel sections; see planWebinarScriptSections). Undefined = the whole deck.
+  scriptRange?: WebinarScriptRange;
   // Challenge Outline's own per-generation length choice (3 or 5 days) — same reasoning as
   // courseLevel above, a per-generation choice rather than a permanent project fact. Ignored by
   // every other generator.
@@ -255,7 +259,8 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
     description: "The full spoken talk-track for Your Signature Webinar's slide deck — what to say on every slide.",
     creditCost: WEBINAR_SCRIPT_CREDIT_COST,
     maxOutputTokens: WEBINAR_SCRIPT_MAX_OUTPUT_TOKENS,
-    buildPrompt: (project, priorGenerations, extra) => buildWebinarScriptPrompt(project, priorGenerations, extra?.sourceDeckContent),
+    buildPrompt: (project, priorGenerations, extra) =>
+      buildWebinarScriptPrompt(project, priorGenerations, extra?.sourceDeckContent, extra?.scriptRange),
     isOutputIncomplete: isWebinarScriptIncomplete,
     continuationHint: WEBINAR_SCRIPT_CONTINUATION_HINT,
   },

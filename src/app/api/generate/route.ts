@@ -3,7 +3,13 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkGuardrails, decrementCredits } from "@/lib/credits";
-import { generateCompleteAsset } from "@/lib/ai/anthropic";
+import { generateCompleteAsset, type GenerateResult } from "@/lib/ai/anthropic";
+import {
+  isWebinarScriptSectionIncomplete,
+  planWebinarScriptSections,
+  webinarScriptSectionContinuationHint,
+  WEBINAR_SCRIPT_SECTION_MAX_OUTPUT_TOKENS,
+} from "@/lib/ai/generators/webinarScript";
 import { buildSystemPrompt } from "@/lib/ai/systemPrompt";
 import { getBrandVoiceBlock } from "@/lib/ai/brandVoice";
 import { getPresenterBioBlock, isPresenterBioIncomplete, getMissingBioFieldLabels } from "@/lib/ai/presenterBio";
@@ -392,30 +398,62 @@ export async function POST(req: NextRequest) {
       includePitch,
       isFinalDay,
     };
-    const userPrompt =
-      generator.buildPrompt(promptProject, priorGenerations, generatorExtra) +
-      (strategyBlueprint
-        ? `\n${formatStrategyBlueprintBlock(
-            strategyBlueprint.blueprint as Blueprint,
-            strategyBlueprint.blueprint_version,
-            strategyBlueprint.approved_at
-          )}`
-        : "");
+    const blueprintSuffix = strategyBlueprint
+      ? `\n${formatStrategyBlueprintBlock(
+          strategyBlueprint.blueprint as Blueprint,
+          strategyBlueprint.blueprint_version,
+          strategyBlueprint.approved_at
+        )}`
+      : "";
+    const userPrompt = generator.buildPrompt(promptProject, priorGenerations, generatorExtra) + blueprintSuffix;
 
     // Threaded through explicitly (not just `generator.isOutputIncomplete` by itself) so a check
     // like Challenge Outline's own — "did this actually produce the number of days that was
     // REQUESTED" — can see that request (generatorExtra.challengeLength) instead of only the
     // generated content. See isChallengeOutlineIncomplete's own comment for the real failure
     // (a 5-day request coming back with only 4 days) this exists to catch.
-    const result = await generateCompleteAsset(
-      systemPrompt,
-      userPrompt,
-      generator.maxOutputTokens,
-      undefined,
-      undefined,
-      (content) => generator.isOutputIncomplete?.(content, generatorExtra) ?? false,
-      generator.continuationHint
-    );
+    // A long deck's script is written in parallel sections and joined in order — one request for
+    // the whole thing can outrun the 300-second limit above and leave the generation stuck. See
+    // planWebinarScriptSections.
+    const scriptSections =
+      assetType === "webinar_script" && webinarScriptSourceDeck
+        ? planWebinarScriptSections(webinarScriptSourceDeck.content)
+        : [];
+    let result: GenerateResult;
+    if (scriptSections.length > 1) {
+      const parts = await Promise.all(
+        scriptSections.map((range) =>
+          generateCompleteAsset(
+            systemPrompt,
+            generator.buildPrompt(promptProject, priorGenerations, { ...generatorExtra, scriptRange: range }) +
+              blueprintSuffix,
+            WEBINAR_SCRIPT_SECTION_MAX_OUTPUT_TOKENS,
+            undefined,
+            2,
+            (content) => isWebinarScriptSectionIncomplete(content, range),
+            webinarScriptSectionContinuationHint(range)
+          )
+        )
+      );
+      result = {
+        content: parts.map((p) => p.content.trim()).join("\n\n"),
+        model: parts[0].model,
+        inputTokens: parts.reduce((sum, p) => sum + p.inputTokens, 0),
+        outputTokens: parts.reduce((sum, p) => sum + p.outputTokens, 0),
+        costUsd: parts.reduce((sum, p) => sum + p.costUsd, 0),
+        stopReason: parts[parts.length - 1].stopReason,
+      };
+    } else {
+      result = await generateCompleteAsset(
+        systemPrompt,
+        userPrompt,
+        generator.maxOutputTokens,
+        undefined,
+        undefined,
+        (content) => generator.isOutputIncomplete?.(content, generatorExtra) ?? false,
+        generator.continuationHint
+      );
+    }
 
     // Landing Page and Thank You Page both output a real HTML document, not markdown — strip a
     // stray code fence defensively in case Claude wraps it in one despite the explicit instruction

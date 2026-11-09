@@ -28,6 +28,56 @@ export function isWebinarScriptIncomplete(content: string): boolean {
   return parsePptOutline(content).length < PPT_OUTLINE_MIN_ACCEPTABLE_SLIDES;
 }
 
+// A full 60-90 slide script written in one request can take longer than the server's 300-second
+// limit (see /api/generate's maxDuration) — the function is then cut off mid-write and the
+// generation sits "pending" forever. Long decks are instead split into sections of about this many
+// slides, written in parallel, and joined in order: same script, a fraction of the wait.
+export const WEBINAR_SCRIPT_SLIDES_PER_SECTION = 25;
+// Each section is a quarter of the deck at most, so it needs far less headroom than the whole.
+export const WEBINAR_SCRIPT_SECTION_MAX_OUTPUT_TOKENS = 10000;
+
+export type WebinarScriptRange = {
+  part: number;
+  parts: number;
+  count: number;
+  first: { number: number; title: string };
+  last: { number: number; title: string };
+  totalSlides: number;
+  isFinal: boolean;
+};
+
+// Splits the deck into evenly sized, in-order sections. Returns a single section (= write it all
+// in one request, as before) for a short deck.
+export function planWebinarScriptSections(deckContent: string): WebinarScriptRange[] {
+  const slides = parsePptOutline(deckContent);
+  const parts = Math.max(1, Math.ceil(slides.length / WEBINAR_SCRIPT_SLIDES_PER_SECTION));
+  if (parts === 1) return [];
+  const size = Math.ceil(slides.length / parts);
+  const ranges: WebinarScriptRange[] = [];
+  for (let i = 0; i < parts; i++) {
+    const chunk = slides.slice(i * size, (i + 1) * size);
+    if (!chunk.length) continue;
+    ranges.push({
+      part: i + 1,
+      parts,
+      count: chunk.length,
+      first: { number: chunk[0].number, title: chunk[0].title },
+      last: { number: chunk[chunk.length - 1].number, title: chunk[chunk.length - 1].title },
+      totalSlides: slides.length,
+      isFinal: i === parts - 1,
+    });
+  }
+  return ranges;
+}
+
+export function isWebinarScriptSectionIncomplete(content: string, range: WebinarScriptRange): boolean {
+  return parsePptOutline(content).length < Math.floor(range.count * 0.9);
+}
+
+export function webinarScriptSectionContinuationHint(range: WebinarScriptRange): string {
+  return `You stopped before finishing this section — keep going in the exact same slide order, one script section per remaining slide, up to and including Slide ${range.last.number}: ${range.last.title}. Do not write past that slide.`;
+}
+
 export const WEBINAR_SCRIPT_CONTINUATION_HINT =
   "You stopped before writing a script for every slide in the deck — this is not done yet. Keep going in the exact same slide order, one script section per remaining slide, copying each slide's number and title exactly as they appear in the deck provided.";
 
@@ -39,7 +89,8 @@ export const WEBINAR_SCRIPT_CONTINUATION_HINT =
 export function buildWebinarScriptPrompt(
   project: Project,
   priorGenerations: PriorGeneration[] = [],
-  sourceDeckContent?: string
+  sourceDeckContent?: string,
+  range?: WebinarScriptRange
 ): string {
   // Deliberately NOT run through formatPriorGenerationsBlock's PRIOR_GENERATION_CHAR_LIMIT
   // truncation (shared.ts caps prior-asset context to ~4000 characters, fine for "stay
@@ -62,5 +113,15 @@ For each slide, output:
 **Slide #: Title** (copied exactly from the deck above, on its own line)
 2-5 sentences of natural, conversational spoken script — not a word-for-word essay to be read flatly, and not just a restatement of the slide's bullets. This is what the presenter actually SAYS while that slide is on screen: expand the point, bridge from what was just said, build belief, and set up what's coming next. It should sound like a real person talking to a room, not a document being narrated. That label line exists only to keep this document aligned to the deck for whoever's reading it — it is invisible structure, never something the presenter actually says, so the spoken script itself must never announce or reference the slide number/title ("on this slide," "moving to slide 12," "here's our big promise slide") — just deliver the actual point directly, exactly as a real presenter would say it with no script visible to the audience at all.
 
-Keep the pacing natural for the format (a 60-90 slide deck runs roughly 60-90 minutes, so most slides get a tight few sentences, not a monologue) but substantial enough that someone with zero prep could read straight through it and deliver an effective, persuasive, on-message presentation — hit the emotional beats (curiosity, belief-shift, credibility, urgency, the ask) each slide exists for rather than just describing what's visible on it.`;
+Keep the pacing natural for the format (a 60-90 slide deck runs roughly 60-90 minutes, so most slides get a tight few sentences, not a monologue) but substantial enough that someone with zero prep could read straight through it and deliver an effective, persuasive, on-message presentation — hit the emotional beats (curiosity, belief-shift, credibility, urgency, the ask) each slide exists for rather than just describing what's visible on it.${range ? formatSectionInstruction(range) : ""}`;
+}
+
+function formatSectionInstruction(range: WebinarScriptRange): string {
+  return `
+
+THIS RESPONSE COVERS ONE SECTION ONLY — part ${range.part} of ${range.parts} of the script. The other parts are being written separately and will be joined to this one in order, so:
+- Write the script ONLY for the ${range.count} slides from **Slide ${range.first.number}: ${range.first.title}** through **Slide ${range.last.number}: ${range.last.title}**, in deck order, with no slides skipped.
+- Start directly with the **Slide ${range.first.number}: ${range.first.title}** label line — no introduction, preamble, or heading before it.
+- Stop right after the script for Slide ${range.last.number}. Do not write anything for later slides.
+- Use the rest of the deck only as context, so this section bridges naturally from what came just before it and sets up what comes next.${range.isFinal ? "" : "\n- This is not the end of the presentation — don't wrap up, summarize, or close."}${range.part > 1 ? "\n- This is not the start of the presentation — don't open, greet, or introduce the presenter again." : ""}`;
 }
