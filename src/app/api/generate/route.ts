@@ -7,9 +7,15 @@ import { generateCompleteAsset, type GenerateResult } from "@/lib/ai/anthropic";
 import {
   isWebinarScriptSectionIncomplete,
   planWebinarScriptSections,
+  trimScriptToSection,
   webinarScriptSectionContinuationHint,
   WEBINAR_SCRIPT_SECTION_MAX_OUTPUT_TOKENS,
 } from "@/lib/ai/generators/webinarScript";
+
+// Sectioned scripts stop themselves this long after the request began — comfortably inside
+// maxDuration below — so a slow run fails with a specific, readable reason instead of being cut
+// off by the platform with no trace.
+const SCRIPT_SECTION_BUDGET_MS = 270 * 1000;
 import { buildSystemPrompt } from "@/lib/ai/systemPrompt";
 import { getBrandVoiceBlock } from "@/lib/ai/brandVoice";
 import { getPresenterBioBlock, isPresenterBioIncomplete, getMissingBioFieldLabels } from "@/lib/ai/presenterBio";
@@ -77,6 +83,7 @@ const requestSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const requestStartedAt = Date.now();
   const supabase = await createClient();
   const {
     data: { user },
@@ -421,20 +428,58 @@ export async function POST(req: NextRequest) {
         : [];
     let result: GenerateResult;
     if (scriptSections.length > 1) {
-      const parts = await Promise.all(
-        scriptSections.map((range) =>
-          generateCompleteAsset(
-            systemPrompt,
-            generator.buildPrompt(promptProject, priorGenerations, { ...generatorExtra, scriptRange: range }) +
-              blueprintSuffix,
-            WEBINAR_SCRIPT_SECTION_MAX_OUTPUT_TOKENS,
-            undefined,
-            2,
-            (content) => isWebinarScriptSectionIncomplete(content, range),
-            webinarScriptSectionContinuationHint(range)
+      const abort = new AbortController();
+      const timeLeft = SCRIPT_SECTION_BUDGET_MS - (Date.now() - requestStartedAt);
+      const timer = setTimeout(() => abort.abort(), Math.max(timeLeft, 30 * 1000));
+      const sectionsStartedAt = Date.now();
+      const status = scriptSections.map((range) => ({ range, done: false, seconds: 0, slides: 0, outputTokens: 0 }));
+      let parts: GenerateResult[];
+      try {
+        parts = await Promise.all(
+          scriptSections.map(async (range, i) => {
+            const part = await generateCompleteAsset(
+              systemPrompt,
+              generator.buildPrompt(promptProject, priorGenerations, { ...generatorExtra, scriptRange: range }) +
+                blueprintSuffix,
+              WEBINAR_SCRIPT_SECTION_MAX_OUTPUT_TOKENS,
+              undefined,
+              1,
+              (content) => isWebinarScriptSectionIncomplete(content, range),
+              webinarScriptSectionContinuationHint(range),
+              abort.signal
+            );
+            const trimmed = trimScriptToSection(part.content, range);
+            status[i] = {
+              range,
+              done: true,
+              seconds: Math.round((Date.now() - sectionsStartedAt) / 1000),
+              slides: trimmed ? trimmed.split(/\n(?=#{0,4}\s*\*{0,2}\s*slide\s+\d+)/i).length : 0,
+              outputTokens: part.outputTokens,
+            };
+            console.log(
+              `[webinar_script ${generationId}] section ${range.part}/${range.parts} done in ${status[i].seconds}s — ${part.outputTokens} output tokens`
+            );
+            return { ...part, content: trimmed };
+          })
+        );
+      } catch (err) {
+        // Say exactly how far it got, so a slow or failed run can actually be diagnosed.
+        const summary = status
+          .map((s) =>
+            s.done
+              ? `part ${s.range.part} finished in ${s.seconds}s (${s.slides} of ${s.range.count} slides, ${s.outputTokens} tokens)`
+              : `part ${s.range.part} (slides ${s.range.first.number}-${s.range.last.number}) unfinished`
           )
-        )
-      );
+          .join("; ");
+        const elapsed = Math.round((Date.now() - sectionsStartedAt) / 1000);
+        const reason = abort.signal.aborted
+          ? `The script took longer than allowed (${elapsed}s) and was stopped`
+          : `The script stopped with an error after ${elapsed}s (${err instanceof Error ? err.message : "unknown error"})`;
+        console.error(`[webinar_script ${generationId}] ${reason}: ${summary}`);
+        throw new Error(`${reason} — please try again. Details: ${summary}.`);
+      } finally {
+        clearTimeout(timer);
+      }
       result = {
         content: parts.map((p) => p.content.trim()).join("\n\n"),
         model: parts[0].model,

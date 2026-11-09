@@ -32,11 +32,14 @@ export function isWebinarScriptIncomplete(content: string): boolean {
 // limit (see /api/generate's maxDuration) — the function is then cut off mid-write and the
 // generation sits "pending" forever. Long decks are instead split into sections of about this many
 // slides, written in parallel, and joined in order: same script, a fraction of the wait.
-export const WEBINAR_SCRIPT_SLIDES_PER_SECTION = 25;
-// Each section is a quarter of the deck at most, so it needs far less headroom than the whole.
-export const WEBINAR_SCRIPT_SECTION_MAX_OUTPUT_TOKENS = 10000;
+export const WEBINAR_SCRIPT_SLIDES_PER_SECTION = 20;
+// ~20 slides at a few spoken sentences each is roughly 2,500-3,500 tokens; this leaves headroom
+// while capping how long one section can possibly run.
+export const WEBINAR_SCRIPT_SECTION_MAX_OUTPUT_TOKENS = 6000;
 
 export type WebinarScriptRange = {
+  // The deck's own slide numbers in this section, in order.
+  numbers: number[];
   part: number;
   parts: number;
   count: number;
@@ -58,6 +61,7 @@ export function planWebinarScriptSections(deckContent: string): WebinarScriptRan
     const chunk = slides.slice(i * size, (i + 1) * size);
     if (!chunk.length) continue;
     ranges.push({
+      numbers: chunk.map((s) => s.number),
       part: i + 1,
       parts,
       count: chunk.length,
@@ -71,7 +75,39 @@ export function planWebinarScriptSections(deckContent: string): WebinarScriptRan
 }
 
 export function isWebinarScriptSectionIncomplete(content: string, range: WebinarScriptRange): boolean {
-  return parsePptOutline(content).length < Math.floor(range.count * 0.9);
+  return countSectionSlides(content, range) < Math.floor(range.count * 0.9);
+}
+
+const SCRIPT_SLIDE_LABEL = /^#{0,4}\s*\*{0,2}\s*slide\s+(\d+)\b/i;
+
+function splitScriptBlocks(content: string): { number: number; text: string }[] {
+  const blocks: { number: number; lines: string[] }[] = [];
+  for (const line of content.split("\n")) {
+    const label = line.match(SCRIPT_SLIDE_LABEL);
+    if (label) blocks.push({ number: Number(label[1]), lines: [line] });
+    else if (blocks.length) blocks[blocks.length - 1].lines.push(line);
+    // Anything before the first slide label (a stray preamble) is dropped.
+  }
+  return blocks.map((b) => ({ number: b.number, text: b.lines.join("\n").trim() }));
+}
+
+function countSectionSlides(content: string, range: WebinarScriptRange): number {
+  const wanted = new Set(range.numbers);
+  return new Set(splitScriptBlocks(content).map((b) => b.number).filter((n) => wanted.has(n))).size;
+}
+
+// Keeps only this section's own slides (first copy of each), so a section that strays past its
+// range — or repeats itself in a continuation — can never duplicate slides in the joined script.
+export function trimScriptToSection(content: string, range: WebinarScriptRange): string {
+  const wanted = new Set(range.numbers);
+  const seen = new Set<number>();
+  const kept: string[] = [];
+  for (const block of splitScriptBlocks(content)) {
+    if (!wanted.has(block.number) || seen.has(block.number)) continue;
+    seen.add(block.number);
+    kept.push(block.text);
+  }
+  return kept.join("\n\n");
 }
 
 export function webinarScriptSectionContinuationHint(range: WebinarScriptRange): string {
@@ -101,12 +137,16 @@ export function buildWebinarScriptPrompt(
   const deckContent = sourceDeckContent ?? priorGenerations.find((p) => p.assetType === "ppt_outline")?.content ?? "";
   const otherContext = formatPriorGenerationsBlock(priorGenerations.filter((p) => p.assetType !== "ppt_outline"));
 
-  return `Write the full spoken script — what the presenter actually says out loud — for the exact slide deck below, one script section per slide, aligned 1:1 to that deck's own numbering and titles. Do not invent a different slide structure, skip slides, or renumber anything.
+  const opening = range
+    ? `Write the spoken script — what the presenter actually says out loud — for ONLY slides ${range.first.number} through ${range.last.number} (part ${range.part} of ${range.parts}) of the exact slide deck below: ${range.count} slides, one script section per slide, aligned 1:1 to that deck's own numbering and titles. Write nothing for any slide outside that range — the rest of the script is being written separately. Do not invent a different slide structure, skip slides, or renumber anything.`
+    : "Write the full spoken script — what the presenter actually says out loud — for the exact slide deck below, one script section per slide, aligned 1:1 to that deck's own numbering and titles. Do not invent a different slide structure, skip slides, or renumber anything.";
+
+  return `${opening}
 
 ${formatDiscoveryBlock(project)}
 ${otherContext}
 
-THE EXACT SLIDE DECK TO WRITE A SCRIPT FOR — copy every slide's number and title exactly as they appear here, in the same order, with no slides skipped:
+${range ? `THE FULL SLIDE DECK, for context — write the script ONLY for slides ${range.first.number}-${range.last.number}, copying each of those slides' number and title exactly as they appear here, in the same order, with none of them skipped:` : "THE EXACT SLIDE DECK TO WRITE A SCRIPT FOR — copy every slide's number and title exactly as they appear here, in the same order, with no slides skipped:"}
 ${deckContent}
 
 For each slide, output:

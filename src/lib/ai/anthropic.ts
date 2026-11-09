@@ -56,9 +56,12 @@ function systemParam(systemPrompt: string): Anthropic.MessageCreateParams["syste
 // callers that don't need individual chunks — same return shape as a plain create() call.
 async function createMessage(
   anthropic: Anthropic,
-  params: Anthropic.MessageStreamParams
+  params: Anthropic.MessageStreamParams,
+  signal?: AbortSignal
 ): Promise<Anthropic.Message> {
-  const stream = anthropic.messages.stream(params);
+  // `signal` lets a caller with its own time budget (the sectioned Webinar Script) stop a call
+  // cleanly before the platform kills the whole function without a trace.
+  const stream = anthropic.messages.stream(params, signal ? { signal } : undefined);
   return stream.finalMessage();
 }
 
@@ -74,7 +77,8 @@ export async function generateAsset(
   systemPrompt: string,
   userPrompt: string,
   maxOutputTokens: number,
-  images?: ImageInput[]
+  images?: ImageInput[],
+  signal?: AbortSignal
 ): Promise<GenerateResult> {
   const anthropic = getClient();
 
@@ -88,12 +92,16 @@ export async function generateAsset(
       ]
     : userPrompt;
 
-  const message = await createMessage(anthropic, {
-    model: DEFAULT_MODEL,
-    max_tokens: maxOutputTokens,
-    system: systemParam(systemPrompt),
-    messages: [{ role: "user", content: messageContent }],
-  });
+  const message = await createMessage(
+    anthropic,
+    {
+      model: DEFAULT_MODEL,
+      max_tokens: maxOutputTokens,
+      system: systemParam(systemPrompt),
+      messages: [{ role: "user", content: messageContent }],
+    },
+    signal
+  );
 
   const content = message.content
     .filter((block): block is Anthropic.TextBlock => block.type === "text")
@@ -137,9 +145,10 @@ export async function generateCompleteAsset(
   images?: ImageInput[],
   maxContinuations = 4,
   isIncomplete?: (content: string) => boolean,
-  continuationHint?: string
+  continuationHint?: string,
+  signal?: AbortSignal
 ): Promise<GenerateResult> {
-  const first = await generateAsset(systemPrompt, userPrompt, maxOutputTokens, images);
+  const first = await generateAsset(systemPrompt, userPrompt, maxOutputTokens, images, signal);
 
   let combinedContent = first.content;
   let totalInputTokens = first.inputTokens;
@@ -188,7 +197,7 @@ export async function generateCompleteAsset(
           content: continuationInstruction,
         },
       ],
-    });
+    }, signal);
 
     const continuationText = message.content
       .filter((block): block is Anthropic.TextBlock => block.type === "text")
