@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { CRITICAL_RISK_EXPLANATION } from "@/lib/strategy/blueprint";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import type { AssetType, GenerationMode } from "@/types/database";
@@ -386,7 +387,14 @@ export default function GenerateClient({
   imageChoices?: SlideImageChoice[];
   // Strategy Review checkpoint for presentation agents (see STRATEGY_GATED_ASSET_TYPES) — whether
   // an approved Strategy Blueprint exists and whether Discovery changed after it was approved.
-  strategyStatus?: { gated: boolean; approvedVersion: number | null; changedSinceApproval: boolean; demo?: boolean };
+  strategyStatus?: {
+    gated: boolean;
+    approvedVersion: number | null;
+    changedSinceApproval: boolean;
+    demo?: boolean;
+    // Critical Strategy Review items still open (never blocking — shown as a warning).
+    openCritical?: number;
+  };
   // Demo mode (see 0052_demo_mode.sql): the project is running on example data, and/or the
   // generation on screen was built in Demo mode. Either way it's labeled so a demo deck is never
   // mistaken for one that's ready for a live webinar.
@@ -574,13 +582,10 @@ export default function GenerateClient({
   const strategySuggested = Boolean(
     strategyStatus?.gated && !strategyStatus.approvedVersion && !skipStrategy && strategyStatus.demo
   );
+  // "Continue without a review" first opens an in-page critical warning explaining what's being
+  // skipped and why it matters; the member then confirms. Never a hard block.
+  const [skipWarningOpen, setSkipWarningOpen] = useState(false);
   function continueWithoutStrategyReview() {
-    if (
-      !window.confirm(
-        "Generate without a Strategy Review? Your presentation will be built from your Discovery answers as they are, without the strategy checks for weak audience, unsupported claims, or invented scarcity."
-      )
-    )
-      return;
     try {
       window.sessionStorage.setItem(strategySkipKey, "1");
     } catch {
@@ -1692,12 +1697,59 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
               <Button asChild>
                 <Link href={`/projects/${projectId}/strategy`}>Review my strategy</Link>
               </Button>
-              <Button variant="outline" onClick={continueWithoutStrategyReview}>
-                Continue without a review
-              </Button>
+              {!skipWarningOpen && (
+                <Button variant="outline" onClick={() => setSkipWarningOpen(true)}>
+                  Continue without a review
+                </Button>
+              )}
             </div>
+            {skipWarningOpen && (
+              <div className="mt-4 rounded-xl border-2 border-red-500/60 bg-red-500/10 p-4 text-sm">
+                <p className="font-semibold text-red-400">
+                  ⚠ Critical warning
+                  {(strategyStatus.openCritical ?? 0) > 0
+                    ? ` — your Strategy Review found ${strategyStatus.openCritical} critical ${
+                        strategyStatus.openCritical === 1 ? "issue" : "issues"
+                      } you haven't fixed`
+                    : " — your strategy hasn't been reviewed"}
+                </p>
+                <p className="mt-2 text-red-100/90">
+                  If you move forward, know that you have not proven or qualified the claims in your Discovery — your
+                  results, reviews, guarantees, bonus values, and deadlines will go into this presentation exactly as
+                  written. {CRITICAL_RISK_EXPLANATION}
+                </p>
+                <p className="mt-2 text-red-100/90">
+                  It&apos;s imperative to answer these before presenting live. You can still continue now and come back
+                  to it later.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button asChild size="sm">
+                    <Link href={`/projects/${projectId}/strategy`}>Go fix it (recommended)</Link>
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={continueWithoutStrategyReview}>
+                    I understand — continue anyway
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         ) : null)}
+      {strategyStatus?.gated && !strategyStatus.demo && (strategyStatus.openCritical ?? 0) > 0 &&
+        (strategyStatus.approvedVersion || skipStrategy) && (
+          <div className="mb-4 rounded-xl border-2 border-red-500/50 bg-red-500/10 px-4 py-3 text-sm">
+            <p className="font-semibold text-red-400">
+              ⚠ Critical warning: {strategyStatus.openCritical} critical{" "}
+              {strategyStatus.openCritical === 1 ? "issue hasn't" : "issues haven't"} been fixed
+            </p>
+            <p className="mt-1 text-red-100/90">
+              This presentation includes claims you haven&apos;t proven. Before presenting it live, fix, remove, or back
+              up each one in your Strategy Review.{" "}
+              <Link href={`/projects/${projectId}/strategy`} className="font-medium underline">
+                Fix them now
+              </Link>
+            </p>
+          </div>
+        )}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Button
           onClick={() => {

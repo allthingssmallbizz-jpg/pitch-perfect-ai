@@ -156,7 +156,8 @@ export default async function ProjectPage({
         <DuplicateProjectButton projectId={project.id} />
       </div>
 
-      <ProjectModeCard projectId={project.id} isDemo={Boolean(project.is_demo)} />
+      {/* Demo mode exists only for template projects; a member's own project is always Live. */}
+      {project.from_template && <ProjectModeCard projectId={project.id} isDemo={Boolean(project.is_demo)} />}
 
       <RoadmapSection
         projectId={project.id}

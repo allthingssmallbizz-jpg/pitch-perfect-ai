@@ -45,20 +45,31 @@ export type Blueprint = {
   accepted_revisions: { field: string; original: string; revised: string }[];
   excluded_claims: { field: string; claim: string }[];
   attested_claims: { field: string; claim: string; note: string }[];
+  // Critical issues the member chose to move past without fixing, removing, or vouching for
+  // (Live mode never blocks). Optional: blueprints approved before this existed don't have it.
+  unresolved_critical?: { field: string; claim: string }[];
   warnings: string[];
   assumptions: string[];
 };
 
 export type ApprovalCheck = {
+  // Hard stops. Nothing produces one today — kept so callers stay explicit about it.
   blockers: string[];
+  // Open critical issues (Live mode). Never blocking, but approving past them needs its own,
+  // explicit acknowledgment on top of the ordinary warnings.
+  critical: string[];
   warnings: string[];
 };
 
-// Critical issues must be resolved before approval: rewritten (accepted), removed from generated
-// content (excluded), or kept with the member's own attestation and evidence note (attested).
-// Leaving one pending, rejected, or "needs info" blocks approval — in Live mode. In Demo mode
-// (example data, see 0052_demo_mode.sql) nothing blocks: each open critical issue becomes a
-// warning naming what would block a live presentation, so the demo can still be built and shown.
+// Why the critical items matter — shown wherever a member chooses to move past them.
+export const CRITICAL_RISK_EXPLANATION =
+  "Critical items are claims a buyer, an ad platform, or a regulator could challenge: results or income you can't prove, reviews or client counts you can't show, guarantees you can't honor, and deadlines or limits that aren't real. Presenting them without proof can break advertising and consumer-protection rules (including rules on earnings claims and testimonials), get ads rejected, lead to refunds and chargebacks, and cost you buyers' trust the moment someone checks.";
+
+// A critical issue is resolved when it's rewritten (accepted), removed from generated content
+// (excluded), or kept with the member's own attestation and evidence note (attested). Nothing ever
+// blocks approval: in Live mode open critical issues are listed separately and need an explicit
+// "I understand" acknowledgment; in Demo mode (example data from a template, see 0052_demo_mode.sql)
+// they're ordinary warnings naming what a live presentation would need.
 export function checkApproval(input: {
   score: number;
   recs: RecLike[];
@@ -66,11 +77,12 @@ export function checkApproval(input: {
   demo?: boolean;
 }): ApprovalCheck {
   const blockers: string[] = [];
+  const critical: string[] = [];
   const warnings: string[] = [];
   for (const rec of input.recs) {
-    if (rec.is_critical && !["accepted", "excluded", "attested"].includes(rec.approval_status)) {
-      if (input.demo) warnings.push(`Demo only — would block a Live presentation: ${rec.issue}`);
-      else blockers.push(`Critical issue still open: ${rec.issue}`);
+    if (isOpenCritical(rec)) {
+      if (input.demo) warnings.push(`Demo only — a live presentation would need this fixed: ${rec.issue}`);
+      else critical.push(rec.issue);
     }
   }
   if (input.score < 70) warnings.push(`Strategy readiness score is ${input.score}/100 — below the recommended 70.`);
@@ -81,7 +93,11 @@ export function checkApproval(input: {
   if (input.discoveryChangedSinceReview) {
     warnings.push("Discovery was edited after this review ran. Approving uses the reviewed answers — reanalyze to include the newer edits.");
   }
-  return { blockers, warnings };
+  return { blockers, critical, warnings };
+}
+
+export function isOpenCritical(rec: Pick<RecLike, "is_critical" | "approval_status">): boolean {
+  return rec.is_critical && !["accepted", "excluded", "attested"].includes(rec.approval_status);
 }
 
 export function buildBlueprint(input: {
@@ -136,6 +152,7 @@ export function buildBlueprint(input: {
     accepted_revisions,
     excluded_claims,
     attested_claims,
+    unresolved_critical: recs.filter(isOpenCritical).map((r) => ({ field: r.field_label, claim: r.issue })),
     warnings: input.warnings,
     assumptions: analysis.assumptions,
   };
@@ -177,6 +194,12 @@ export function formatStrategyBlueprintBlock(b: Blueprint, version: number, appr
       "- Client-attested claims — may only be stated as the client's own report, qualified as such, never as independently verified:"
     );
     for (const c of b.attested_claims) lines.push(`  • ${c.claim}${c.note ? ` (client's evidence: ${c.note})` : ""}`);
+  }
+  if (b.unresolved_critical?.length) {
+    lines.push(
+      "- UNPROVEN CLAIMS the client chose to keep without evidence — never present them as verified fact, never add specific numbers, results, or guarantees to them, and soften them to the client's own statement:"
+    );
+    for (const c of b.unresolved_critical) lines.push(`  • ${c.claim}`);
   }
   const unverified = b.claim_statuses.filter((c) => c.status !== "verified" && c.status !== "not_applicable");
   if (unverified.length) {

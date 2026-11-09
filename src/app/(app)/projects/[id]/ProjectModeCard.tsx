@@ -36,8 +36,8 @@ export default function ProjectModeCard({
             </p>
           ) : (
             <p className="mt-1 text-sm text-muted-foreground">
-              For real presentations to real prospects. Every claim must be true and provable, and critical Strategy
-              Review issues must be fixed before your strategy can be approved.
+              For real presentations to real prospects. Every claim should be true and provable — anything the
+              Strategy Review flags as critical comes with a warning until it&apos;s fixed.
             </p>
           )}
         </div>

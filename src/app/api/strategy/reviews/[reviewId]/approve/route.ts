@@ -9,7 +9,11 @@ import { hashStrategyFields, loadStrategyState } from "@/lib/strategy/server";
 
 export const runtime = "nodejs";
 
-const requestSchema = z.object({ acknowledgeWarnings: z.boolean().default(false) });
+const requestSchema = z.object({
+  acknowledgeWarnings: z.boolean().default(false),
+  // Separate, explicit "I understand" for moving past open critical issues (never a hard block).
+  acknowledgeCritical: z.boolean().default(false),
+});
 
 // Approves the latest review as a new, frozen Strategy Blueprint version — the input every
 // generator reads from from now on (see /api/generate). Approving again creates a new version and
@@ -53,7 +57,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rev
     demo: Boolean(project.is_demo),
   });
   if (check.blockers.length) {
-    return NextResponse.json({ error: "Resolve every critical issue before approving.", blockers: check.blockers }, { status: 400 });
+    return NextResponse.json({ error: "Resolve these before approving.", blockers: check.blockers }, { status: 400 });
+  }
+  if (check.critical.length && !parsed.data.acknowledgeCritical) {
+    return NextResponse.json(
+      { error: "Please confirm you understand the open critical issues before approving.", critical: check.critical, code: "confirm_critical" },
+      { status: 409 }
+    );
   }
   if (check.warnings.length && !parsed.data.acknowledgeWarnings) {
     return NextResponse.json({ error: "Please confirm the warnings before approving.", warnings: check.warnings, code: "confirm_warnings" }, { status: 409 });

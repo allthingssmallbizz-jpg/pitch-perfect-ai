@@ -91,6 +91,24 @@ export default function BlueprintView({ blueprint: b }: { blueprint: Blueprint }
           </ul>
         </div>
       )}
+      {(b.unresolved_critical?.length ?? 0) > 0 && (
+        <div className="mt-4 rounded-lg border-2 border-red-500/50 bg-red-500/10 p-3 text-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-red-400">
+            Critical issues you chose not to fix — unproven claims
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-red-100/90">
+            {b.unresolved_critical!.map((c, i) => (
+              <li key={i}>
+                <span className="font-medium">{c.field}:</span> {c.claim}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-red-200/80">
+            Your presentation treats these as your own unproven statements. Fix them and re-approve before presenting
+            live.
+          </p>
+        </div>
+      )}
       {b.excluded_claims.length > 0 && (
         <div className="mt-3 rounded-lg border border-border bg-card/40 p-3 text-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Claims removed from your content</p>

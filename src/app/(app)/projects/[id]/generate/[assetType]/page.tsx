@@ -19,6 +19,7 @@ import type { SlideImageChoice } from "@/lib/presenterPhotos";
 import { getCurrentBlueprint, hashStrategyFields } from "@/lib/strategy/server";
 import { extractStrategyFields } from "@/lib/strategy/fields";
 import { STRATEGY_GATED_ASSET_TYPES } from "@/lib/strategy/schema";
+import { isOpenCritical, type Blueprint } from "@/lib/strategy/blueprint";
 
 // Your Webinar and its Script share the same agent (Polly) — same name, same emoji, same title
 // on both pages — which was exactly the problem: a member stepping away and coming back couldn't
@@ -152,7 +153,29 @@ export default async function GenerateAssetPage({
   // Strategy Review checkpoint (see STRATEGY_GATED_ASSET_TYPES and /api/generate): whether this
   // project has an approved Strategy Blueprint, and whether Discovery changed after it.
   const approvedBlueprint = await getCurrentBlueprint(supabase, id);
+  // Open critical issues — from the approved strategy if there is one (items the member chose to
+  // move past), otherwise from the latest completed review. Shown as a warning, never a block.
+  let openCritical = 0;
+  if (approvedBlueprint) {
+    openCritical = (approvedBlueprint.blueprint as Blueprint).unresolved_critical?.length ?? 0;
+  } else {
+    const { data: latestReview } = await supabase
+      .from("strategy_reviews")
+      .select("id, status")
+      .eq("project_id", id)
+      .order("review_version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (latestReview?.status === "complete") {
+      const { data: reviewRecs } = await supabase
+        .from("strategy_recommendations")
+        .select("is_critical, approval_status")
+        .eq("review_id", latestReview.id);
+      openCritical = (reviewRecs ?? []).filter(isOpenCritical).length;
+    }
+  }
   const strategyStatus = {
+    openCritical,
     gated: (STRATEGY_GATED_ASSET_TYPES as readonly string[]).includes(generator.assetType) && !bypassActive,
     // Demo mode still walks through the Strategy Review as the next step after Discovery (so the
     // scoreboard and critical flags are seen), it just never blocks generating.

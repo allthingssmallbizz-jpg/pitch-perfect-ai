@@ -127,8 +127,10 @@ export async function createProjectFromTemplate(formData: FormData) {
       name: projectName,
       presenter_bio_profile_id: newProfile.id,
       ...template.answers,
-      // Templates are example data — they start in Demo mode (see 0052_demo_mode.sql).
+      // Templates are example data — they start in Demo mode (see 0052_demo_mode.sql), and are
+      // the only projects that can use it (0053_from_template.sql).
       is_demo: true,
+      from_template: true,
     })
     .select("id")
     .single();
@@ -258,6 +260,7 @@ export async function duplicateProject(_prevState: unknown, formData: FormData) 
     course_naming: original.course_naming,
     mode: original.mode,
     ...(original.is_demo ? { is_demo: true } : {}),
+    ...(original.from_template ? { from_template: true } : {}),
   };
   const { data: newProject, error: projectError } = await supabase
     .from("projects")
@@ -559,12 +562,14 @@ export async function setProjectDemoMode(formData: FormData) {
   const demo = formData.get("demo") === "true";
   const { data: project } = await supabase
     .from("projects")
-    .select("id, is_demo")
+    .select("id, is_demo, from_template")
     .eq("id", projectId)
     .eq("user_id", user.id)
     .is("deleted_at", null)
     .maybeSingle();
   if (!project) redirect("/dashboard");
+  // Only template projects have a Demo mode; a member's own project is always Live.
+  if (demo && !project.from_template) redirect(`/projects/${projectId}`);
 
   if (Boolean(project.is_demo) !== demo) {
     await supabase.from("projects").update({ is_demo: demo }).eq("id", projectId).eq("user_id", user.id);

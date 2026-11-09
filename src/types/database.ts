@@ -210,6 +210,8 @@ export type Project = {
   // Demo mode (see 0052_demo_mode.sql): example data used to show what's possible — the Strategy
   // Review never blocks and outputs are labeled Demo. False = Live mode, the normal strict rules.
   is_demo: boolean;
+  // Created from a template (0053_from_template.sql) — the only projects that can use Demo mode.
+  from_template: boolean;
   created_at: string;
   updated_at: string;
   // Soft-delete marker — null while active. "Delete project" sets this instead of removing the

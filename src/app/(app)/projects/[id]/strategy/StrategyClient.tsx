@@ -8,7 +8,7 @@ import type { StrategyRecommendation } from "@/types/database";
 import type { StrategyState } from "@/lib/strategy/server";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { buildBlueprint, checkApproval, type Blueprint } from "@/lib/strategy/blueprint";
+import { buildBlueprint, checkApproval, CRITICAL_RISK_EXPLANATION, type Blueprint } from "@/lib/strategy/blueprint";
 import { strategyFieldsFromJson } from "@/lib/strategy/fields";
 import {
   EVIDENCE_LABELS,
@@ -62,6 +62,7 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
   const [tab, setTab] = useState("review");
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
+  const [acknowledgedCritical, setAcknowledgedCritical] = useState(false);
   const [approving, setApproving] = useState(false);
 
   const review = state.review;
@@ -108,6 +109,7 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
       setState(data as StrategyState);
       setCurrentId(null);
       setAcknowledged(false);
+      setAcknowledgedCritical(false);
       setTab("review");
       toast.success("Your strategy review is ready.");
     } catch (e) {
@@ -129,6 +131,7 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
   function onRecUpdated(updated: StrategyRecommendation) {
     setState((s) => ({ ...s, recommendations: s.recommendations.map((r) => (r.id === updated.id ? updated : r)) }));
     setAcknowledged(false);
+    setAcknowledgedCritical(false);
   }
 
   const ordered = useMemo(() => coachingOrder(recs), [recs]);
@@ -188,7 +191,7 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
       const res = await fetch(`/api/strategy/reviews/${review.id}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ acknowledgeWarnings: acknowledged }),
+        body: JSON.stringify({ acknowledgeWarnings: acknowledged, acknowledgeCritical: acknowledgedCritical }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || "Could not approve the strategy.");
@@ -317,7 +320,7 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
                 <span className="flex items-center gap-1 rounded-full bg-red-500/15 px-3 py-1 text-xs font-medium text-red-400">
                   <AlertTriangle className="h-3.5 w-3.5" />
                   {criticalOpen} critical {criticalOpen === 1 ? "issue" : "issues"}{" "}
-                  {isDemo ? "(would block Live mode)" : "to resolve"}
+                  {isDemo ? "(a live webinar would need these fixed)" : "to fix — strongly recommended"}
                 </span>
               )}
               <Button size="sm" variant="outline" onClick={runReview} disabled={running}>
@@ -351,8 +354,8 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
                 <section>
                   <h2 className="text-sm font-semibold text-red-400">
                     {isDemo
-                      ? "Critical issues (would block a Live presentation — optional in Demo mode)"
-                      : "Critical issues (must be resolved before approval)"}
+                      ? "Critical issues (a live webinar would need these fixed — optional in Demo mode)"
+                      : "Critical issues (strongly recommended — fix these before presenting live)"}
                   </h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     These could create legal, ethical, or trust problems. They&apos;re listed separately from your
@@ -546,9 +549,10 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
                       </>
                     ) : (
                       <>
-                        Only <span className="font-medium text-red-400">Critical</span> items must be answered before
-                        you approve: rewrite it, remove the claim, or confirm it&apos;s true and say briefly what proves
-                        it. Everything else is optional — use <span className="text-foreground">Skip for now</span>.
+                        <span className="font-medium text-red-400">Critical</span> items are the important ones: rewrite
+                        it, remove the claim, or confirm it&apos;s true and say briefly what proves it. Unproven claims can
+                        create legal and trust problems. You&apos;re never locked in — you can skip anything — but
+                        skipped critical items come with a warning when you approve.
                       </>
                     )}
                   </li>
@@ -577,7 +581,7 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
                         disabled={coachIndex >= ordered.length - 1}
                         onClick={() => goTo(coachIndex + 1)}
                       >
-                        {ordered[coachIndex]?.approval_status === "pending" && (isDemo || !ordered[coachIndex]?.is_critical)
+                        {ordered[coachIndex]?.approval_status === "pending"
                           ? "Skip for now"
                           : "Next"}
                       </Button>
@@ -590,12 +594,21 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
                     const current = ordered[Math.min(coachIndex, ordered.length - 1)];
                     return <RecommendationCard key={current.id} rec={current} onUpdated={onCoachRecUpdated} coaching />;
                   })()}
-                  {(decidedCount === ordered.length || criticalOpen === 0 || isDemo) && (
-                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
+                  {/* Always offered — nobody is locked in; open critical items just change the tone. */}
+                  {(
+                    <div
+                      className={`rounded-xl border p-3 text-sm ${
+                        criticalOpen > 0 && !isDemo
+                          ? "border-amber-500/30 bg-amber-500/10"
+                          : "border-emerald-500/30 bg-emerald-500/10"
+                      }`}
+                    >
                       {decidedCount === ordered.length
                         ? "Every item has a decision."
-                        : isDemo && criticalOpen > 0
-                          ? "Demo mode — you can approve any time."
+                        : criticalOpen > 0
+                          ? isDemo
+                            ? "Demo mode — you can approve any time."
+                            : `${criticalOpen} critical ${criticalOpen === 1 ? "item is" : "items are"} still open — you can approve anyway, with a warning.`
                           : "All critical items are handled — the rest are optional."}{" "}
                       <button className="font-medium underline" onClick={() => setTab("approve")}>
                         Review and approve your strategy
@@ -771,6 +784,43 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
                       </Button>
                     </div>
                   )}
+                  {preview.check.critical.length > 0 && (
+                    <div className="rounded-xl border-2 border-red-500/60 bg-red-500/10 p-4 text-sm">
+                      <p className="flex items-center gap-2 font-semibold text-red-400">
+                        <AlertTriangle className="h-4 w-4" />
+                        Critical warning: {preview.check.critical.length} critical{" "}
+                        {preview.check.critical.length === 1 ? "issue hasn't" : "issues haven't"} been fixed
+                      </p>
+                      <p className="mt-2 text-red-100/90">
+                        If you move forward, know that you have <span className="font-semibold">not proven or qualified</span>{" "}
+                        these claims. {CRITICAL_RISK_EXPLANATION}
+                      </p>
+                      <ul className="mt-2 list-disc space-y-0.5 pl-5 text-red-100/90">
+                        {preview.check.critical.map((c, i) => (
+                          <li key={i}>{c}</li>
+                        ))}
+                      </ul>
+                      <p className="mt-2 text-xs text-red-200/80">
+                        We strongly recommend going back and fixing, removing, or backing up each one — it only takes a
+                        few minutes. If you continue, your presentation will treat these as your own unproven statements,
+                        never as verified facts.
+                      </p>
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <Button size="sm" onClick={() => setTab("improve")}>
+                          Fix them now (recommended)
+                        </Button>
+                        <label className="flex items-start gap-2 text-red-100">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5"
+                            checked={acknowledgedCritical}
+                            onChange={(e) => setAcknowledgedCritical(e.target.checked)}
+                          />
+                          <span>I understand these claims aren&apos;t proven, and I choose to move forward anyway.</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
                   {preview.check.warnings.length > 0 && (
                     <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
                       <ul className="list-disc space-y-0.5 pl-5">
@@ -800,6 +850,7 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
                     disabled={
                       approving ||
                       preview.check.blockers.length > 0 ||
+                      (preview.check.critical.length > 0 && !acknowledgedCritical) ||
                       (preview.check.warnings.length > 0 && !acknowledged)
                     }
                   >
