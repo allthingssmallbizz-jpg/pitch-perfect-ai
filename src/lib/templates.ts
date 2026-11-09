@@ -569,6 +569,94 @@ export const TEMPLATES: Template[] = [
         "I've personally moved 6 times in 9 years chasing 'just one more' fixer-upper project with my spouse — I promise I understand exactly how stressful moving actually is.",
     },
   },
+  {
+    // Lending is one of the most tightly regulated niches a member can bring in (truth-in-lending
+    // advertising rules, fair lending, licensing disclosures), so this brief deliberately models
+    // compliant positioning: no guaranteed approvals, no advertised rates or payments, no "fix your
+    // credit" promises, and a guarantee about the SERVICE rather than the loan decision. The
+    // discovery notes spell those rules out so every agent's output inherits them.
+    id: "loan-officer-funding-webinar",
+    name: "Loan officer / funding broker → homeowner & small business webinar",
+    category: "Lending & Funding",
+    description:
+      "Licensed loan officer or funding broker using a webinar to help homeowners and small business owners compare a HELOC, a cash-out refinance, and small business funding — and book a funding strategy call.",
+    assetType: "webinar_outline",
+    answers: {
+      business_name: "Smart Equity Funding",
+      industry: "Mortgage and small business lending — HELOCs, cash-out refinancing, and small business funding (loan brokerage)",
+      product:
+        "The Smart Equity Funding Plan — a one-on-one funding strategy session and done-with-you loan process that compares a HELOC, a cash-out refinance, and small business funding options side by side, then shops the chosen option across a network of lenders.",
+      offer_name: "The Smart Equity Funding Plan: The Right Money, The Right Way",
+      audience:
+        "Homeowners with equity who need access to cash — to consolidate high-interest debt, renovate, cover a big expense, or invest in a business — and small business owners (often self-employed, 2+ years in business) who need working capital, equipment, or expansion funding and have been turned down or confused by their bank. Many are both: a business owner deciding whether to use home equity or business financing.",
+      existing_assets:
+        "Licensed loan originator with access to 30+ wholesale mortgage lenders and a network of small business lenders (SBA, lines of credit, equipment financing); database of 1,100 past clients and leads; 4.9-star average across 210 Google reviews; referral relationships with 6 local real estate agents and 3 CPAs; a monthly email newsletter (2,400 subscribers); short educational videos on Facebook and YouTube.",
+      awareness_level: "Problem-Aware",
+      pain_points:
+        "Sitting on home equity but unsure whether a HELOC, a cash-out refinance, or a business loan is the smarter move — and scared of choosing wrong. Paying high-interest credit card or merchant cash advance balances that are draining cash flow. Turned down by their own bank, especially when self-employed with write-offs that make income look low on paper. Overwhelmed by paperwork and jargon. Worried about losing a low first-mortgage rate by refinancing. Afraid of predatory lenders and hidden fees after hearing horror stories.",
+      false_beliefs:
+        "\"My bank already said no, so nobody will approve me.\" \"Refinancing is always the best way to get cash out of my house.\" \"Being self-employed means I can't qualify for anything good.\" \"All lenders are the same — I should just go with whoever my bank is.\" \"Talking to a loan officer will hurt my credit.\"",
+      desired_transformation:
+        "From confused, stuck, and worried about making a costly mistake, to clear on exactly which funding option fits their situation, confident about the true total cost, and funded through a lender chosen for them — not the one that happened to be closest.",
+      category: "Home equity and small business funding strategy",
+      enemy:
+        "One-size-fits-all lending — a single bank offering only its own products, so every borrower gets pushed toward whatever that bank sells, whether or not it fits. Plus high-cost 'easy money' like merchant cash advances that trap business owners in daily payments.",
+      differentiator:
+        "Unlike a bank that can only offer its own products, we compare a HELOC, a cash-out refinance, and small business funding side by side for each client, then shop the chosen option across 30+ lenders — so the recommendation is based on what fits the client, not on what one bank happens to sell.",
+      competitive_alternatives:
+        "Going to their own bank or credit union only; applying online with a single lender; a merchant cash advance or high-interest business credit card; borrowing from family; using retirement savings; doing nothing and carrying high-interest debt.",
+      unique_mechanism:
+        "The 3-Path Funding Comparison — Path 1: Keep your first mortgage and add a HELOC. Path 2: Replace it with a cash-out refinance. Path 3: Fund the business directly without touching the house. Each path is compared on total cost, monthly cash flow, risk, and speed before anything is applied for.",
+      core_promise:
+        "Know exactly which funding path fits you — HELOC, cash-out refinance, or business funding — and the true total cost of each, before you apply for anything.",
+      outcomes:
+        "- A side-by-side written comparison of all three funding paths for your situation\n- A clear picture of total cost, not just the rate — fees, closing costs, and payment changes included\n- Options shopped across 30+ lenders instead of just one bank\n- A self-employed-friendly approach that looks at the full picture of your income\n- A plain-English document checklist so nothing slows down your file\n- One point of contact from first call to funding",
+      proof:
+        "Helped fund 340+ clients over 7 years; 4.9-star average across 210 Google reviews; case studies on file with client permission — a bakery owner who used a HELOC instead of a merchant cash advance to buy equipment, and a self-employed contractor approved for a cash-out refinance after being declined by their bank.",
+      price:
+        "No cost for the funding strategy session. If you move forward, loan costs and our compensation are fully disclosed in writing on your official loan documents before you commit — no surprises.",
+      guarantee:
+        "Clear Answer Promise — within 2 business days of receiving your documents, you'll get a written side-by-side comparison of your funding options, or we'll tell you plainly what's holding things up. No pressure to move forward, ever. (Approval is never guaranteed and is always subject to lender underwriting.)",
+      bonuses:
+        "- Funding Readiness Review — we check your credit profile, income documentation, and equity position before any application\n- Self-Employed Income Worksheet — how to present business income lenders can actually use\n- Debt Payoff Comparison — how your monthly cash flow would change under each funding path\n- Document checklist and secure upload portal",
+      scarcity_urgency:
+        "I personally lead every strategy session and keep my calendar to 12 sessions a week so every client gets real attention — when this week's sessions are booked, the next openings are the following week.",
+      cta: "Book your free Funding Strategy Session",
+      funnel_type: "book_call",
+      discovery_notes:
+        "COMPLIANCE — follow these in every asset: (1) Never guarantee approval, a rate, or a payment; approval is always subject to underwriting. (2) Never quote specific interest rates, APRs, payment amounts, or 'as low as' terms — those trigger required lending disclosures; talk about comparing total cost instead. (3) Never promise to repair, fix, or raise anyone's credit score. (4) Include the presenter's NMLS ID and the Equal Housing Opportunity statement on the final slide, landing pages, and ads. (5) Be clear that a HELOC and a cash-out refinance are secured by the home, so the home is at risk if payments aren't made. (6) Don't disparage specific named lenders. Attendees are often nervous about being sold — lead with education and the honest comparison of all three paths (including when NOT to borrow), and position the strategy session as the natural next step to get their own numbers.",
+    },
+    presenterBio: {
+      presenter_ihelp_audience: "homeowners and small business owners",
+      presenter_ihelp_outcome: "get the right funding without overpaying or getting stuck with the wrong loan",
+      presenter_ihelp_mechanism: "the 3-Path Funding Comparison",
+      presenter_mission:
+        "I help homeowners and small business owners choose and get the right funding — a HELOC, a cash-out refinance, or business financing — without overpaying or getting stuck with the wrong loan.",
+      presenter_years_experience: "7 years as a licensed loan originator",
+      presenter_credentials: "State-licensed Mortgage Loan Originator (NMLS-registered); 5 years in small business lending before mortgages",
+      presenter_origin_story:
+        "Before lending, I watched my uncle nearly lose his auto repair shop after a merchant cash advance took a cut of his sales every single day. A home equity line would have cost him a fraction of that — nobody ever told him it was an option. I got licensed so business owners would hear about every option before signing anything.",
+      presenter_signature_win:
+        "A bakery owner came to me about to sign a second merchant cash advance for a new oven. We compared all three paths, and a HELOC on her home covered the equipment with a far lower total cost and a predictable monthly payment — she told me later it was the first month in two years she wasn't anxious about cash flow.",
+      presenter_setback_story:
+        "Early on, I pushed a client toward a cash-out refinance because it was the product I knew best — and they gave up a great first-mortgage rate they didn't need to lose. A HELOC would have served them better. That mistake is exactly why I now compare all three paths for every client before recommending anything.",
+      presenter_mentor:
+        "My first branch manager, who'd been originating for 20 years, told me: 'Your job isn't to close a loan. It's to make sure they'd thank you five years from now.' I still use that as the test for every recommendation.",
+      presenter_epiphany_moment:
+        "Calling that refinance client a year later and realizing they'd have been better off with a HELOC — I saw that most borrowers only ever hear about whatever product the person across the desk happens to sell. Comparing every path, every time, became the whole business.",
+      presenter_conflict_story:
+        "A self-employed contractor had been declined by his bank twice and almost gave up. His tax returns showed low income because of write-offs. We rebuilt his file around his full income documentation, shopped it to lenders that work with self-employed borrowers, and he was approved for a cash-out refinance to fund two new work trucks.",
+      presenter_income_goal_6mo: "$40,000/month in closed loan compensation",
+      presenter_income_goal_12mo: "$75,000/month in closed loan compensation, with a loan processor added to the team",
+      presenter_mission_why:
+        "I watched someone I love nearly lose his business to expensive money he didn't have to take. No one should sign a loan without understanding every option first.",
+      presenter_recognition: "Top-producing originator at my branch 3 years running; regular guest on a local small business podcast.",
+      presenter_relatable_detail:
+        "I still keep my uncle's old shop sign in my office — it's the reminder of why I ask so many questions before recommending anything.",
+      presenter_family:
+        "Married with two kids; weekends are soccer games and fixing up our own house — which is how I learned firsthand what a HELOC renovation really involves.",
+    },
+  },
 ];
 
 export function getTemplate(id: string): Template | undefined {
