@@ -325,14 +325,14 @@ export function buildPptOutlinePlanPrompt(
 ): string {
   return `${buildPptOutlinePrompt(project, priorGenerations)}${context}
 
-THIS RESPONSE IS THE SLIDE PLAN ONLY — not the finished deck. Every rule above still decides which slides exist, in what order, and what each one is titled: the full 60-90 slide count, the meet-the-presenter slide, the complete STACK & PRICE SEQUENCE (one slide per stack item or bonus plus its recap slide, every full reveal, the Value Justification Question, the price alone on its own slide), the Two Paths slide, and the title rules. The full slides are written next, in separate sections, directly from this plan — so the plan must be complete and final, start to finish.
+THIS RESPONSE IS THE SLIDE PLAN ONLY — not the finished deck. Every rule above still decides which slides exist, in what order, and what each one is titled: the full 60-90 slide count, the title slide (Slide 1 is the webinar's name — see REQUIRED TITLE SLIDE), the meet-the-presenter slide, the complete STACK & PRICE SEQUENCE (one slide per stack item or bonus plus its recap slide, every full reveal, the Value Justification Question, the price alone on its own slide), the Two Paths slide, and the title rules. The full slides are written next, in separate sections, directly from this plan — so the plan must be complete and final, start to finish.
 
 Output exactly two lines per slide, and nothing else — no bullets, no speaker notes, no preamble, no phase divider lines:
 **Slide #: Title**
 Covers: one short sentence saying exactly what this slide covers (for every stack, recap, and price slide, name the real item(s) and value(s) it shows).
 
 For example:
-**Slide 1: [the real opening headline]**
+**Slide 1: [the webinar's title — its real name, built from the core promise and audience]**
 Covers: [what this slide covers]
 **Slide 2: [the real headline for the next slide]**
 Covers: [what this slide covers]
