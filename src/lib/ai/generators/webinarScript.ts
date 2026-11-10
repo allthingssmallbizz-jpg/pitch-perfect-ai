@@ -52,8 +52,15 @@ export type WebinarScriptRange = {
 // Splits the deck into evenly sized, in-order sections. Returns a single section (= write it all
 // in one request, as before) for a short deck.
 export function planWebinarScriptSections(deckContent: string): WebinarScriptRange[] {
-  const slides = parsePptOutline(deckContent);
-  const parts = Math.max(1, Math.ceil(slides.length / WEBINAR_SCRIPT_SLIDES_PER_SECTION));
+  return splitSlidesIntoSections(parsePptOutline(deckContent), WEBINAR_SCRIPT_SLIDES_PER_SECTION);
+}
+
+// Shared with the Signature Webinar deck, which splits its own slide plan the same way.
+export function splitSlidesIntoSections(
+  slides: { number: number; title: string }[],
+  slidesPerSection: number
+): WebinarScriptRange[] {
+  const parts = Math.max(1, Math.ceil(slides.length / slidesPerSection));
   if (parts === 1) return [];
   const size = Math.ceil(slides.length / parts);
   const ranges: WebinarScriptRange[] = [];

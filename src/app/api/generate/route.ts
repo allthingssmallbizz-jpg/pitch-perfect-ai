@@ -7,6 +7,7 @@ import { generateCompleteAsset, type GenerateResult } from "@/lib/ai/anthropic";
 import {
   isWebinarScriptSectionIncomplete,
   planWebinarScriptSections,
+  splitSlidesIntoSections,
   trimScriptToSection,
   webinarScriptSectionContinuationHint,
   WEBINAR_SCRIPT_SECTION_MAX_OUTPUT_TOKENS,
@@ -15,10 +16,14 @@ import {
 import {
   buildPptOutlinePlanPrompt,
   buildPptOutlineSectionPrompt,
-  isPptOutlineIncomplete,
+  isPptOutlinePlanIncomplete,
+  parsePptOutlinePlan,
   pptOutlineSectionContinuationHint,
+  PPT_OUTLINE_PLAN_CONTINUATION_HINT,
   PPT_OUTLINE_PLAN_MAX_OUTPUT_TOKENS,
   PPT_OUTLINE_SECTION_MAX_OUTPUT_TOKENS,
+  PPT_OUTLINE_SLIDES_PER_SECTION,
+  PPT_OUTLINE_MIN_ACCEPTABLE_SLIDES,
 } from "@/lib/ai/generators/pptOutline";
 
 // Sectioned generations (Webinar Script, Your Signature Webinar deck) stop themselves this long
@@ -454,7 +459,7 @@ export async function POST(req: NextRequest) {
           sections.map(async (range, i) => {
             const part = await generateCompleteAsset(
               systemPrompt,
-              buildSectionPrompt(range) + blueprintSuffix,
+              buildSectionPrompt(range),
               sectionMaxTokens,
               undefined,
               1,
@@ -514,7 +519,8 @@ export async function POST(req: NextRequest) {
           "script",
           scriptSections,
           WEBINAR_SCRIPT_SECTION_MAX_OUTPUT_TOKENS,
-          (range) => generator.buildPrompt(promptProject, priorGenerations, { ...generatorExtra, scriptRange: range }),
+          (range) =>
+            generator.buildPrompt(promptProject, priorGenerations, { ...generatorExtra, scriptRange: range }) + blueprintSuffix,
           isWebinarScriptSectionIncomplete,
           webinarScriptSectionContinuationHint,
           abort.signal,
@@ -524,39 +530,65 @@ export async function POST(req: NextRequest) {
         // The deck in one request regularly outran the 300-second limit (see the comment above
         // PPT_OUTLINE_SLIDES_PER_SECTION). Plan the slides first, then write them in parallel.
         const deckStartedAt = Date.now();
-        let plan: GenerateResult;
-        try {
-          plan = await generateCompleteAsset(
-            systemPrompt,
-            buildPptOutlinePlanPrompt(promptProject, priorGenerations) + blueprintSuffix,
-            PPT_OUTLINE_PLAN_MAX_OUTPUT_TOKENS,
-            undefined,
-            1,
-            isPptOutlineIncomplete,
-            "You stopped before planning every slide — keep going in the same two-line format through the rest of the deck, all the way to the final call to action.",
-            abort.signal
+        // One retry if the plan comes back short or in a shape that can't be read — it's the
+        // cheap step (a minute or less), and the deck can't be split without it.
+        let plan: GenerateResult | undefined;
+        let planSlides: { number: number; title: string }[] = [];
+        for (let attempt = 1; attempt <= 2 && planSlides.length < PPT_OUTLINE_MIN_ACCEPTABLE_SLIDES; attempt++) {
+          try {
+            const next = await generateCompleteAsset(
+              systemPrompt,
+              buildPptOutlinePlanPrompt(promptProject, priorGenerations, blueprintSuffix, attempt > 1),
+              PPT_OUTLINE_PLAN_MAX_OUTPUT_TOKENS,
+              undefined,
+              1,
+              isPptOutlinePlanIncomplete,
+              PPT_OUTLINE_PLAN_CONTINUATION_HINT,
+              abort.signal
+            );
+            const nextSlides = parsePptOutlinePlan(next.content);
+            // Keep whichever attempt listed more slides; tokens from every attempt are counted.
+            const better = !plan || nextSlides.length > planSlides.length;
+            const base = better ? next : plan!;
+            plan = plan
+              ? {
+                  ...base,
+                  inputTokens: next.inputTokens + plan.inputTokens,
+                  outputTokens: next.outputTokens + plan.outputTokens,
+                  costUsd: next.costUsd + plan.costUsd,
+                }
+              : next;
+            if (better) planSlides = nextSlides;
+            console.log(
+              `[ppt_outline ${generationId}] plan attempt ${attempt} done in ${Math.round((Date.now() - deckStartedAt) / 1000)}s — ${nextSlides.length} slides, ${next.outputTokens} output tokens, stop: ${next.stopReason}`
+            );
+            if (nextSlides.length < PPT_OUTLINE_MIN_ACCEPTABLE_SLIDES) {
+              console.error(
+                `[ppt_outline ${generationId}] plan attempt ${attempt} unusable; it began: ${JSON.stringify(next.content.slice(0, 600))}`
+              );
+            }
+          } catch (err) {
+            const elapsed = Math.round((Date.now() - deckStartedAt) / 1000);
+            const reason = abort.signal.aborted
+              ? `Planning the deck took longer than allowed (${elapsed}s) and was stopped`
+              : `Planning the deck stopped with an error after ${elapsed}s (${err instanceof Error ? err.message : "unknown error"})`;
+            console.error(`[ppt_outline ${generationId}] ${reason}`);
+            throw new Error(`${reason} — please try again.`);
+          }
+        }
+        // Built from whatever the best attempt found, as long as it's long enough to be a real deck.
+        const deckSections = splitSlidesIntoSections(planSlides, PPT_OUTLINE_SLIDES_PER_SECTION);
+        if (!plan || deckSections.length < 2) {
+          throw new Error(
+            `The deck plan came back too short to build from (${planSlides.length} slides found after 2 tries) — please try again.`
           );
-        } catch (err) {
-          const elapsed = Math.round((Date.now() - deckStartedAt) / 1000);
-          const reason = abort.signal.aborted
-            ? `Planning the deck took longer than allowed (${elapsed}s) and was stopped`
-            : `Planning the deck stopped with an error after ${elapsed}s (${err instanceof Error ? err.message : "unknown error"})`;
-          console.error(`[ppt_outline ${generationId}] ${reason}`);
-          throw new Error(`${reason} — please try again.`);
         }
-        console.log(
-          `[ppt_outline ${generationId}] plan done in ${Math.round((Date.now() - deckStartedAt) / 1000)}s — ${plan.outputTokens} output tokens`
-        );
-        // The plan is plain "**Slide #: Title**" lines, which the same section planner reads.
-        const deckSections = planWebinarScriptSections(plan.content);
-        if (deckSections.length < 2) {
-          throw new Error("The deck plan came back too short to build from — please try again.");
-        }
+        const planContent = plan.content;
         const deck = await writeSections(
           "deck",
           deckSections,
           PPT_OUTLINE_SECTION_MAX_OUTPUT_TOKENS,
-          (range) => buildPptOutlineSectionPrompt(promptProject, priorGenerations, plan.content, range),
+          (range) => buildPptOutlineSectionPrompt(promptProject, priorGenerations, planContent, range, blueprintSuffix),
           isWebinarScriptSectionIncomplete,
           pptOutlineSectionContinuationHint,
           abort.signal,

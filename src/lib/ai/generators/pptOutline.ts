@@ -277,23 +277,66 @@ export type PptOutlineSectionRange = {
   isFinal: boolean;
 };
 
-export function buildPptOutlinePlanPrompt(project: Project, priorGenerations: PriorGeneration[] = []): string {
-  return `${buildPptOutlinePrompt(project, priorGenerations)}
+// The plan is asked for as "**Slide #: Title**" lines, but a reported real run came back "too
+// short to build from" — the plan's slides weren't recognized. So this reads every common way of
+// numbering a list of slides ("Slide 12: Title", "12. Title", "**12 — Title**", "| 12 | Title |"),
+// keeping the first copy of each number in ascending order, and ignores everything else.
+const PLAN_SLIDE_LINE =
+  /^\s*(?:[-*]\s+)?(?:#{1,4}\s*)?(?:\|\s*)?\**\s*(?:slide\s*#?\s*)?(\d{1,3})\s*\**\s*(?:[:.)|\-–—]\s*)+(.+?)\s*$/i;
+
+export function parsePptOutlinePlan(plan: string): { number: number; title: string }[] {
+  const slides: { number: number; title: string }[] = [];
+  for (const line of plan.split("\n")) {
+    const match = line.match(PLAN_SLIDE_LINE);
+    if (!match) continue;
+    const number = Number(match[1]);
+    if (slides.length && number <= slides[slides.length - 1].number) continue;
+    const title = match[2].replace(/^\*+/, "").split("**")[0].split(" | ")[0].replace(/\|\s*$/, "").trim();
+    if (title) slides.push({ number, title });
+  }
+  return slides;
+}
+
+export function isPptOutlinePlanIncomplete(plan: string): boolean {
+  return parsePptOutlinePlan(plan).length < PPT_OUTLINE_MIN_ACCEPTABLE_SLIDES;
+}
+
+export const PPT_OUTLINE_PLAN_CONTINUATION_HINT =
+  "You stopped before planning every slide — keep going in the same two-line format (**Slide #: Title**, then Covers: ...) through the rest of the deck, all the way to the final call to action.";
+
+// `context` (the approved Strategy Review, when there is one) goes BEFORE the format instructions,
+// so the very last thing the model reads is exactly what shape its answer must take.
+export function buildPptOutlinePlanPrompt(
+  project: Project,
+  priorGenerations: PriorGeneration[] = [],
+  context = "",
+  retry = false
+): string {
+  return `${buildPptOutlinePrompt(project, priorGenerations)}${context}
 
 THIS RESPONSE IS THE SLIDE PLAN ONLY — not the finished deck. Every rule above still decides which slides exist, in what order, and what each one is titled: the full 60-90 slide count, the meet-the-presenter slide, the complete STACK & PRICE SEQUENCE (one slide per stack item or bonus plus its recap slide, every full reveal, the Value Justification Question, the price alone on its own slide), the Two Paths slide, and the title rules. The full slides are written next, in separate sections, directly from this plan — so the plan must be complete and final, start to finish.
 
 Output exactly two lines per slide, and nothing else — no bullets, no speaker notes, no preamble, no phase divider lines:
 **Slide #: Title**
-Covers: one short sentence saying exactly what this slide covers (for every stack, recap, and price slide, name the real item(s) and value(s) it shows).`;
+Covers: one short sentence saying exactly what this slide covers (for every stack, recap, and price slide, name the real item(s) and value(s) it shows).
+
+For example:
+**Slide 1: [the real opening headline]**
+Covers: [what this slide covers]
+**Slide 2: [the real headline for the next slide]**
+Covers: [what this slide covers]
+
+Start your response with **Slide 1: and continue in exactly this format until the last slide.${retry ? " Your previous answer could not be used because it did not list the slides in this exact format with all 60-90 slides — list every slide this time." : ""}`;
 }
 
 export function buildPptOutlineSectionPrompt(
   project: Project,
   priorGenerations: PriorGeneration[],
   plan: string,
-  range: PptOutlineSectionRange
+  range: PptOutlineSectionRange,
+  context = ""
 ): string {
-  return `${buildPptOutlinePrompt(project, priorGenerations)}
+  return `${buildPptOutlinePrompt(project, priorGenerations)}${context}
 
 THE SLIDE PLAN FOR THE WHOLE DECK — already final. Follow it exactly: the same slide numbers, the same titles, the same order, and the content each slide's "Covers" line describes:
 ${plan}
