@@ -35,7 +35,10 @@ export function isWebinarScriptIncomplete(content: string): boolean {
 export const WEBINAR_SCRIPT_SLIDES_PER_SECTION = 20;
 // ~20 slides at a few spoken sentences each is roughly 2,500-3,500 tokens; this leaves headroom
 // while capping how long one section can possibly run.
-export const WEBINAR_SCRIPT_SECTION_MAX_OUTPUT_TOKENS = 6000;
+// Raised from 6000, which the model's own thinking can use up before writing anything (see
+// GenerateEffort in anthropic.ts); sections also run at medium effort for the same reason.
+export const WEBINAR_SCRIPT_SECTION_MAX_OUTPUT_TOKENS = 24000;
+export const WEBINAR_SCRIPT_SECTION_EFFORT = "medium" as const;
 
 export type WebinarScriptRange = {
   // The deck's own slide numbers in this section, in order.

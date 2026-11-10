@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkGuardrails, decrementCredits } from "@/lib/credits";
-import { generateCompleteAsset, type GenerateResult } from "@/lib/ai/anthropic";
+import { generateCompleteAsset, type GenerateEffort, type GenerateResult } from "@/lib/ai/anthropic";
 import {
   isWebinarScriptSectionIncomplete,
   planWebinarScriptSections,
@@ -11,6 +11,7 @@ import {
   trimScriptToSection,
   webinarScriptSectionContinuationHint,
   WEBINAR_SCRIPT_SECTION_MAX_OUTPUT_TOKENS,
+  WEBINAR_SCRIPT_SECTION_EFFORT,
   type WebinarScriptRange,
 } from "@/lib/ai/generators/webinarScript";
 import {
@@ -21,6 +22,8 @@ import {
   pptOutlineSectionContinuationHint,
   PPT_OUTLINE_PLAN_CONTINUATION_HINT,
   PPT_OUTLINE_PLAN_MAX_OUTPUT_TOKENS,
+  PPT_OUTLINE_PLAN_EFFORT,
+  PPT_OUTLINE_SECTION_EFFORT,
   PPT_OUTLINE_SECTION_MAX_OUTPUT_TOKENS,
   PPT_OUTLINE_SLIDES_PER_SECTION,
   PPT_OUTLINE_MIN_ACCEPTABLE_SLIDES,
@@ -450,7 +453,8 @@ export async function POST(req: NextRequest) {
       isSectionIncomplete: (content: string, range: WebinarScriptRange) => boolean,
       sectionHint: (range: WebinarScriptRange) => string,
       signal: AbortSignal,
-      startedAt: number
+      startedAt: number,
+      effort: GenerateEffort
     ): Promise<GenerateResult> => {
       const status = sections.map((range) => ({ range, done: false, seconds: 0, slides: 0, outputTokens: 0 }));
       let parts: GenerateResult[];
@@ -465,7 +469,8 @@ export async function POST(req: NextRequest) {
               1,
               (content) => isSectionIncomplete(content, range),
               sectionHint(range),
-              signal
+              signal,
+              effort
             );
             const trimmed = trimScriptToSection(part.content, range);
             status[i] = {
@@ -524,7 +529,8 @@ export async function POST(req: NextRequest) {
           isWebinarScriptSectionIncomplete,
           webinarScriptSectionContinuationHint,
           abort.signal,
-          Date.now()
+          Date.now(),
+          WEBINAR_SCRIPT_SECTION_EFFORT
         );
       } else if (assetType === "ppt_outline") {
         // The deck in one request regularly outran the 300-second limit (see the comment above
@@ -538,7 +544,9 @@ export async function POST(req: NextRequest) {
             undefined,
             undefined,
             (content) => generator.isOutputIncomplete?.(content, generatorExtra) ?? false,
-            generator.continuationHint
+            generator.continuationHint,
+            undefined,
+            PPT_OUTLINE_SECTION_EFFORT
           );
         // A plan that can't be used must never block the deck: a reported real run got back a
         // plan with no slides in it at all, twice, and every member's deck failed with it. In that
@@ -554,7 +562,8 @@ export async function POST(req: NextRequest) {
             1,
             isPptOutlinePlanIncomplete,
             PPT_OUTLINE_PLAN_CONTINUATION_HINT,
-            abort.signal
+            abort.signal,
+            PPT_OUTLINE_PLAN_EFFORT
           );
         } catch (err) {
           console.error(
@@ -596,7 +605,8 @@ export async function POST(req: NextRequest) {
             isWebinarScriptSectionIncomplete,
             pptOutlineSectionContinuationHint,
             abort.signal,
-            deckStartedAt
+            deckStartedAt,
+            PPT_OUTLINE_SECTION_EFFORT
           );
           result = {
             ...deck,

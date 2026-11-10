@@ -263,10 +263,16 @@ export function findPrePriceLeaks(content: string): TitleLeakFlag[] {
 // first a short slide plan (numbers + titles, every rule above still deciding what's in it), then
 // the full slides in parallel sections of about this many slides each, joined in plan order.
 export const PPT_OUTLINE_SLIDES_PER_SECTION = 20;
-// ~20 full slides at roughly 200-250 tokens each, with headroom.
-export const PPT_OUTLINE_SECTION_MAX_OUTPUT_TOKENS = 8000;
-// Two short lines per slide for 60-90 slides.
-export const PPT_OUTLINE_PLAN_MAX_OUTPUT_TOKENS = 6000;
+// The model's thinking is spent out of these same budgets before it writes a word (see
+// GenerateEffort in anthropic.ts) — a real plan run at 6,000 tokens spent all of it thinking and
+// returned no slides. So each budget leaves room for thinking AND the answer, and each step runs at
+// a set effort: the plan is a plain list (low), the slides are the real writing (medium). The
+// answers themselves stay about the same size — ~20 slides at 200-250 tokens each, or two short
+// lines per slide for the plan — so this raises the ceiling, not what a deck costs to write.
+export const PPT_OUTLINE_SECTION_MAX_OUTPUT_TOKENS = 24000;
+export const PPT_OUTLINE_PLAN_MAX_OUTPUT_TOKENS = 20000;
+export const PPT_OUTLINE_PLAN_EFFORT = "low" as const;
+export const PPT_OUTLINE_SECTION_EFFORT = "medium" as const;
 
 export type PptOutlineSectionRange = {
   part: number;
