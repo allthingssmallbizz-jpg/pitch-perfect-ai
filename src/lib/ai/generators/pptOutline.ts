@@ -253,3 +253,59 @@ export function findPrePriceLeaks(content: string): TitleLeakFlag[] {
   }
   return flags;
 }
+
+// A full 60-90 slide deck written in one request regularly takes longer than the server's
+// 300-second limit (see /api/generate's maxDuration): up to 24,000 output tokens, plus any
+// continuation calls, all back to back. The platform then kills the function mid-write and the
+// generation sits "pending" until /api/generate/recover marks it failed — "it keeps timing out."
+// Decks with a long offer section (one slide plus one recap slide per stack item and bonus, as in
+// the loan officer template) hit this every time. So the deck is built in two steps instead:
+// first a short slide plan (numbers + titles, every rule above still deciding what's in it), then
+// the full slides in parallel sections of about this many slides each, joined in plan order.
+export const PPT_OUTLINE_SLIDES_PER_SECTION = 20;
+// ~20 full slides at roughly 200-250 tokens each, with headroom.
+export const PPT_OUTLINE_SECTION_MAX_OUTPUT_TOKENS = 8000;
+// Two short lines per slide for 60-90 slides.
+export const PPT_OUTLINE_PLAN_MAX_OUTPUT_TOKENS = 6000;
+
+export type PptOutlineSectionRange = {
+  part: number;
+  parts: number;
+  count: number;
+  first: { number: number; title: string };
+  last: { number: number; title: string };
+  isFinal: boolean;
+};
+
+export function buildPptOutlinePlanPrompt(project: Project, priorGenerations: PriorGeneration[] = []): string {
+  return `${buildPptOutlinePrompt(project, priorGenerations)}
+
+THIS RESPONSE IS THE SLIDE PLAN ONLY — not the finished deck. Every rule above still decides which slides exist, in what order, and what each one is titled: the full 60-90 slide count, the meet-the-presenter slide, the complete STACK & PRICE SEQUENCE (one slide per stack item or bonus plus its recap slide, every full reveal, the Value Justification Question, the price alone on its own slide), the Two Paths slide, and the title rules. The full slides are written next, in separate sections, directly from this plan — so the plan must be complete and final, start to finish.
+
+Output exactly two lines per slide, and nothing else — no bullets, no speaker notes, no preamble, no phase divider lines:
+**Slide #: Title**
+Covers: one short sentence saying exactly what this slide covers (for every stack, recap, and price slide, name the real item(s) and value(s) it shows).`;
+}
+
+export function buildPptOutlineSectionPrompt(
+  project: Project,
+  priorGenerations: PriorGeneration[],
+  plan: string,
+  range: PptOutlineSectionRange
+): string {
+  return `${buildPptOutlinePrompt(project, priorGenerations)}
+
+THE SLIDE PLAN FOR THE WHOLE DECK — already final. Follow it exactly: the same slide numbers, the same titles, the same order, and the content each slide's "Covers" line describes:
+${plan}
+
+THIS RESPONSE COVERS ONE SECTION ONLY — part ${range.part} of ${range.parts}. The other parts are being written separately and will be joined to this one in order, so:
+- Write the full slides (title, on-slide content, speaker notes — every rule above applies) ONLY for the ${range.count} slides from **Slide ${range.first.number}: ${range.first.title}** through **Slide ${range.last.number}: ${range.last.title}**, in plan order, with none skipped and none added. The 60-90 slide count above is for the whole deck, not this section.
+- Copy each slide's number and title exactly as the plan has them. Do not write the "Covers" lines.
+- Start directly with the **Slide ${range.first.number}: ${range.first.title}** line — no introduction, preamble, or heading before it.
+- Stop right after Slide ${range.last.number}. Do not write anything for later slides.
+- Use the rest of the plan only as context, so this section bridges naturally from what comes just before it and sets up what comes next.${range.isFinal ? "" : "\n- This is not the end of the presentation — don't wrap up, summarize, or close."}${range.part > 1 ? "\n- This is not the start of the presentation — don't open, greet, or introduce the presenter again." : ""}`;
+}
+
+export function pptOutlineSectionContinuationHint(range: PptOutlineSectionRange): string {
+  return `You stopped before finishing this section — keep going in the exact plan order, one full slide at a time, up to and including Slide ${range.last.number}: ${range.last.title}. Do not write past that slide.`;
+}
