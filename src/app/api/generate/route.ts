@@ -530,76 +530,81 @@ export async function POST(req: NextRequest) {
         // The deck in one request regularly outran the 300-second limit (see the comment above
         // PPT_OUTLINE_SLIDES_PER_SECTION). Plan the slides first, then write them in parallel.
         const deckStartedAt = Date.now();
-        // One retry if the plan comes back short or in a shape that can't be read — it's the
-        // cheap step (a minute or less), and the deck can't be split without it.
-        let plan: GenerateResult | undefined;
-        let planSlides: { number: number; title: string }[] = [];
-        for (let attempt = 1; attempt <= 2 && planSlides.length < PPT_OUTLINE_MIN_ACCEPTABLE_SLIDES; attempt++) {
-          try {
-            const next = await generateCompleteAsset(
-              systemPrompt,
-              buildPptOutlinePlanPrompt(promptProject, priorGenerations, blueprintSuffix, attempt > 1),
-              PPT_OUTLINE_PLAN_MAX_OUTPUT_TOKENS,
-              undefined,
-              1,
-              isPptOutlinePlanIncomplete,
-              PPT_OUTLINE_PLAN_CONTINUATION_HINT,
-              abort.signal
-            );
-            const nextSlides = parsePptOutlinePlan(next.content);
-            // Keep whichever attempt listed more slides; tokens from every attempt are counted.
-            const better = !plan || nextSlides.length > planSlides.length;
-            const base = better ? next : plan!;
-            plan = plan
-              ? {
-                  ...base,
-                  inputTokens: next.inputTokens + plan.inputTokens,
-                  outputTokens: next.outputTokens + plan.outputTokens,
-                  costUsd: next.costUsd + plan.costUsd,
-                }
-              : next;
-            if (better) planSlides = nextSlides;
-            console.log(
-              `[ppt_outline ${generationId}] plan attempt ${attempt} done in ${Math.round((Date.now() - deckStartedAt) / 1000)}s — ${nextSlides.length} slides, ${next.outputTokens} output tokens, stop: ${next.stopReason}`
-            );
-            if (nextSlides.length < PPT_OUTLINE_MIN_ACCEPTABLE_SLIDES) {
-              console.error(
-                `[ppt_outline ${generationId}] plan attempt ${attempt} unusable; it began: ${JSON.stringify(next.content.slice(0, 600))}`
-              );
-            }
-          } catch (err) {
-            const elapsed = Math.round((Date.now() - deckStartedAt) / 1000);
-            const reason = abort.signal.aborted
-              ? `Planning the deck took longer than allowed (${elapsed}s) and was stopped`
-              : `Planning the deck stopped with an error after ${elapsed}s (${err instanceof Error ? err.message : "unknown error"})`;
-            console.error(`[ppt_outline ${generationId}] ${reason}`);
-            throw new Error(`${reason} — please try again.`);
-          }
-        }
-        // Built from whatever the best attempt found, as long as it's long enough to be a real deck.
-        const deckSections = splitSlidesIntoSections(planSlides, PPT_OUTLINE_SLIDES_PER_SECTION);
-        if (!plan || deckSections.length < 2) {
-          throw new Error(
-            `The deck plan came back too short to build from (${planSlides.length} slides found after 2 tries) — please try again.`
+        const buildWholeDeck = () =>
+          generateCompleteAsset(
+            systemPrompt,
+            userPrompt,
+            generator.maxOutputTokens,
+            undefined,
+            undefined,
+            (content) => generator.isOutputIncomplete?.(content, generatorExtra) ?? false,
+            generator.continuationHint
+          );
+        // A plan that can't be used must never block the deck: a reported real run got back a
+        // plan with no slides in it at all, twice, and every member's deck failed with it. In that
+        // case the deck is written in one request exactly as it was before sectioning existed —
+        // fine for most decks, and only the very longest can still run out of time.
+        let plan: GenerateResult | null = null;
+        try {
+          plan = await generateCompleteAsset(
+            systemPrompt,
+            buildPptOutlinePlanPrompt(promptProject, priorGenerations, blueprintSuffix),
+            PPT_OUTLINE_PLAN_MAX_OUTPUT_TOKENS,
+            undefined,
+            1,
+            isPptOutlinePlanIncomplete,
+            PPT_OUTLINE_PLAN_CONTINUATION_HINT,
+            abort.signal
+          );
+        } catch (err) {
+          console.error(
+            `[ppt_outline ${generationId}] plan failed after ${Math.round((Date.now() - deckStartedAt) / 1000)}s (${err instanceof Error ? err.message : "unknown error"}) — writing the deck in one request instead`
           );
         }
-        const planContent = plan.content;
-        const deck = await writeSections(
-          "deck",
-          deckSections,
-          PPT_OUTLINE_SECTION_MAX_OUTPUT_TOKENS,
-          (range) => buildPptOutlineSectionPrompt(promptProject, priorGenerations, planContent, range, blueprintSuffix),
-          isWebinarScriptSectionIncomplete,
-          pptOutlineSectionContinuationHint,
-          abort.signal,
-          deckStartedAt
-        );
-        result = {
-          ...deck,
-          inputTokens: deck.inputTokens + plan.inputTokens,
-          outputTokens: deck.outputTokens + plan.outputTokens,
-          costUsd: deck.costUsd + plan.costUsd,
-        };
+        const planSlides = plan ? parsePptOutlinePlan(plan.content) : [];
+        const deckSections =
+          planSlides.length >= PPT_OUTLINE_MIN_ACCEPTABLE_SLIDES
+            ? splitSlidesIntoSections(planSlides, PPT_OUTLINE_SLIDES_PER_SECTION)
+            : [];
+        if (plan) {
+          console.log(
+            `[ppt_outline ${generationId}] plan done in ${Math.round((Date.now() - deckStartedAt) / 1000)}s — ${planSlides.length} slides, ${plan.outputTokens} output tokens, stop: ${plan.stopReason}`
+          );
+        }
+        if (!plan || deckSections.length < 2) {
+          if (plan) {
+            console.error(
+              `[ppt_outline ${generationId}] plan unusable (${planSlides.length} slides) — writing the deck in one request instead; it began: ${JSON.stringify(plan.content.slice(0, 600))}`
+            );
+          }
+          const whole = await buildWholeDeck();
+          result = plan
+            ? {
+                ...whole,
+                inputTokens: whole.inputTokens + plan.inputTokens,
+                outputTokens: whole.outputTokens + plan.outputTokens,
+                costUsd: whole.costUsd + plan.costUsd,
+              }
+            : whole;
+        } else {
+          const planContent = plan.content;
+          const deck = await writeSections(
+            "deck",
+            deckSections,
+            PPT_OUTLINE_SECTION_MAX_OUTPUT_TOKENS,
+            (range) => buildPptOutlineSectionPrompt(promptProject, priorGenerations, planContent, range, blueprintSuffix),
+            isWebinarScriptSectionIncomplete,
+            pptOutlineSectionContinuationHint,
+            abort.signal,
+            deckStartedAt
+          );
+          result = {
+            ...deck,
+            inputTokens: deck.inputTokens + plan.inputTokens,
+            outputTokens: deck.outputTokens + plan.outputTokens,
+            costUsd: deck.costUsd + plan.costUsd,
+          };
+        }
       } else {
         result = await generateCompleteAsset(
           systemPrompt,
