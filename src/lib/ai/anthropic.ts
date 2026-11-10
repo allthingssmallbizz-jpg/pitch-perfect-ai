@@ -33,6 +33,14 @@ export interface GenerateResult {
   stopReason: Anthropic.Message["stop_reason"];
 }
 
+// How hard the model thinks before it writes. claude-sonnet-5 (DEFAULT_MODEL) thinks by default,
+// and that thinking is spent out of the same max_tokens as the answer — and comes back as empty
+// "thinking" blocks this file drops. A reported real run spent its whole 12,000-token slide-plan
+// budget thinking and returned no text at all ("0 slides, 12000 output tokens, stop: max_tokens").
+// Callers that need a long answer inside a time limit pass a lower effort. Omitted = the model's
+// own default, unchanged for every other generator.
+export type GenerateEffort = "low" | "medium" | "high";
+
 export type ImageInput = { base64: string; mediaType: "image/jpeg" | "image/png" | "image/webp" | "image/gif" };
 
 // Every generator's system prompt (buildSystemPrompt: brand voice + persona + presenter bio +
@@ -78,7 +86,8 @@ export async function generateAsset(
   userPrompt: string,
   maxOutputTokens: number,
   images?: ImageInput[],
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  effort?: GenerateEffort
 ): Promise<GenerateResult> {
   const anthropic = getClient();
 
@@ -99,6 +108,7 @@ export async function generateAsset(
       max_tokens: maxOutputTokens,
       system: systemParam(systemPrompt),
       messages: [{ role: "user", content: messageContent }],
+      ...(effort ? { output_config: { effort } } : {}),
     },
     signal
   );
@@ -146,9 +156,10 @@ export async function generateCompleteAsset(
   maxContinuations = 4,
   isIncomplete?: (content: string) => boolean,
   continuationHint?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  effort?: GenerateEffort
 ): Promise<GenerateResult> {
-  const first = await generateAsset(systemPrompt, userPrompt, maxOutputTokens, images, signal);
+  const first = await generateAsset(systemPrompt, userPrompt, maxOutputTokens, images, signal, effort);
 
   let combinedContent = first.content;
   let totalInputTokens = first.inputTokens;
@@ -197,6 +208,7 @@ export async function generateCompleteAsset(
           content: continuationInstruction,
         },
       ],
+      ...(effort ? { output_config: { effort } } : {}),
     }, signal);
 
     const continuationText = message.content
