@@ -309,8 +309,7 @@ export const PPT_OUTLINE_PLAN_CONTINUATION_HINT =
 export function buildPptOutlinePlanPrompt(
   project: Project,
   priorGenerations: PriorGeneration[] = [],
-  context = "",
-  retry = false
+  context = ""
 ): string {
   return `${buildPptOutlinePrompt(project, priorGenerations)}${context}
 
@@ -326,7 +325,7 @@ Covers: [what this slide covers]
 **Slide 2: [the real headline for the next slide]**
 Covers: [what this slide covers]
 
-Start your response with **Slide 1: and continue in exactly this format until the last slide.${retry ? " Your previous answer could not be used because it did not list the slides in this exact format with all 60-90 slides — list every slide this time." : ""}`;
+Start your response with **Slide 1: and continue in exactly this format until the last slide. This overrides any instruction to ask clarifying questions, explain your approach, or add an "Assumptions" line: write no questions and no commentary before, between, or after the slides. If something is unclear, make the most reasonable choice and note it as [NEEDS: ...] in that slide's Covers line.`;
 }
 
 export function buildPptOutlineSectionPrompt(
