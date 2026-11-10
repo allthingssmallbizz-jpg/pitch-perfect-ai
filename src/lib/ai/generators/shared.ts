@@ -214,3 +214,16 @@ export function formatPriorGenerationsBlock(priorGenerations: PriorGeneration[])
     sections.join("\n\n"),
   ].join("\n");
 }
+
+// The slide rules every deck a member actually presents must follow — the same lessons Agent
+// Polly's webinar deck learned the hard way (see pptOutline.ts), shared so Build Day Slides and
+// Build Module Slides can't drift from them: no framework or sales-mechanic names in titles, no
+// floating divider lines, notes that never narrate the deck's own structure, stack slides that
+// say each item and value out loud, and nothing about price before the price is revealed.
+export const PRESENTED_DECK_RULES = `
+RULES FOR EVERY SLIDE IN THIS DECK (these apply on top of everything above):
+- Titles name the ACTUAL thing said or shown on that slide — a real headline, claim, story moment, question, or result — never the role the slide plays in any teaching, sales, or persuasion framework. Test every title: does it describe WHAT's being said, or WHICH STAGE of a method this is? If it's the stage, rewrite it. Never titles like "Big Promise," "Agenda," "Foundation," "False Belief," "Reframe," "Secret #1," "Case Study: Before," "Testimonial," "Future Pace," "Stack Item," "Full Stack Reveal," "Pitch," or "Teaching Beat."
+- Never title or narrate the act of building value — "Watch the Numbers Climb," "Let's Add This One Too," "See the Value Grow," or any wording about a total rising or items being added. A stack or recap title states the value itself (the item's real name, or "Here's Everything You're Getting").
+- Output only real slides, each starting with **Slide #: Title**. Never put a stand-alone section or phase divider line ("PHASE 2 — ...", "Secret #1 — ...", "Day 3 — ...") between slides — it gets read aloud in practice mode.
+- Speaker notes are what the presenter says out loud. They never mention slide numbers, "this slide," "the next slide," phases, or the sales mechanic being used.
+- If this deck presents an offer: every stack, bonus, and recap slide's notes say the real item name(s) and value(s) out loud; no slide before the price reveal mentions the price, a price increase, a future or "regular" price, a payment plan, or a discount; the slide right before the price asks, worded exactly, "Although I'm not going to charge you [total value] today, if I were to charge you that, would it be worth it?"; and the price is revealed alone on its own slide, with anything else (guarantee, bonuses, urgency, payment plan, CTA) starting on the next slide.`;

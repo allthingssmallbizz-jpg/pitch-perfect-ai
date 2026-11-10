@@ -136,6 +136,18 @@ const KNOWN_STRUCTURAL_TITLE_TERMS = [
   "future pace",
 ];
 
+// Titles that narrate the act of piling up value instead of stating the value itself — reported
+// real failures: "Watch the Numbers Climb," "Watch This Number Climb," "Let's Add This One Too."
+// Patterns rather than a fixed list, since every rewording fails the same way.
+const MECHANIC_NARRATION_PATTERNS: RegExp[] = [
+  /\bwatch\b.*\b(numbers?|total|value|stack)\b.*\b(climb|grow|rise|go up|add up|stack)/i,
+  /\b(see|watch)\b.*\b(value|total|stack)\b.*\b(grow|climb|rise|build)/i,
+  /\blet'?s add\b/i,
+  /\b(one|another) more to add\b/i,
+  /\byour stack so far\b/i,
+  /\b(numbers?|total|value)s? (keeps? )?(climbing|growing|rising|stacking)\b/i,
+];
+
 export type TitleLeakFlag = { slideNumber: number; title: string; reason: string };
 
 export function findStructuralTitleLeaks(content: string): TitleLeakFlag[] {
@@ -151,6 +163,14 @@ export function findStructuralTitleLeaks(content: string): TitleLeakFlag[] {
         slideNumber: slide.number,
         title: slide.title,
         reason: `Contains "${term}" — a known internal framework term, not real slide content.`,
+      });
+      flaggedSlideNumbers.add(slide.number);
+    } else if (MECHANIC_NARRATION_PATTERNS.some((p) => p.test(slide.title))) {
+      flags.push({
+        slideNumber: slide.number,
+        title: slide.title,
+        reason:
+          "Narrates value being added or a total climbing instead of stating the value itself — retitle it with the real item's name or what's included (e.g. \"Here's Everything You're Getting\").",
       });
       flaggedSlideNumbers.add(slide.number);
     }

@@ -1,5 +1,5 @@
 import type { Project } from "@/types/database";
-import { formatDiscoveryBlock } from "./shared";
+import { formatDiscoveryBlock, PRESENTED_DECK_RULES } from "./shared";
 import { parsePptOutline } from "../pptxParser";
 
 export const CHALLENGE_DAY_SLIDES_CREDIT_COST = 5;
@@ -89,5 +89,6 @@ Structure THIS DAY's deck as:
 
 THE STACK REVEAL (only applies if pitch slides are included above) — a batched, CUMULATIVE recap, never all stack items at once and never one slide per item. Word a stack item (part of the core offer) and a bonus (a separate extra) differently when introducing each, even within the same batch.
 
-This needs to be a real, thorough teaching deck for this one day — typically 8-18 slides depending on how much the day's teaching beat actually covers (err toward MORE, shorter slides over fewer, denser ones), plus the pitch slides above when included. Every slide earns its place with a real, specific, niche-grounded point; a slide with a bare topic label, or a slide crammed with more text than a 3-second glance can take in, are both a failure to fix.`;
+This needs to be a real, thorough teaching deck for this one day — typically 8-18 slides depending on how much the day's teaching beat actually covers (err toward MORE, shorter slides over fewer, denser ones), plus the pitch slides above when included. Every slide earns its place with a real, specific, niche-grounded point; a slide with a bare topic label, or a slide crammed with more text than a 3-second glance can take in, are both a failure to fix.
+${PRESENTED_DECK_RULES}`;
 }

@@ -1455,7 +1455,15 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
   function checkForTitleLeaks() {
     if (!content) return;
     setTitleLeakFlags(
-      [...findStructuralTitleLeaks(content), ...findPrePriceLeaks(content)].sort((a, b) => a.slideNumber - b.slideNumber)
+      [
+        ...findStructuralTitleLeaks(content),
+        // Price checks only where a price is actually presented: always for the webinar deck, for a
+        // challenge day only when it includes the pitch, never for a course module.
+        ...(assetType === "ppt_outline" ||
+        (assetType === "challenge_day_slides" && /would it be worth it|not going to charge you/i.test(content))
+          ? findPrePriceLeaks(content)
+          : []),
+      ].sort((a, b) => a.slideNumber - b.slideNumber)
     );
     setTitleLeakDialogOpen(true);
   }
@@ -1797,7 +1805,9 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
                 {copiedForGamma ? "Copied!" : "Copy for Gamma"}
               </Button>
             )}
-            {assetType === "ppt_outline" && (
+            {(assetType === "ppt_outline" ||
+              assetType === "challenge_day_slides" ||
+              assetType === "course_module_slides") && (
               <Button
                 variant="outline"
                 onClick={checkForTitleLeaks}

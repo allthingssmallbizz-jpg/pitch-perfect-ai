@@ -1,5 +1,5 @@
 import type { Project } from "@/types/database";
-import { formatDiscoveryBlock } from "./shared";
+import { formatDiscoveryBlock, PRESENTED_DECK_RULES } from "./shared";
 import { parsePptOutline } from "../pptxParser";
 
 export const COURSE_MODULE_SLIDES_CREDIT_COST = 5;
@@ -72,5 +72,6 @@ Structure the deck as:
 3. **A closing slide for each lesson's action step** — presented as a clear, on-screen instruction for what the student does now, not buried inside a content slide.
 4. **Final wrap-up slide** — restate this module's milestone (the concrete checkpoint that proves it landed) and exactly what the student needs to have done before moving to the next module.
 
-This needs to be a real, thorough teaching deck for this one module — typically 8-20 slides depending on how many sub-modules and lessons this module actually has (err toward MORE, shorter slides when the module covers real ground, never toward fewer, denser ones). Every slide earns its place with a real, specific, niche-grounded point; a slide with a bare topic label, or a slide crammed with more text than a 3-second glance can take in, are both a failure to fix.`;
+This needs to be a real, thorough teaching deck for this one module — typically 8-20 slides depending on how many sub-modules and lessons this module actually has (err toward MORE, shorter slides when the module covers real ground, never toward fewer, denser ones). Every slide earns its place with a real, specific, niche-grounded point; a slide with a bare topic label, or a slide crammed with more text than a 3-second glance can take in, are both a failure to fix.
+${PRESENTED_DECK_RULES}`;
 }
