@@ -10,12 +10,21 @@ import {
   trimScriptToSection,
   webinarScriptSectionContinuationHint,
   WEBINAR_SCRIPT_SECTION_MAX_OUTPUT_TOKENS,
+  type WebinarScriptRange,
 } from "@/lib/ai/generators/webinarScript";
+import {
+  buildPptOutlinePlanPrompt,
+  buildPptOutlineSectionPrompt,
+  isPptOutlineIncomplete,
+  pptOutlineSectionContinuationHint,
+  PPT_OUTLINE_PLAN_MAX_OUTPUT_TOKENS,
+  PPT_OUTLINE_SECTION_MAX_OUTPUT_TOKENS,
+} from "@/lib/ai/generators/pptOutline";
 
-// Sectioned scripts stop themselves this long after the request began — comfortably inside
-// maxDuration below — so a slow run fails with a specific, readable reason instead of being cut
-// off by the platform with no trace.
-const SCRIPT_SECTION_BUDGET_MS = 270 * 1000;
+// Sectioned generations (Webinar Script, Your Signature Webinar deck) stop themselves this long
+// after the request began — comfortably inside maxDuration below — so a slow run fails with a
+// specific, readable reason instead of being cut off by the platform with no trace.
+const SECTION_BUDGET_MS = 270 * 1000;
 import { buildSystemPrompt } from "@/lib/ai/systemPrompt";
 import { getBrandVoiceBlock } from "@/lib/ai/brandVoice";
 import { getPresenterBioBlock, isPresenterBioIncomplete, getMissingBioFieldLabels } from "@/lib/ai/presenterBio";
@@ -426,38 +435,43 @@ export async function POST(req: NextRequest) {
       assetType === "webinar_script" && webinarScriptSourceDeck
         ? planWebinarScriptSections(webinarScriptSourceDeck.content)
         : [];
-    let result: GenerateResult;
-    if (scriptSections.length > 1) {
-      const abort = new AbortController();
-      const timeLeft = SCRIPT_SECTION_BUDGET_MS - (Date.now() - requestStartedAt);
-      const timer = setTimeout(() => abort.abort(), Math.max(timeLeft, 30 * 1000));
-      const sectionsStartedAt = Date.now();
-      const status = scriptSections.map((range) => ({ range, done: false, seconds: 0, slides: 0, outputTokens: 0 }));
+    // Writes each section in parallel and joins them in order, all inside SECTION_BUDGET_MS.
+    // `startedAt` is when this generation's own AI work began (the deck's plan call counts).
+    const writeSections = async (
+      label: string,
+      sections: WebinarScriptRange[],
+      sectionMaxTokens: number,
+      buildSectionPrompt: (range: WebinarScriptRange) => string,
+      isSectionIncomplete: (content: string, range: WebinarScriptRange) => boolean,
+      sectionHint: (range: WebinarScriptRange) => string,
+      signal: AbortSignal,
+      startedAt: number
+    ): Promise<GenerateResult> => {
+      const status = sections.map((range) => ({ range, done: false, seconds: 0, slides: 0, outputTokens: 0 }));
       let parts: GenerateResult[];
       try {
         parts = await Promise.all(
-          scriptSections.map(async (range, i) => {
+          sections.map(async (range, i) => {
             const part = await generateCompleteAsset(
               systemPrompt,
-              generator.buildPrompt(promptProject, priorGenerations, { ...generatorExtra, scriptRange: range }) +
-                blueprintSuffix,
-              WEBINAR_SCRIPT_SECTION_MAX_OUTPUT_TOKENS,
+              buildSectionPrompt(range) + blueprintSuffix,
+              sectionMaxTokens,
               undefined,
               1,
-              (content) => isWebinarScriptSectionIncomplete(content, range),
-              webinarScriptSectionContinuationHint(range),
-              abort.signal
+              (content) => isSectionIncomplete(content, range),
+              sectionHint(range),
+              signal
             );
             const trimmed = trimScriptToSection(part.content, range);
             status[i] = {
               range,
               done: true,
-              seconds: Math.round((Date.now() - sectionsStartedAt) / 1000),
+              seconds: Math.round((Date.now() - startedAt) / 1000),
               slides: trimmed ? trimmed.split(/\n(?=#{0,4}\s*\*{0,2}\s*slide\s+\d+)/i).length : 0,
               outputTokens: part.outputTokens,
             };
             console.log(
-              `[webinar_script ${generationId}] section ${range.part}/${range.parts} done in ${status[i].seconds}s — ${part.outputTokens} output tokens`
+              `[${assetType} ${generationId}] section ${range.part}/${range.parts} done in ${status[i].seconds}s — ${part.outputTokens} output tokens`
             );
             return { ...part, content: trimmed };
           })
@@ -471,16 +485,14 @@ export async function POST(req: NextRequest) {
               : `part ${s.range.part} (slides ${s.range.first.number}-${s.range.last.number}) unfinished`
           )
           .join("; ");
-        const elapsed = Math.round((Date.now() - sectionsStartedAt) / 1000);
-        const reason = abort.signal.aborted
-          ? `The script took longer than allowed (${elapsed}s) and was stopped`
-          : `The script stopped with an error after ${elapsed}s (${err instanceof Error ? err.message : "unknown error"})`;
-        console.error(`[webinar_script ${generationId}] ${reason}: ${summary}`);
+        const elapsed = Math.round((Date.now() - startedAt) / 1000);
+        const reason = signal.aborted
+          ? `The ${label} took longer than allowed (${elapsed}s) and was stopped`
+          : `The ${label} stopped with an error after ${elapsed}s (${err instanceof Error ? err.message : "unknown error"})`;
+        console.error(`[${assetType} ${generationId}] ${reason}: ${summary}`);
         throw new Error(`${reason} — please try again. Details: ${summary}.`);
-      } finally {
-        clearTimeout(timer);
       }
-      result = {
+      return {
         content: parts.map((p) => p.content.trim()).join("\n\n"),
         model: parts[0].model,
         inputTokens: parts.reduce((sum, p) => sum + p.inputTokens, 0),
@@ -488,16 +500,87 @@ export async function POST(req: NextRequest) {
         costUsd: parts.reduce((sum, p) => sum + p.costUsd, 0),
         stopReason: parts[parts.length - 1].stopReason,
       };
-    } else {
-      result = await generateCompleteAsset(
-        systemPrompt,
-        userPrompt,
-        generator.maxOutputTokens,
-        undefined,
-        undefined,
-        (content) => generator.isOutputIncomplete?.(content, generatorExtra) ?? false,
-        generator.continuationHint
-      );
+    };
+
+    const sectioned = scriptSections.length > 1 || assetType === "ppt_outline";
+    const abort = new AbortController();
+    const timer = sectioned
+      ? setTimeout(() => abort.abort(), Math.max(SECTION_BUDGET_MS - (Date.now() - requestStartedAt), 30 * 1000))
+      : undefined;
+    let result: GenerateResult;
+    try {
+      if (scriptSections.length > 1) {
+        result = await writeSections(
+          "script",
+          scriptSections,
+          WEBINAR_SCRIPT_SECTION_MAX_OUTPUT_TOKENS,
+          (range) => generator.buildPrompt(promptProject, priorGenerations, { ...generatorExtra, scriptRange: range }),
+          isWebinarScriptSectionIncomplete,
+          webinarScriptSectionContinuationHint,
+          abort.signal,
+          Date.now()
+        );
+      } else if (assetType === "ppt_outline") {
+        // The deck in one request regularly outran the 300-second limit (see the comment above
+        // PPT_OUTLINE_SLIDES_PER_SECTION). Plan the slides first, then write them in parallel.
+        const deckStartedAt = Date.now();
+        let plan: GenerateResult;
+        try {
+          plan = await generateCompleteAsset(
+            systemPrompt,
+            buildPptOutlinePlanPrompt(promptProject, priorGenerations) + blueprintSuffix,
+            PPT_OUTLINE_PLAN_MAX_OUTPUT_TOKENS,
+            undefined,
+            1,
+            isPptOutlineIncomplete,
+            "You stopped before planning every slide — keep going in the same two-line format through the rest of the deck, all the way to the final call to action.",
+            abort.signal
+          );
+        } catch (err) {
+          const elapsed = Math.round((Date.now() - deckStartedAt) / 1000);
+          const reason = abort.signal.aborted
+            ? `Planning the deck took longer than allowed (${elapsed}s) and was stopped`
+            : `Planning the deck stopped with an error after ${elapsed}s (${err instanceof Error ? err.message : "unknown error"})`;
+          console.error(`[ppt_outline ${generationId}] ${reason}`);
+          throw new Error(`${reason} — please try again.`);
+        }
+        console.log(
+          `[ppt_outline ${generationId}] plan done in ${Math.round((Date.now() - deckStartedAt) / 1000)}s — ${plan.outputTokens} output tokens`
+        );
+        // The plan is plain "**Slide #: Title**" lines, which the same section planner reads.
+        const deckSections = planWebinarScriptSections(plan.content);
+        if (deckSections.length < 2) {
+          throw new Error("The deck plan came back too short to build from — please try again.");
+        }
+        const deck = await writeSections(
+          "deck",
+          deckSections,
+          PPT_OUTLINE_SECTION_MAX_OUTPUT_TOKENS,
+          (range) => buildPptOutlineSectionPrompt(promptProject, priorGenerations, plan.content, range),
+          isWebinarScriptSectionIncomplete,
+          pptOutlineSectionContinuationHint,
+          abort.signal,
+          deckStartedAt
+        );
+        result = {
+          ...deck,
+          inputTokens: deck.inputTokens + plan.inputTokens,
+          outputTokens: deck.outputTokens + plan.outputTokens,
+          costUsd: deck.costUsd + plan.costUsd,
+        };
+      } else {
+        result = await generateCompleteAsset(
+          systemPrompt,
+          userPrompt,
+          generator.maxOutputTokens,
+          undefined,
+          undefined,
+          (content) => generator.isOutputIncomplete?.(content, generatorExtra) ?? false,
+          generator.continuationHint
+        );
+      }
+    } finally {
+      clearTimeout(timer);
     }
 
     // Landing Page and Thank You Page both output a real HTML document, not markdown — strip a
