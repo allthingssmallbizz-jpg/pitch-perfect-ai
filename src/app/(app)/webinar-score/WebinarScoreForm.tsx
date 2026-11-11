@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { FileUp, Loader2 } from "lucide-react";
+import { FileText, FileUp, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +22,30 @@ export default function WebinarScoreForm() {
   const [scoring, setScoring] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  const transcriptRef = useRef<HTMLInputElement>(null);
+  const [readingTranscript, setReadingTranscript] = useState(false);
+
+  // Transcript or caption file (Zoom, YouTube, Vimeo, Loom, Word…) → plain spoken text, free.
+  async function handleTranscript(file: File) {
+    setReadingTranscript(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/webinar-score/transcript", { method: "POST", body: form });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "Could not read that transcript file.");
+      setContent(data.text);
+      setSlideCount(null);
+      setSourceType("text");
+      setFileName(file.name);
+      if (!title) setTitle(file.name.replace(/\.(txt|vtt|srt|docx)$/i, ""));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not read that transcript file.");
+    } finally {
+      setReadingTranscript(false);
+      if (transcriptRef.current) transcriptRef.current.value = "";
+    }
+  }
 
   // Reuses Annie's free PowerPoint text extraction — the slide text lands in the box below so the
   // member can see exactly what will be scored.
@@ -106,36 +130,88 @@ export default function WebinarScoreForm() {
         />
       </div>
 
-      <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4">
-        <p className="text-sm font-medium">Upload your PowerPoint</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          A .pptx file — we read the text on every slide. (Google Slides or Keynote: download it as PowerPoint first.)
-        </p>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".pptx"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleFile(file);
-          }}
-        />
-        <Button variant="outline" size="sm" className="mt-3" disabled={extracting} onClick={() => fileRef.current?.click()}>
-          {extracting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
-          {fileName ? "Choose a different file" : "Choose .pptx file"}
-        </Button>
-        {fileName && (
-          <p className="mt-2 text-xs text-emerald-400">
-            Loaded {fileName}
-            {slideCount ? ` — ${slideCount} slides` : ""}. The slide text is below.
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4">
+          <p className="text-sm font-medium">Recorded webinar? Upload the transcript</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            .txt, .vtt, .srt, or .docx — the transcript or captions file from Zoom, YouTube, Vimeo, Loom, or Google Meet.
           </p>
-        )}
+          <input
+            ref={transcriptRef}
+            type="file"
+            accept=".txt,.vtt,.srt,.docx"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleTranscript(file);
+            }}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            disabled={readingTranscript || extracting}
+            onClick={() => transcriptRef.current?.click()}
+          >
+            {readingTranscript ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+            Choose transcript file
+          </Button>
+        </div>
+        <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4">
+          <p className="text-sm font-medium">Have the slides? Upload your PowerPoint</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            A .pptx file — we read the text on every slide. (Google Slides or Keynote: download it as PowerPoint first.)
+          </p>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pptx"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFile(file);
+            }}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            disabled={extracting || readingTranscript}
+            onClick={() => fileRef.current?.click()}
+          >
+            {extracting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
+            Choose .pptx file
+          </Button>
+        </div>
       </div>
+      {fileName && (
+        <p className="text-xs text-emerald-400">
+          Loaded {fileName}
+          {slideCount ? ` — ${slideCount} slides` : ""}. The text is below — check it, then score it.
+        </p>
+      )}
+      <details className="text-xs text-muted-foreground">
+        <summary className="cursor-pointer font-medium text-foreground">Where do I find my webinar&apos;s transcript?</summary>
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          <li>
+            <span className="text-foreground">Zoom:</span> Recordings → open the cloud recording → download the
+            Audio transcript (.vtt). Audio transcription must be turned on in your Zoom recording settings.
+          </li>
+          <li>
+            <span className="text-foreground">YouTube:</span> under the video, click &quot;…more&quot; → Show
+            transcript, then copy and paste it into the box below. (Your own videos: YouTube Studio → Subtitles →
+            download.)
+          </li>
+          <li>
+            <span className="text-foreground">Vimeo, Loom, Google Meet, Riverside, StreamYard:</span> each offers a
+            transcript or captions download (.txt, .vtt, .srt, or a Google Doc you can save as .docx).
+          </li>
+        </ul>
+      </details>
 
       <div>
         <label className="text-sm font-medium" htmlFor="webinar-content">
-          …or paste your webinar script, transcript, or slide outline
+          …or paste your webinar transcript, script, or slide outline
         </label>
         <Textarea
           id="webinar-content"

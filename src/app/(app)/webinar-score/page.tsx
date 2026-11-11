@@ -43,7 +43,8 @@ export default async function WebinarScorePage() {
       <AgentBadge agent={AGENTS.presentation_analysis} size="lg" />
       <h1 className="mt-4 font-display text-2xl font-semibold text-gradient-silver">Score My Webinar</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Already have a webinar? Find out how it measures up against the Pitch Perfect framework. You&apos;ll get a score
+        Already have a webinar? Upload its transcript or slides and find out how it measures up against the Pitch
+        Perfect framework. You&apos;ll get a score
         out of 100, every missing piece, and exactly how to fix it — then rebuild or improve it with Pitch Perfect AI in
         one click, starting from what your webinar already says.
       </p>
