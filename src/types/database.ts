@@ -544,6 +544,28 @@ export type StrategyRecommendation = {
   updated_at: string;
 };
 
+// An existing webinar a member uploaded or pasted, scored against the Pitch Perfect framework
+// (0054_webinar_scores.sql). `analysis` is the validated WebinarScoreAnalysis (lib/webinarScore).
+export type WebinarScore = {
+  id: string;
+  user_id: string;
+  project_id: string | null;
+  title: string;
+  source_type: "pptx" | "text";
+  source_text: string;
+  slide_count: number | null;
+  status: "pending" | "complete" | "failed";
+  score: number | null;
+  readiness: string | null;
+  analysis: unknown;
+  error: string | null;
+  model: string | null;
+  cost_usd: number;
+  credits_charged: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type StrategyBlueprint = {
   id: string;
   project_id: string;
@@ -594,6 +616,7 @@ export type Database = {
       strategy_reviews: Table<StrategyReview>;
       strategy_recommendations: Table<StrategyRecommendation>;
       strategy_blueprints: Table<StrategyBlueprint>;
+      webinar_scores: Table<WebinarScore>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

@@ -54,6 +54,19 @@ export default async function AnalyzeLandingPage() {
       </p>
 
       <Link
+        href="/webinar-score"
+        className="mb-4 flex items-center justify-between rounded-2xl border border-primary/40 bg-primary/5 p-4 text-sm transition-colors hover:border-primary/70"
+      >
+        <span>
+          <span className="font-semibold">Have a webinar already?</span>{" "}
+          <span className="text-muted-foreground">
+            Score it out of 100 against the Pitch Perfect framework and rebuild it in one click.
+          </span>
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-primary" />
+      </Link>
+
+      <Link
         href="/projects/new?type=presentation_analysis"
         className="card-elevated mb-8 flex items-center justify-between rounded-2xl border-dashed p-6 transition-colors hover:border-primary/50"
       >

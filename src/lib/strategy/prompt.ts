@@ -8,7 +8,7 @@ import { STRATEGY_FIELD_GROUPS, type StrategyFields } from "./fields";
 
 // JSON.stringify leaves "<" alone, so a member typing "</client_discovery>" could otherwise close
 // the data tag early. Unicode-escaping it keeps the JSON identical in meaning.
-function asDataJson(value: unknown): string {
+export function asDataJson(value: unknown): string {
   return JSON.stringify(value, null, 2).replace(/</g, "\\u003c").replace(/>/g, "\\u003e");
 }
 

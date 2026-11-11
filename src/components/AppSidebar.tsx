@@ -16,6 +16,7 @@ import {
   UserCircle,
   Globe,
   FolderOpen,
+  Gauge,
 } from "lucide-react";
 import { signOut } from "@/lib/actions/auth";
 import { AGENTS, type AgentAssetType } from "@/lib/agents/config";
@@ -361,6 +362,14 @@ export default function AppSidebar({ email, displayName, isAdmin, credits, bioIn
                     <span className="truncate">
                       {AGENTS.presentation_analysis.name} <span className="text-muted-foreground">· Analyzer</span>
                     </span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname.startsWith("/webinar-score")} tooltip="Score My Webinar">
+                  <Link href="/webinar-score">
+                    <Gauge className="h-4 w-4" />
+                    <span>Score My Webinar</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
