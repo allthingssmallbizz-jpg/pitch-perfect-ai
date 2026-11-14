@@ -1540,7 +1540,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           {challengeDays.length > 0 ? (
             <>
               <p className="mb-1.5 text-xs text-muted-foreground">
-                Pulled straight from your Challenge Outline — pick the day Casey should build slides for.
+                Pulled straight from your Challenge Outline — pick the day Daisy should build slides for.
               </p>
               <select
                 id="day-identifier"
@@ -1570,7 +1570,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             <>
               <p className="mb-1.5 text-xs text-muted-foreground">
                 Type the day&apos;s number or name exactly as it appears in your Challenge Outline (e.g.
-                &quot;Day 3&quot; or &quot;Day 3: Building Your Offer&quot;) — Casey will find it and build slides for
+                &quot;Day 3&quot; or &quot;Day 3: Building Your Offer&quot;) — Daisy will find it and build slides for
                 that day only.
               </p>
               <Input

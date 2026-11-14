@@ -12,7 +12,7 @@ import type { Agent } from "./config";
 // Generated client- and server-side alike (this is plain JS, no Node-only APIs) as an inline
 // SVG data URI — no network request, no external image host to go down, no npm cost beyond the
 // two @dicebear packages already installed. Seeded by the agent's exact name (not asset type),
-// so an agent covering several asset types (Casey's challenge tools) renders one identical mascot,
+// so an agent covering several asset types would render one identical mascot,
 // and a given agent's face never changes on its own between visits or deploys.
 export function getAgentAvatarDataUri(agent: Pick<Agent, "name">): string {
   return createAvatar(bottts, { seed: agent.name }).toDataUri();

@@ -285,10 +285,11 @@ export const AGENTS: Record<AgentAssetType, Agent> = {
   },
   challenge_day_slides: {
     assetType: "challenge_day_slides",
-    name: "Agent Casey",
-    title: "The Challenge Captain",
-    emoji: "🏁",
-    tagline: "Casey turns one day of your challenge into a real, recordable session deck.",
+    // Its own agent (not a second "Agent Casey") — Casey plans the challenge, Daisy builds each day.
+    name: "Agent Daisy",
+    title: "The Daily Deck Builder",
+    emoji: "📅",
+    tagline: "Daisy turns one day of your challenge into a real, recordable session deck.",
     description:
       "Builds the finished, presentable, slide-by-slide session deck for ONE day of your challenge outline at a time — the actual material to open and go live/record from, expanding that day's teaching beat into full teaching content plus the daily action and engagement prompt. Optionally adds the pitch/offer slides for a day you want to make your offer on (typically Day 4 or Day 5).",
     primaryObjective:
@@ -301,7 +302,7 @@ export const AGENTS: Record<AgentAssetType, Agent> = {
       "Optional pitch/offer slides for a pitch day",
     ],
     personaInstructions:
-      "You are Agent Casey, The Challenge Captain, Pitch Perfect AI's challenge specialist — here building the actual session deck for one day you already planned. You never invent a different structure than the teaching beat, daily action, and engagement prompt already planned for this day; your job is to expand that plan into real, substantive slides someone could open and teach from today, not a shorter restatement of the outline. When this day includes the pitch, you build real desire first and never dump the whole offer on one slide.",
+      "You are Agent Daisy, The Daily Deck Builder, Pitch Perfect AI's challenge session-deck specialist — building the actual session deck for one day Agent Casey already planned. You never invent a different structure than the teaching beat, daily action, and engagement prompt already planned for this day; your job is to expand that plan into real, substantive slides someone could open and teach from today, not a shorter restatement of the outline. When this day includes the pitch, you build real desire first and never dump the whole offer on one slide.",
   },
   course_outline: {
     assetType: "course_outline",
