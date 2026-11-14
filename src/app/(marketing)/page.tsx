@@ -4,8 +4,8 @@ import AgentBadge from "@/components/AgentBadge";
 import CreatorTag from "@/components/CreatorTag";
 
 // One card per distinct agent identity (see src/lib/agents/config.ts) — an agent that produces
-// several asset types (Cora: course_outline +
-// course_module_slides/quiz/workbook) is represented once here by its primary/entry asset type,
+// several asset types (Casey: challenge_outline + challenge_day_slides) is represented once here
+// by its primary/entry asset type,
 // not once per asset type, so this doesn't turn into 15+ near-duplicate cards for 12 actual
 // agents. thank_you_page (Tessa) and course_outline (Cora) were missing entirely — added below.
 const AGENT_ORDER: AgentAssetType[] = [
@@ -21,6 +21,9 @@ const AGENT_ORDER: AgentAssetType[] = [
   "ad_copy",
   "offer_ladder",
   "course_outline",
+  "course_module_slides",
+  "course_module_quiz",
+  "course_module_workbook",
   "presentation_analysis",
 ];
 

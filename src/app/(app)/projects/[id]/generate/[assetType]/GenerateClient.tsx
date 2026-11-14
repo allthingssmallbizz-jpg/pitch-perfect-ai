@@ -1452,6 +1452,9 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
     setTimeout(() => setCopiedForGamma(false), 1500);
   }
 
+  // Module Slides / Quiz / Workbook each have their own agent (Maya / Quinn / Hazel).
+  const moduleAgentName = (getAgent(assetType)?.name ?? "Agent Cora").replace(/^Agent\s+/, "");
+
   function checkForTitleLeaks() {
     if (!content) return;
     setTitleLeakFlags(
@@ -1600,7 +1603,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           {courseModules.length > 0 ? (
             <>
               <p className="mb-1.5 text-xs text-muted-foreground">
-                Pulled straight from your Course Outline — pick the module Cora should build{" "}
+                Pulled straight from your Course Outline — pick the module {moduleAgentName} should build{" "}
                 {assetType === "course_module_quiz" ? "a quiz" : assetType === "course_module_workbook" ? "a workbook" : "slides"} for.
               </p>
               <select
@@ -1622,7 +1625,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             <>
               <p className="mb-1.5 text-xs text-muted-foreground">
                 Type the module&apos;s number or name exactly as it appears in your Course Outline (e.g.
-                &quot;Module 3&quot; or &quot;Module 3: Building Your Offer&quot;) — Cora will find it and build{" "}
+                &quot;Module 3&quot; or &quot;Module 3: Building Your Offer&quot;) — {moduleAgentName} will find it and build{" "}
                 {assetType === "course_module_quiz" ? "a quiz" : assetType === "course_module_workbook" ? "a workbook" : "slides"} for
                 that module only.
               </p>
