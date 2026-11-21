@@ -8,7 +8,7 @@ import type { AssetType } from "@/types/database";
 
 export const runtime = "nodejs";
 
-const PHOTO_ASSET_TYPES: AssetType[] = ["ppt_outline", "course_module_slides", "challenge_day_slides"];
+const PHOTO_ASSET_TYPES: AssetType[] = ["ppt_outline", "course_module_slides", "challenge_day_slides", "express_deck"];
 
 const requestSchema = z.object({
   slideNumber: z.number().int().positive(),

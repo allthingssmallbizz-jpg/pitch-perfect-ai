@@ -37,6 +37,8 @@ const CONTENT_LABELS: Partial<Record<AssetType, string>> = {
   course_module_workbook: "module's workbook",
   challenge_outline: "challenge outline",
   challenge_day_slides: "day's slides",
+  express_deck: "presentation",
+  express_kit: "Speaker Kit",
   ppt_outline: "webinar deck",
 };
 
@@ -49,6 +51,8 @@ const PLACEHOLDERS: Partial<Record<AssetType, string>> = {
   course_module_workbook: `e.g. "Add a reflection prompt after Lesson 2" or "Fix the completion checklist at the end" or "Make the pricing worksheet more specific"`,
   challenge_outline: `e.g. "Change the daily action on Day 2 to something simpler" or "Make Day 4 the pitch day instead of Day 5" or "Add a leaderboard to the engagement mechanics section"`,
   challenge_day_slides: `e.g. "Rewrite the speaker notes on Slide 5 to teach the daily action more clearly" or "Add a slide expanding on the belief shift" or "Make the pitch slides less salesy"`,
+  express_deck: `e.g. "Make Slide 2's hook speak to church leaders" or "Shorten the speaker notes so it fits in 12 minutes" or "Add a slide answering the cost question"`,
+  express_kit: `e.g. "Make the follow-up emails warmer" or "Shorten the host introduction to 45 seconds" or "Add a text message for people who asked for a callback"`,
   ppt_outline: `e.g. "Rewrite the title on Slide 42, it still says Stack Item" or "Add a bonus slide after Slide 50 for the private community" or "Shorten the speaker notes on Slide 12"`,
 };
 
@@ -67,6 +71,10 @@ const PERMANENCE_HINTS: Partial<Record<AssetType, string>> = {
     " For a change you want to stick permanently (and also show up in every day's slides you build from this), add it to this project's Discovery Notes instead.",
   challenge_day_slides:
     " If you want a change to also apply the next time you rebuild this day from scratch, update the Challenge Outline itself too — this only fixes the copy you already have.",
+  express_deck:
+    " To change the room, goal, offer, or time, update the presentation details above and generate a fresh version instead — this only fixes the copy you already have.",
+  express_kit:
+    " If you change your presentation, rebuild the Speaker Kit so it matches — this only fixes the copy you already have.",
   ppt_outline:
     " For a change you want to stick permanently, update the Webinar Blueprint (or this project's Discovery Notes, if there's no Blueprint) instead — Regenerate rebuilds this deck fresh from there, so a one-off edit here wouldn't carry forward either way.",
 };

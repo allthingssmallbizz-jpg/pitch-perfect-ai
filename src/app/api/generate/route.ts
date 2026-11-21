@@ -50,6 +50,7 @@ import { getCurrentBlueprint } from "@/lib/strategy/server";
 import { applyApprovedFields } from "@/lib/strategy/fields";
 import { formatStrategyBlueprintBlock, type Blueprint } from "@/lib/strategy/blueprint";
 import { STRATEGY_GATED_ASSET_TYPES } from "@/lib/strategy/schema";
+import { expressBriefSchema, parseStoredExpressBrief, type ExpressBrief } from "@/lib/express";
 
 export const runtime = "nodejs";
 // Without this, the function is bound by the hosting plan's default timeout — on Vercel's free
@@ -97,6 +98,9 @@ const requestSchema = z.object({
   // Presentation agents only: the member explicitly chose to generate without an approved
   // Strategy Review (see STRATEGY_GATED_ASSET_TYPES). Without it, those agents ask for a review first.
   skipStrategyReview: z.boolean().optional(),
+  // Pitch Perfect Express only — the presentation's intake brief (validated below with
+  // expressBriefSchema). Ignored by every other generator.
+  expressBrief: z.unknown().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -115,7 +119,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { projectId, assetType, mode, courseLevel, customNaming, moduleIdentifier, sourceGenerationId, challengeLength, dayIdentifier, includePitch, skipStrategyReview } =
+  const { projectId, assetType, mode, courseLevel, customNaming, moduleIdentifier, sourceGenerationId, challengeLength, dayIdentifier, includePitch, skipStrategyReview, expressBrief: rawExpressBrief } =
     parsed.data as {
       projectId: string;
       assetType: keyof typeof ASSET_GENERATORS;
@@ -128,9 +132,25 @@ export async function POST(req: NextRequest) {
       dayIdentifier?: string;
       includePitch?: boolean;
       skipStrategyReview?: boolean;
+      expressBrief?: unknown;
     };
 
   const generator = ASSET_GENERATORS[assetType];
+  // Pitch Perfect Express has its own short intake (the room, the goal, the offer, the time), so
+  // it doesn't require the full webinar Discovery brief or a complete Bio — whatever exists is
+  // still used as background.
+  const isExpress = assetType === "express_deck" || assetType === "express_kit";
+  let expressBrief: ExpressBrief | null = null;
+  if (assetType === "express_deck") {
+    const parsedBrief = expressBriefSchema.safeParse(rawExpressBrief);
+    if (!parsedBrief.success) {
+      return NextResponse.json(
+        { error: parsedBrief.error.issues[0]?.message ?? "Fill in your presentation details first." },
+        { status: 400 }
+      );
+    }
+    expressBrief = parsedBrief.data;
+  }
 
   // The project must belong to this user (RLS on the user-scoped client enforces this too,
   // but we look it up explicitly here since generation below runs on the admin client).
@@ -162,7 +182,7 @@ export async function POST(req: NextRequest) {
   const { data: bio } = project.presenter_bio_profile_id
     ? await supabase.from("presenter_bio_profiles").select("*").eq("id", project.presenter_bio_profile_id).maybeSingle()
     : { data: null };
-  if (isPresenterBioIncomplete(bio) && !bypassActive) {
+  if (isPresenterBioIncomplete(bio) && !bypassActive && !isExpress) {
     const missing = getMissingBioFieldLabels(bio);
     return NextResponse.json(
       { error: `Finish this project's niche bio first — still missing: ${missing.join(", ")}. Every agent needs it to write a strong, credible presentation.` },
@@ -177,7 +197,7 @@ export async function POST(req: NextRequest) {
   // [assetType]/page.tsx), but that's a UI nudge, not a lock — this is the real one, so there's no
   // path (a stale tab, a direct API call, a chained-generation button firing after the brief was
   // edited back to incomplete) that can slip a generation through without it.
-  if (projectNeedsDiscovery(project) && !bypassActive) {
+  if (projectNeedsDiscovery(project) && !bypassActive && !isExpress) {
     return NextResponse.json(
       { error: "Complete this project's Discovery brief first — every agent needs it before it can generate anything." },
       { status: 400 }
@@ -220,6 +240,29 @@ export async function POST(req: NextRequest) {
   // even inserted, so a missing/invalid deck reads as a normal validation error instead of a
   // wasted Claude call that gets caught and reported as a generic "Generation failed."
   let webinarScriptSourceDeck: { id: string; content: string } | undefined;
+  // The Speaker Kit is built from the member's latest Express presentation and the brief it was
+  // made from.
+  let expressKitSource: { id: string; content: string } | undefined;
+  if (assetType === "express_kit") {
+    const { data: deck } = await supabase
+      .from("generations")
+      .select("id, content, input_content")
+      .eq("project_id", projectId)
+      .eq("asset_type", "express_deck")
+      .eq("status", "complete")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!deck?.content) {
+      return NextResponse.json(
+        { error: "Build your Pitch Perfect Express presentation first — the Speaker Kit is made from it." },
+        { status: 400 }
+      );
+    }
+    expressKitSource = { id: deck.id, content: deck.content };
+    expressBrief = parseStoredExpressBrief(deck.input_content);
+  }
+
   if (assetType === "webinar_script") {
     if (sourceGenerationId) {
       const { data: deck } = await supabase
@@ -371,7 +414,15 @@ export async function POST(req: NextRequest) {
       // 0043_webinar_script_source.sql) — always recorded, even when sourceGenerationId wasn't
       // explicitly passed, so every future consumer (export, Copy for Gamma, the slide preview)
       // can match a script back to its real deck instead of guessing "whichever is most recent."
-      source_generation_id: assetType === "webinar_script" ? webinarScriptSourceDeck?.id ?? null : null,
+      source_generation_id:
+        assetType === "webinar_script"
+          ? webinarScriptSourceDeck?.id ?? null
+          : assetType === "express_kit"
+            ? expressKitSource?.id ?? null
+            : null,
+      // An Express presentation's brief is kept with it — regenerating, the Speaker Kit, and the
+      // next presentation's form all start from it.
+      ...(assetType === "express_deck" && expressBrief ? { input_content: JSON.stringify(expressBrief) } : {}),
     })
     .select("id")
     .single();
@@ -415,7 +466,8 @@ export async function POST(req: NextRequest) {
       customNaming,
       moduleIdentifier,
       courseOutlineFullContent,
-      sourceDeckContent: webinarScriptSourceDeck?.content,
+      sourceDeckContent: assetType === "express_kit" ? expressKitSource?.content : webinarScriptSourceDeck?.content,
+      expressBrief,
       challengeLength,
       dayIdentifier,
       challengeOutlineFullContent,

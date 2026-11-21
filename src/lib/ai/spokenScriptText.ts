@@ -136,7 +136,7 @@ export function cleanSpokenScript(markdown: string, assetType?: AssetType): stri
       ? stripVslBeatLabels(markdown)
       : assetType === "webinar_script"
         ? stripWebinarScriptSlideHeadings(markdown)
-        : assetType === "ppt_outline"
+        : assetType === "ppt_outline" || assetType === "express_deck"
           ? extractSlideTitlesAndNotes(markdown)
           : markdown;
   return stripMarkdownSyntax(withoutLabels);

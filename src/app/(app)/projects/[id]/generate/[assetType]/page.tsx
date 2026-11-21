@@ -20,6 +20,7 @@ import { getCurrentBlueprint, hashStrategyFields } from "@/lib/strategy/server";
 import { extractStrategyFields } from "@/lib/strategy/fields";
 import { STRATEGY_GATED_ASSET_TYPES } from "@/lib/strategy/schema";
 import { isOpenCritical, type Blueprint } from "@/lib/strategy/blueprint";
+import { emptyExpressBrief, parseStoredExpressBrief, type ExpressBrief } from "@/lib/express";
 
 // Your Webinar (Agent Polly) and its Script (Agent Winnie) are a closely linked pair — a member
 // stepping away and coming back needs to tell at a glance which one they'd landed on. This is a
@@ -58,6 +59,9 @@ export default async function GenerateAssetPage({
   // Same reasoning as isCourseModuleAsset above, one level down — Build Day Slides belongs to
   // the Challenge Outline it was built from, not the project overview.
   const isChallengeDaySlidesAsset = generator.assetType === "challenge_day_slides";
+  // Pitch Perfect Express has its own short intake, so it never sends a member off to finish the
+  // full Bio or the webinar Discovery brief first.
+  const isExpressAsset = generator.assetType === "express_deck" || generator.assetType === "express_kit";
 
   const supabase = await createClient();
   const {
@@ -101,7 +105,7 @@ export default async function GenerateAssetPage({
       .select("*")
       .eq("id", project.presenter_bio_profile_id)
       .maybeSingle();
-    if (isPresenterBioIncomplete(bio)) {
+    if (isPresenterBioIncomplete(bio) && !isExpressAsset) {
       if (bypassActive) {
         bioBlockedButBypassed = true;
       } else {
@@ -109,11 +113,54 @@ export default async function GenerateAssetPage({
       }
     }
   }
+  // Express intake: start from the last Express presentation's brief when there is one (the same
+  // presenter usually talks to similar rooms), otherwise from whatever Discovery and the Bio say.
+  let expressDefaults: ExpressBrief | null = null;
+  let hasExpressDeck = false;
+  if (isExpressAsset) {
+    const { data: lastDeck } = await supabase
+      .from("generations")
+      .select("id, input_content")
+      .eq("project_id", id)
+      .eq("asset_type", "express_deck")
+      .eq("status", "complete")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    hasExpressDeck = Boolean(lastDeck);
+    if (generator.assetType === "express_deck") {
+      expressDefaults = parseStoredExpressBrief(lastDeck?.input_content);
+      if (!expressDefaults) {
+        const { data: bioForDefaults } = project.presenter_bio_profile_id
+          ? await supabase
+              .from("presenter_bio_profiles")
+              .select("presenter_mission, presenter_years_experience, presenter_credentials, presenter_origin_story")
+              .eq("id", project.presenter_bio_profile_id)
+              .maybeSingle()
+          : { data: null };
+        const join = (...parts: (string | null | undefined)[]) => parts.map((p) => (p ?? "").trim()).filter(Boolean).join("\n");
+        expressDefaults = {
+          ...emptyExpressBrief(),
+          audience: project.audience ?? "",
+          problem: project.pain_points ?? "",
+          goal: project.cta ?? "",
+          offer: join(project.offer_name, project.product, project.price ? `Price: ${project.price}` : ""),
+          proof: project.proof ?? "",
+          aboutYou: join(
+            bioForDefaults?.presenter_mission,
+            bioForDefaults?.presenter_years_experience ? `Experience: ${bioForDefaults.presenter_years_experience}` : "",
+            bioForDefaults?.presenter_credentials
+          ),
+        };
+      }
+    }
+  }
+
   // Images a member can place on any deck slide via "Add image": their own Bio photos (usually for
   // the meet-the-presenter slide) and the product images attached to stack items/bonuses in
   // Discovery (for each item's introduction slide). Signed fresh per load — both buckets are private.
   const imageChoices: SlideImageChoice[] = [];
-  if ((["ppt_outline", "course_module_slides", "challenge_day_slides"] as string[]).includes(generator.assetType)) {
+  if ((["ppt_outline", "course_module_slides", "challenge_day_slides", "express_deck"] as string[]).includes(generator.assetType)) {
     if (project.presenter_bio_profile_id) {
       const { data: bioPhotos } = await supabase
         .from("presenter_bio_profiles")
@@ -189,7 +236,7 @@ export default async function GenerateAssetPage({
   // rendered below, right on this page, so it's clear exactly why the agent didn't open instead
   // of landing back on the project with no explanation beyond an easy-to-miss banner.
   const missingDiscoveryFields =
-    !generationId && projectNeedsDiscovery(project)
+    !generationId && !isExpressAsset && projectNeedsDiscovery(project)
       ? REQUIRED_DISCOVERY_FIELDS.filter(({ key }) => !String(project[key] ?? "").trim()).map((f) => f.label)
       : [];
 
@@ -533,6 +580,7 @@ export default async function GenerateAssetPage({
         imageChoices={imageChoices}
         strategyStatus={strategyStatus}
         demo={{ projectIsDemo: Boolean(project.is_demo), generationIsDemo: initialIsDemo }}
+        express={isExpressAsset ? { defaults: expressDefaults, hasDeck: hasExpressDeck } : undefined}
         // Forces a full remount whenever the open generation changes (a fresh visit, opening a
         // past run, or a just-completed Regenerate updating the URL) — without this, switching
         // to a different generation via the "Past generations" list only ever changes the URL,

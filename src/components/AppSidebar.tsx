@@ -73,6 +73,9 @@ const CORE_PATH_STEP: Record<(typeof CORE_PATH_ASSET_TYPES)[number], number> = {
 };
 
 const OTHER_ASSET_TYPES: Exclude<AgentAssetType, "presentation_analysis">[] = [
+  // Pitch Perfect Express™ leads this list — the short-form alternative to the Signature Webinar.
+  "express_deck",
+  "express_kit",
   "vsl_script",
   "challenge_outline",
   "webinar_script",
@@ -110,6 +113,8 @@ const CREATE_LABELS: Record<CreateAssetType, string> = {
   course_module_quiz: "Module Quiz",
   course_module_workbook: "Module Workbook",
   challenge_day_slides: "Challenge Day Slides",
+  express_deck: "Pitch Perfect Express™",
+  express_kit: "Express Speaker Kit",
 };
 
 // The same robot-mascot avatar AgentBadge uses elsewhere (see getAgentAvatarDataUri), just at

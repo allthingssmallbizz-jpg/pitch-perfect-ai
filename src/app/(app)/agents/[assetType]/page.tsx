@@ -187,7 +187,11 @@ export default async function AgentLandingPage({
           </div>
           <div>
             <div className="font-display font-semibold">Start a new project</div>
-            <div className="text-sm text-muted-foreground">Name a project and fill in its discovery brief.</div>
+            <div className="text-sm text-muted-foreground">
+              {generator.assetType === "express_deck" || generator.assetType === "express_kit"
+                ? "Name a project and answer a few quick questions about your presentation."
+                : "Name a project and fill in its discovery brief."}
+            </div>
           </div>
         </div>
         <ArrowRight className="h-4 w-4 text-primary" />

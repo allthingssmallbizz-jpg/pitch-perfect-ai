@@ -38,6 +38,8 @@ const TEXT_EDITABLE_ASSET_TYPES = [
   "challenge_outline",
   "challenge_day_slides",
   "ppt_outline",
+  "express_deck",
+  "express_kit",
 ];
 
 export const runtime = "nodejs";

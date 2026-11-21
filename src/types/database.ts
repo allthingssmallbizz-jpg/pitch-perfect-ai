@@ -32,7 +32,9 @@ export type AssetType =
   | "course_module_slides"
   | "course_module_quiz"
   | "course_module_workbook"
-  | "challenge_day_slides";
+  | "challenge_day_slides"
+  | "express_deck"
+  | "express_kit";
 
 export type PresentationType =
   | "webinar"

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CRITICAL_RISK_EXPLANATION } from "@/lib/strategy/blueprint";
 import AgentAtWork from "@/components/AgentAtWork";
+import ExpressBriefForm, { missingExpressFields } from "./ExpressBriefForm";
+import { emptyExpressBrief, estimateSpeakingMinutes, expressMinutes, type ExpressBrief } from "@/lib/express";
 import { AGENTS, getAgent } from "@/lib/agents/config";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
@@ -109,7 +111,7 @@ const DAY_SCOPED_ASSET_TYPES: AssetType[] = ["challenge_day_slides"];
 // shape (see pptOutline.ts, courseModuleSlides.ts, challengeDaySlides.ts) that parsePptOutline
 // and the real .pptx export already parse — the visual slide-by-slide preview below
 // (SlidePreview.tsx) reuses that same parser rather than a second format.
-const SLIDE_DECK_ASSET_TYPES: AssetType[] = ["ppt_outline", "course_module_slides", "challenge_day_slides"];
+const SLIDE_DECK_ASSET_TYPES: AssetType[] = ["ppt_outline", "course_module_slides", "challenge_day_slides", "express_deck"];
 
 // Landing Page and Thank You Page are the generators whose content is a real HTML document, not
 // markdown — used both to build a clean preview snippet (raw tags would otherwise show up as
@@ -339,6 +341,7 @@ export default function GenerateClient({
   imageChoices = [],
   strategyStatus,
   demo,
+  express,
 }: {
   projectId: string;
   assetType: AssetType;
@@ -401,6 +404,9 @@ export default function GenerateClient({
   // generation on screen was built in Demo mode. Either way it's labeled so a demo deck is never
   // mistaken for one that's ready for a live webinar.
   demo?: { projectIsDemo: boolean; generationIsDemo: boolean };
+  // Pitch Perfect Express: the intake form's starting answers (express_deck), and whether the
+  // project has an Express presentation yet (express_kit is built from it).
+  express?: { defaults: ExpressBrief | null; hasDeck: boolean };
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -566,6 +572,9 @@ export default function GenerateClient({
   // this browser tab only, so the choice is made consciously each session rather than forever.
   const strategySkipKey = `pp-strategy-skip:${projectId}`;
   const [skipStrategy, setSkipStrategy] = useState(false);
+  const [expressBrief, setExpressBrief] = useState<ExpressBrief>(express?.defaults ?? emptyExpressBrief());
+  const expressMissing = assetType === "express_deck" ? missingExpressFields(expressBrief) : [];
+  const expressKitBlocked = assetType === "express_kit" && !express?.hasDeck;
   // Read after mount, not in the initializer, so the server-rendered HTML and the first client
   // render agree (sessionStorage doesn't exist on the server).
   useEffect(() => {
@@ -999,6 +1008,10 @@ export default function GenerateClient({
       toast.error("Say which day to build slides for first.");
       return;
     }
+    if (expressMissing.length) {
+      toast.error(`Fill in ${expressMissing.join(", ")} first.`);
+      return;
+    }
     // Snapshot exactly what's on screen right now, before any of it is touched — Stop puts this
     // straight back if the member cancels, so it never reads as "I lost my deck."
     previousGenerationRef.current = { content, generationId, publishSlug, publishedAt };
@@ -1026,6 +1039,7 @@ export default function GenerateClient({
           dayIdentifier,
           includePitch,
           skipStrategyReview: skipStrategy,
+          ...(assetType === "express_deck" ? { expressBrief } : {}),
         }),
         signal: abortController.signal,
       });
@@ -1443,6 +1457,7 @@ export default function GenerateClient({
 This is a slide-by-slide outline. Every slide below has two labeled parts:
 - "On-slide content" — design this beautifully and display it on the visible slide.
 - "Speaker notes" — this is presenter-only. Do NOT display it anywhere on the visible slide. Place it ONLY in this presentation's speaker notes / presenter notes section for that same slide.
+- "Visual idea" (when present) — use it to choose the image or visual for that slide. Do NOT display the words themselves.
 
 ============================================================
 
@@ -1463,7 +1478,8 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
         // Price checks only where a price is actually presented: always for the webinar deck, for a
         // challenge day only when it includes the pitch, never for a course module.
         ...(assetType === "ppt_outline" ||
-        (assetType === "challenge_day_slides" && /would it be worth it|not going to charge you/i.test(content))
+        ((assetType === "challenge_day_slides" || assetType === "express_deck") &&
+          /would it be worth it|not going to charge you/i.test(content))
           ? findPrePriceLeaks(content)
           : []),
       ].sort((a, b) => a.slideNumber - b.slideNumber)
@@ -1763,6 +1779,21 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             </p>
           </div>
         )}
+      {assetType === "express_deck" && (
+        <ExpressBriefForm brief={expressBrief} onChange={setExpressBrief} disabled={loading} />
+      )}
+      {expressKitBlocked && (
+        <div className="card-elevated mb-4 rounded-2xl p-5 text-sm">
+          <p className="font-display font-semibold">First, build your Pitch Perfect Express presentation</p>
+          <p className="mt-1 text-muted-foreground">
+            Your Speaker Kit — introduction, bio, close, answers to hesitations, and follow-up messages — is written to
+            match your presentation.
+          </p>
+          <Button asChild size="sm" className="mt-3">
+            <Link href={`/projects/${projectId}/generate/express_deck`}>Build my Express presentation</Link>
+          </Button>
+        </div>
+      )}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Button
           onClick={() => {
@@ -1781,7 +1812,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             }
             run();
           }}
-          disabled={loading || strategyBlocked}
+          disabled={loading || strategyBlocked || expressKitBlocked || expressMissing.length > 0}
         >
           <Sparkles className="mr-2 h-4 w-4" />
           {loading ? "Generating..." : content ? "Regenerate" : "Generate"}
@@ -1809,6 +1840,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
               </Button>
             )}
             {(assetType === "ppt_outline" ||
+              assetType === "express_deck" ||
               assetType === "challenge_day_slides" ||
               assetType === "course_module_slides") && (
               <Button
@@ -2036,6 +2068,35 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             stay saved under &quot;Past generations&quot; below — building the next module never erases or overwrites it.
           </p>
         </div>
+      )}
+
+      {assetType === "express_deck" && content && !loading && (
+        (() => {
+          const spoken = estimateSpeakingMinutes(parsePptOutline(content));
+          const target = expressMinutes(expressBrief);
+          const tooLong = spoken > target + 3;
+          const tooShort = spoken < target - 5;
+          return (
+            <div className="card-elevated mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4 text-sm">
+              <div>
+                <p>
+                  <span className="font-semibold">About {spoken} minutes to deliver</span>{" "}
+                  <span className="text-muted-foreground">(you have about {target})</span>
+                </p>
+                <p className={`text-xs ${tooLong || tooShort ? "text-amber-400" : "text-muted-foreground"}`}>
+                  {tooLong
+                    ? "Running long — ask “Add, remove, or change something” to tighten the speaker notes, or set fewer minutes and regenerate."
+                    : tooShort
+                      ? "Running short — leave room for questions, or ask “Add, remove, or change something” to expand the story slides."
+                      : "Timed to your slot at a relaxed speaking pace."}
+                </p>
+              </div>
+              <Button asChild size="sm">
+                <Link href={`/projects/${projectId}/generate/express_kit`}>Next: your Speaker Kit →</Link>
+              </Button>
+            </div>
+          );
+        })()
       )}
 
       {assetType === "webinar_outline" && content && (
@@ -2386,6 +2447,8 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             assetType === "vsl_script" ||
             assetType === "challenge_outline" ||
             assetType === "ppt_outline" ||
+            assetType === "express_deck" ||
+            assetType === "express_kit" ||
             MODULE_SCOPED_ASSET_TYPES.includes(assetType) ||
             DAY_SCOPED_ASSET_TYPES.includes(assetType)) &&
             generationId && (

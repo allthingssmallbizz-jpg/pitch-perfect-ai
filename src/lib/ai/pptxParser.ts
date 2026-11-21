@@ -10,6 +10,9 @@ export interface ParsedSlide {
   title: string;
   bullets: string[];
   notes: string;
+  // Pitch Perfect Express's "Visual idea:" line — design direction for whoever builds the slide
+  // (Copy for Gamma passes it along), never on-slide text and never spoken.
+  visual?: string;
 }
 
 const SLIDE_HEADING = /^#{0,4}\s*\*{0,2}\s*slide\s+(\d+)\s*[:.\-–]?\s*(.*?)\*{0,2}\s*$/i;
@@ -22,7 +25,7 @@ const SLIDE_HEADING = /^#{0,4}\s*\*{0,2}\s*slide\s+(\d+)\s*[:.\-–]?\s*(.*?)\*{
 // chart" buttons need this same classification client-side, kept in sync with the real export by
 // sharing this one function rather than a second copy of the regex.
 const SECTION_HEADING = /^(phase\s+\d+|day\s+\d+|part\s+\d+|module\s+\d+)\b/i;
-const CONTENT_LABEL = /^[-*]?\s*\*{0,2}\s*on-slide content\*{0,2}\s*[:.]?\s*(.*)$/i;
+const CONTENT_LABEL = /^[-*]?\s*\*{0,2}\s*on-slide content\*{0,2}\s*[:.]?\s*\*{0,2}\s*(.*)$/i;
 // Also matches a bare "Notes:" label, not just "Speaker notes" — a real deck that had gone
 // through several "Add, remove, or change something" edit passes (each one echoing the entire
 // 60-90 slide document back) came back using the shorter "Notes:" label instead, which this
@@ -33,8 +36,9 @@ const CONTENT_LABEL = /^[-*]?\s*\*{0,2}\s*on-slide content\*{0,2}\s*[:.]?\s*(.*)
 // entirely, and, worse, leaking presenter-only text onto the visible slide in the real .pptx
 // export too. Matching "Notes" alone fixes both without needing the member to regenerate or
 // re-edit anything, since this re-parses the deck's existing stored markdown fresh every time.
-const NOTES_LABEL = /^[-*]?\s*\*{0,2}\s*(?:speaker'?s?\s+)?notes\*{0,2}\s*[:.]?\s*(.*)$/i;
+const NOTES_LABEL = /^[-*]?\s*\*{0,2}\s*(?:speaker'?s?\s+)?notes\*{0,2}\s*[:.]?\s*\*{0,2}\s*(.*)$/i;
 const BULLET_LINE = /^\s*[-*•]\s+(.*)$/;
+const VISUAL_LABEL = /^[-*]?\s*\*{0,2}\s*visual(?:\s+(?:idea|direction|suggestion|recommendation))?\*{0,2}\s*[:.]\s*\*{0,2}\s*(.*)$/i;
 const SEPARATOR_LINE = /^-{3,}$/;
 
 // Reported: Read Aloud "jumping around" throughout a whole deck, heard as an abrupt, unrelated
@@ -85,7 +89,7 @@ export function classifySlideLayout(index: number, total: number, title: string)
 export function parsePptOutline(markdown: string): ParsedSlide[] {
   const slides: ParsedSlide[] = [];
   let current: ParsedSlide | null = null;
-  let mode: "content" | "notes" | null = null;
+  let mode: "content" | "notes" | "visual" | null = null;
 
   function pushCurrent() {
     if (current && (current.title || current.bullets.length || current.notes)) slides.push(current);
@@ -109,6 +113,12 @@ export function parsePptOutline(markdown: string): ParsedSlide[] {
     if (!current) continue;
     if (STRUCTURAL_DIVIDER_LINE.test(line.trim())) continue;
 
+    const visual = line.match(VISUAL_LABEL);
+    if (visual) {
+      mode = "visual";
+      if (visual[1].trim()) current.visual = visual[1].replace(/\*+$/, "").trim();
+      continue;
+    }
     const content = line.match(CONTENT_LABEL);
     if (content) {
       mode = "content";
@@ -119,6 +129,11 @@ export function parsePptOutline(markdown: string): ParsedSlide[] {
     if (notes) {
       mode = "notes";
       if (notes[1].trim()) current.notes = notes[1].trim();
+      continue;
+    }
+    // Continuation lines of a visual idea stay with it — never on the slide, never spoken.
+    if (mode === "visual" && line.trim() && !BULLET_LINE.test(line)) {
+      current.visual = current.visual ? `${current.visual} ${line.trim()}` : line.trim();
       continue;
     }
     const bullet = line.match(BULLET_LINE);

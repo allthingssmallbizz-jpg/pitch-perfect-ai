@@ -17,6 +17,7 @@ import DuplicateProjectButton from "@/components/DuplicateProjectButton";
 import ProjectModeCard from "./ProjectModeCard";
 import DiscoveryWalkthroughVideo from "@/components/DiscoveryWalkthroughVideo";
 import ToolLink from "./ToolLink";
+import PresentationTypeChooser from "./PresentationTypeChooser";
 import RoadmapSection from "./RoadmapSection";
 import DiscoveryEntry from "./DiscoveryEntry";
 import { getCurrentBlueprint } from "@/lib/strategy/server";
@@ -159,6 +160,9 @@ export default async function ProjectPage({
       {/* Demo mode exists only for template projects; a member's own project is always Live. */}
       {project.from_template && <ProjectModeCard projectId={project.id} isDemo={Boolean(project.is_demo)} />}
 
+      <PresentationTypeChooser projectId={project.id} />
+
+      <div id="roadmap" className="scroll-mt-20" />
       <RoadmapSection
         projectId={project.id}
         completeGenerations={completeGenerations ?? []}

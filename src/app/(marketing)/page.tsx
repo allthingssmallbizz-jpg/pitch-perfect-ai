@@ -19,6 +19,8 @@ const AGENT_ORDER: AgentAssetType[] = [
   "email_sequence",
   "ppt_outline",
   "webinar_script",
+  "express_deck",
+  "express_kit",
   "ad_copy",
   "offer_ladder",
   "course_outline",

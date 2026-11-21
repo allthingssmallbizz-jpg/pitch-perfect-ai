@@ -20,6 +20,9 @@ import { canCreateBioProfile } from "@/lib/ai/presenterBio";
 function projectDestination(projectId: string, type: string | null): string {
   const isValidIntent =
     type === "presentation_analysis" || type === "ad_image" || (type && (ASSET_TYPES as string[]).includes(type));
+  // Pitch Perfect Express has its own short intake on its page, so it skips the webinar Discovery
+  // brief entirely and goes straight there.
+  if (type === "express_deck" || type === "express_kit") return `/projects/${projectId}/generate/express_deck`;
   return isValidIntent ? `/projects/${projectId}?intent=${type}` : `/projects/${projectId}`;
 }
 
@@ -80,6 +83,9 @@ export async function createProject(_prevState: unknown, formData: FormData) {
   const destination = projectDestination(data.id, type);
   // A brand-new project's bio is empty — send them to fill it in first, same returnTo convention
   // used everywhere else this bio work touches (updatePresenterBio, the generate-page redirects).
+  // Pitch Perfect Express asks about the presenter conversationally in its own intake, so it goes
+  // straight there; the full Bio is still asked for later by any webinar agent that needs it.
+  if (type === "express_deck" || type === "express_kit") redirect(destination);
   redirect(`/bio/${newProfile.id}?returnTo=${encodeURIComponent(destination)}`);
 }
 

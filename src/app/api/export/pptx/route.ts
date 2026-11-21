@@ -20,7 +20,7 @@ export const runtime = "nodejs";
 // uses the identical "Slide #: Title" / "On-slide content" / "Speaker notes" labels parsePptOutline
 // expects (see courseModuleSlides.ts and challengeDaySlides.ts), so no separate parser or deck
 // builder was needed, just letting these asset types through the check below.
-const PPTX_EXPORTABLE_ASSET_TYPES = ["ppt_outline", "course_module_slides", "challenge_day_slides"];
+const PPTX_EXPORTABLE_ASSET_TYPES = ["ppt_outline", "course_module_slides", "challenge_day_slides", "express_deck"];
 
 export async function GET(req: NextRequest) {
   const generationId = req.nextUrl.searchParams.get("generationId");
@@ -134,7 +134,9 @@ export async function GET(req: NextRequest) {
       ? "course-module-slides.pptx"
       : generation.asset_type === "challenge_day_slides"
         ? "challenge-day-slides.pptx"
-        : "powerpoint-outline.pptx";
+        : generation.asset_type === "express_deck"
+          ? "pitch-perfect-express.pptx"
+          : "powerpoint-outline.pptx";
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

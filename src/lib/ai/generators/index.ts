@@ -31,6 +31,15 @@ import {
   CHALLENGE_DAY_SLIDES_CONTINUATION_HINT,
 } from "./challengeDaySlides";
 import {
+  buildExpressDeckPrompt,
+  EXPRESS_DECK_CREDIT_COST,
+  EXPRESS_DECK_MAX_OUTPUT_TOKENS,
+  EXPRESS_DECK_CONTINUATION_HINT,
+  isExpressDeckIncomplete,
+} from "./expressDeck";
+import { buildExpressKitPrompt, EXPRESS_KIT_CREDIT_COST, EXPRESS_KIT_MAX_OUTPUT_TOKENS } from "./expressKit";
+import type { ExpressBrief } from "@/lib/express";
+import {
   buildWebinarScriptPrompt,
   WEBINAR_SCRIPT_CREDIT_COST,
   WEBINAR_SCRIPT_MAX_OUTPUT_TOKENS,
@@ -122,6 +131,9 @@ type BuildPromptExtra = {
   challengeOutlineFullContent?: string;
   includePitch?: boolean;
   isFinalDay?: boolean;
+  // Pitch Perfect Express only — the presentation's intake brief (the room, the goal, the offer,
+  // the time available). The Speaker Kit gets the brief its source presentation was built from.
+  expressBrief?: ExpressBrief | null;
 };
 
 export interface AssetGenerator {
@@ -252,6 +264,28 @@ export const ASSET_GENERATORS: Record<GeneratorAssetType, AssetGenerator> = {
       ),
     isOutputIncomplete: isChallengeDaySlidesIncomplete,
     continuationHint: CHALLENGE_DAY_SLIDES_CONTINUATION_HINT,
+  },
+  express_deck: {
+    assetType: "express_deck",
+    label: "Pitch Perfect Express™ Presentation",
+    description:
+      "A 10-25 slide presentation for meetings, speaking slots, group leaders, and decision-makers — built around one clear next step, with the spoken script in the speaker notes.",
+    creditCost: EXPRESS_DECK_CREDIT_COST,
+    maxOutputTokens: EXPRESS_DECK_MAX_OUTPUT_TOKENS,
+    // Each Express presentation is built fresh from its own brief, not from earlier generations.
+    buildPrompt: (project, _priorGenerations, extra) => buildExpressDeckPrompt(project, extra?.expressBrief ?? undefined),
+    isOutputIncomplete: (content, extra) => isExpressDeckIncomplete(content, extra?.expressBrief ?? undefined),
+    continuationHint: EXPRESS_DECK_CONTINUATION_HINT,
+  },
+  express_kit: {
+    assetType: "express_kit",
+    label: "Express Speaker Kit",
+    description:
+      "Your host introduction, speaker bio, word-for-word close, answers to hesitations, and follow-up emails and texts — built from your Express presentation.",
+    creditCost: EXPRESS_KIT_CREDIT_COST,
+    maxOutputTokens: EXPRESS_KIT_MAX_OUTPUT_TOKENS,
+    buildPrompt: (project, _priorGenerations, extra) =>
+      buildExpressKitPrompt(project, extra?.sourceDeckContent, extra?.expressBrief),
   },
   webinar_script: {
     assetType: "webinar_script",
