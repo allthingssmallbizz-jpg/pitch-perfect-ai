@@ -576,6 +576,67 @@ export default function GenerateClient({
     express?.defaults ? fitExpressBrief(express.defaults) : emptyExpressBrief()
   );
   const expressMissing = assetType === "express_deck" ? missingExpressFields(expressBrief) : [];
+  // Express answers are never lost: every change is kept in this browser right away and saved to
+  // the member's account a moment after they stop typing (plus a Save button and a save on
+  // Generate). A browser copy that never reached the account is restored on the next visit.
+  const [expressSave, setExpressSave] = useState<"idle" | "unsaved" | "saving" | "saved" | "local">("idle");
+  const [expressRestored, setExpressRestored] = useState(false);
+  const expressDraftKey = `pp-express-draft:${projectId}`;
+  async function saveExpressBrief(brief: ExpressBrief) {
+    setExpressSave("saving");
+    try {
+      const res = await fetch(`/api/projects/${projectId}/express-brief`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brief }),
+      });
+      if (!res.ok) throw new Error();
+      try {
+        // Only mark the browser copy as saved if nothing newer was typed while this save ran —
+        // otherwise the newer answers stay flagged as unsaved until their own save lands.
+        const current = JSON.parse(window.localStorage.getItem(expressDraftKey) ?? "null") as { brief?: unknown } | null;
+        if (!current || JSON.stringify(current.brief) === JSON.stringify(brief)) {
+          window.localStorage.setItem(expressDraftKey, JSON.stringify({ brief, savedToAccount: true }));
+        }
+      } catch {
+        // Storage unavailable — the account copy is what matters.
+      }
+      setExpressSave("saved");
+    } catch {
+      setExpressSave("local");
+    }
+  }
+  const saveExpressBriefSoon = useDebouncedCallback(saveExpressBrief, 1200);
+  function updateExpressBrief(next: ExpressBrief) {
+    setExpressBrief(next);
+    setExpressSave("unsaved");
+    try {
+      window.localStorage.setItem(expressDraftKey, JSON.stringify({ brief: next, savedToAccount: false }));
+    } catch {
+      // Storage unavailable (private mode) — the account save below still runs.
+    }
+    saveExpressBriefSoon(next);
+  }
+  useEffect(() => {
+    if (assetType !== "express_deck") return;
+    try {
+      const raw = window.localStorage.getItem(expressDraftKey);
+      const stored = raw ? (JSON.parse(raw) as { brief?: unknown; savedToAccount?: boolean }) : null;
+      if (stored && !stored.savedToAccount && stored.brief) {
+        const draft = fitExpressBrief({ ...emptyExpressBrief(), ...(stored.brief as Partial<ExpressBrief>) });
+        // Restoring answers typed on this device that never reached the account (the tab closed
+        // or a save failed) — read after mount so the first render matches the server's.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setExpressBrief(draft);
+        setExpressRestored(true);
+        void saveExpressBrief(draft);
+      }
+    } catch {
+      // Unreadable local copy — the saved account copy is already on screen.
+    }
+    // Runs once per page load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const expressKitBlocked = assetType === "express_kit" && !express?.hasDeck;
   // Read after mount, not in the initializer, so the server-rendered HTML and the first client
   // render agree (sessionStorage doesn't exist on the server).
@@ -1010,6 +1071,7 @@ export default function GenerateClient({
       toast.error("Say which day to build slides for first.");
       return;
     }
+    if (assetType === "express_deck") void saveExpressBrief(expressBrief);
     if (expressMissing.length) {
       toast.error(`Fill in ${expressMissing.join(", ")} first.`);
       return;
@@ -1782,7 +1844,14 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           </div>
         )}
       {assetType === "express_deck" && (
-        <ExpressBriefForm brief={expressBrief} onChange={setExpressBrief} disabled={loading} />
+        <ExpressBriefForm
+          brief={expressBrief}
+          onChange={updateExpressBrief}
+          disabled={loading}
+          saveStatus={expressSave}
+          restored={expressRestored}
+          onSave={() => saveExpressBrief(expressBrief)}
+        />
       )}
       {expressKitBlocked && (
         <div className="card-elevated mb-4 rounded-2xl p-5 text-sm">

@@ -214,6 +214,8 @@ export type Project = {
   is_demo: boolean;
   // Created from a template (0053_from_template.sql) — the only projects that can use Demo mode.
   from_template: boolean;
+  // Pitch Perfect Express intake answers, saved as the member types (0056_express_brief_draft.sql).
+  express_brief: unknown;
   created_at: string;
   updated_at: string;
   // Soft-delete marker — null while active. "Delete project" sets this instead of removing the

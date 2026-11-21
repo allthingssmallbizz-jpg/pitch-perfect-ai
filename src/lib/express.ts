@@ -143,3 +143,25 @@ export function parseStoredExpressBrief(raw: string | null | undefined): Express
     return null;
   }
 }
+
+// Reads saved intake answers leniently — a half-finished draft (blank answers) is still a draft
+// worth restoring, unlike a brief that's about to be generated from.
+export function coerceExpressDraft(raw: unknown): ExpressBrief | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const text = (k: ExpressTextField) => (typeof r[k] === "string" ? (r[k] as string).slice(0, EXPRESS_FIELD_LIMITS[k]) : "");
+  const draft: ExpressBrief = {
+    format: r.format === "quick" || r.format === "authority" ? r.format : "persuasive",
+    minutes: typeof r.minutes === "number" && r.minutes >= 3 && r.minutes <= 120 ? Math.round(r.minutes) : null,
+    audienceType: r.audienceType === "one" || r.audienceType === "room" ? r.audienceType : "small_group",
+    setting: text("setting"),
+    audience: text("audience"),
+    problem: text("problem"),
+    goal: text("goal"),
+    offer: text("offer"),
+    proof: text("proof"),
+    aboutYou: text("aboutYou"),
+  };
+  const hasAnything = (Object.keys(EXPRESS_FIELD_LIMITS) as ExpressTextField[]).some((k) => draft[k].trim());
+  return hasAnything ? draft : null;
+}

@@ -1,5 +1,7 @@
 "use client";
 
+import { Save } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -77,20 +79,42 @@ function Question({
   );
 }
 
+const SAVE_LABELS: Record<string, { text: string; className: string }> = {
+  idle: { text: "Your answers save automatically.", className: "text-muted-foreground" },
+  unsaved: { text: "Saving shortly…", className: "text-muted-foreground" },
+  saving: { text: "Saving…", className: "text-muted-foreground" },
+  saved: { text: "Saved ✓", className: "text-emerald-400" },
+  local: {
+    text: "Saved on this device — couldn't reach your account. We'll keep trying; you can also press Save.",
+    className: "text-amber-400",
+  },
+};
+
 export default function ExpressBriefForm({
   brief,
   onChange,
   disabled = false,
+  saveStatus = "idle",
+  restored = false,
+  onSave,
 }: {
   brief: ExpressBrief;
   onChange: (next: ExpressBrief) => void;
   disabled?: boolean;
+  saveStatus?: "idle" | "unsaved" | "saving" | "saved" | "local";
+  restored?: boolean;
+  onSave?: () => void;
 }) {
   const set = <K extends keyof ExpressBrief>(key: K, value: ExpressBrief[K]) => onChange({ ...brief, [key]: value });
   const slides = expressSlideTarget(brief);
 
   return (
     <fieldset disabled={disabled} className="card-elevated mb-4 space-y-5 rounded-2xl p-5">
+      {restored && (
+        <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+          We restored answers you typed earlier that hadn&apos;t been saved yet — check them below.
+        </p>
+      )}
       <div>
         <p className="font-display text-base font-semibold">What kind of presentation is this?</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
@@ -224,6 +248,15 @@ export default function ExpressBriefForm({
         rows={3}
         placeholder="e.g. I've planned group trips for 12 years. I started after organizing my own church's first cruise and loved seeing everyone so happy."
       />
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-4">
+        <p className={`text-xs ${SAVE_LABELS[saveStatus].className}`}>{SAVE_LABELS[saveStatus].text}</p>
+        {onSave && (
+          <Button type="button" size="sm" variant="outline" onClick={onSave} disabled={saveStatus === "saving"}>
+            <Save className="mr-1.5 h-3.5 w-3.5" />
+            Save my answers
+          </Button>
+        )}
+      </div>
     </fieldset>
   );
 }

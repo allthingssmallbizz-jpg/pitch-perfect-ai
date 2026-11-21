@@ -20,7 +20,7 @@ import { getCurrentBlueprint, hashStrategyFields } from "@/lib/strategy/server";
 import { extractStrategyFields } from "@/lib/strategy/fields";
 import { STRATEGY_GATED_ASSET_TYPES } from "@/lib/strategy/schema";
 import { isOpenCritical, type Blueprint } from "@/lib/strategy/blueprint";
-import { emptyExpressBrief, parseStoredExpressBrief, type ExpressBrief } from "@/lib/express";
+import { coerceExpressDraft, emptyExpressBrief, parseStoredExpressBrief, type ExpressBrief } from "@/lib/express";
 
 // Your Webinar (Agent Polly) and its Script (Agent Winnie) are a closely linked pair — a member
 // stepping away and coming back needs to tell at a glance which one they'd landed on. This is a
@@ -129,7 +129,8 @@ export default async function GenerateAssetPage({
       .maybeSingle();
     hasExpressDeck = Boolean(lastDeck);
     if (generator.assetType === "express_deck") {
-      expressDefaults = parseStoredExpressBrief(lastDeck?.input_content);
+      // Saved answers (auto-saved as the member types) come first — they're the newest.
+      expressDefaults = coerceExpressDraft(project.express_brief) ?? parseStoredExpressBrief(lastDeck?.input_content);
       if (!expressDefaults) {
         const { data: bioForDefaults } = project.presenter_bio_profile_id
           ? await supabase
