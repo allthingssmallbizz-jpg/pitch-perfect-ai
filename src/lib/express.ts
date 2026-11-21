@@ -41,20 +41,59 @@ export const EXPRESS_AUDIENCE_TYPES = {
 } as const;
 export type ExpressAudienceType = keyof typeof EXPRESS_AUDIENCE_TYPES;
 
-const field = (max: number) => z.string().trim().max(max);
+// Generous limits — answers pre-filled from Discovery or the Bio can be long. The form stops typing
+// at these and shows a counter, so a member never hits a confusing error on Generate.
+export const EXPRESS_FIELD_LIMITS = {
+  setting: 1000,
+  audience: 4000,
+  problem: 4000,
+  goal: 2000,
+  offer: 4000,
+  proof: 5000,
+  aboutYou: 4000,
+} as const;
+export type ExpressTextField = keyof typeof EXPRESS_FIELD_LIMITS;
+
+export const EXPRESS_FIELD_QUESTIONS: Record<ExpressTextField, string> = {
+  setting: "Where are you presenting, and to whom?",
+  audience: "Who will be in the room, and what matters to them?",
+  problem: "What problem or opportunity will make them pay attention?",
+  goal: "What do you want them to do at the end?",
+  offer: "What are you inviting them to consider?",
+  proof: "What proof do you have?",
+  aboutYou: "Tell us about you, in your own words",
+};
+
+const field = (key: ExpressTextField) =>
+  z
+    .string()
+    .trim()
+    .max(
+      EXPRESS_FIELD_LIMITS[key],
+      `“${EXPRESS_FIELD_QUESTIONS[key]}” is too long — please keep it under ${EXPRESS_FIELD_LIMITS[key].toLocaleString()} characters.`
+    );
 
 export const expressBriefSchema = z.object({
   format: z.enum(["quick", "persuasive", "authority"]).default("persuasive"),
   minutes: z.number().int().min(3).max(120).nullable().default(null),
-  setting: field(500).min(3, "Say where you're presenting and to whom."),
+  setting: field("setting").min(3, "Say where you're presenting and to whom."),
   audienceType: z.enum(["one", "small_group", "room"]).default("small_group"),
-  audience: field(1500).min(3, "Describe who will be in the room."),
-  problem: field(1500).min(3, "Describe the problem or opportunity that will make them pay attention."),
-  goal: field(500).min(3, "Say what you want them to do at the end."),
-  offer: field(1500).min(3, "Describe what you're inviting them to consider."),
-  proof: field(2000).default(""),
-  aboutYou: field(2000).min(3, "Tell us a little about yourself."),
+  audience: field("audience").min(3, "Describe who will be in the room."),
+  problem: field("problem").min(3, "Describe the problem or opportunity that will make them pay attention."),
+  goal: field("goal").min(3, "Say what you want them to do at the end."),
+  offer: field("offer").min(3, "Describe what you're inviting them to consider."),
+  proof: field("proof").default(""),
+  aboutYou: field("aboutYou").min(3, "Tell us a little about yourself."),
 });
+
+// Pre-filled answers are cut to fit, so a long Discovery answer never blocks Generate.
+export function fitExpressBrief(brief: ExpressBrief): ExpressBrief {
+  const next = { ...brief };
+  for (const key of Object.keys(EXPRESS_FIELD_LIMITS) as ExpressTextField[]) {
+    next[key] = (next[key] ?? "").slice(0, EXPRESS_FIELD_LIMITS[key]);
+  }
+  return next;
+}
 export type ExpressBrief = z.infer<typeof expressBriefSchema>;
 
 export function emptyExpressBrief(): ExpressBrief {

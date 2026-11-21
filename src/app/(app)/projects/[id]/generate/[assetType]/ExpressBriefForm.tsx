@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   EXPRESS_AUDIENCE_TYPES,
+  EXPRESS_FIELD_LIMITS,
   EXPRESS_FORMATS,
   expressSlideTarget,
   type ExpressAudienceType,
@@ -27,12 +28,23 @@ export function missingExpressFields(brief: ExpressBrief): string[] {
   return EXPRESS_REQUIRED.filter(({ key }) => String(brief[key] ?? "").trim().length < 3).map((f) => f.label);
 }
 
+// Shows a count once an answer gets near its limit; the box itself stops at the limit.
+function LengthNote({ value, max }: { value: string; max: number }) {
+  if (value.length < max * 0.8) return null;
+  return (
+    <p className={`mt-0.5 text-right text-[11px] ${value.length >= max ? "text-amber-400" : "text-muted-foreground"}`}>
+      {value.length.toLocaleString()} / {max.toLocaleString()} characters
+    </p>
+  );
+}
+
 function Question({
   label,
   hint,
   value,
   onChange,
   placeholder,
+  max,
   rows = 2,
   optional = false,
 }: {
@@ -41,6 +53,7 @@ function Question({
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  max: number;
   rows?: number;
   optional?: boolean;
 }) {
@@ -51,7 +64,15 @@ function Question({
         {optional ? <span className="font-normal text-muted-foreground"> (optional)</span> : <span className="text-primary"> *</span>}
       </label>
       {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
-      <Textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={rows} className="mt-1 text-sm" />
+      <Textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value.slice(0, max))}
+        maxLength={max}
+        placeholder={placeholder}
+        rows={rows}
+        className="mt-1 text-sm"
+      />
+      <LengthNote value={value} max={max} />
     </div>
   );
 }
@@ -145,22 +166,26 @@ export default function ExpressBriefForm({
         <Input
           id="express-setting"
           value={brief.setting}
-          onChange={(e) => set("setting", e.target.value)}
+          onChange={(e) => set("setting", e.target.value.slice(0, EXPRESS_FIELD_LIMITS.setting))}
+          maxLength={EXPRESS_FIELD_LIMITS.setting}
           placeholder="e.g. Women's ministry leaders at First Baptist Church · Chamber of Commerce lunch · A meeting with the HR director at Acme"
           className="mt-1"
         />
+        <LengthNote value={brief.setting} max={EXPRESS_FIELD_LIMITS.setting} />
       </div>
 
       <Question
         label="Who will be in the room, and what matters to them?"
         value={brief.audience}
         onChange={(v) => set("audience", v)}
+        max={EXPRESS_FIELD_LIMITS.audience}
         placeholder="e.g. Church organizers who plan trips for 20-60 members. They care about everyone having a great time and not getting stuck doing all the work."
       />
       <Question
         label="What problem or opportunity will make them pay attention?"
         value={brief.problem}
         onChange={(v) => set("problem", v)}
+        max={EXPRESS_FIELD_LIMITS.problem}
         placeholder="e.g. Coordinating travel for a big group is stressful — payments, rooms, schedules, and last-minute changes."
       />
       <Question
@@ -168,6 +193,7 @@ export default function ExpressBriefForm({
         hint="Book a call, schedule a meeting, request an offer, sign up, approve a proposal…"
         value={brief.goal}
         onChange={(v) => set("goal", v)}
+        max={EXPRESS_FIELD_LIMITS.goal}
         placeholder="e.g. Agree to explore a group trip and pick a date for a planning call."
       />
       <Question
@@ -175,6 +201,7 @@ export default function ExpressBriefForm({
         hint="Your service or offer, and the price or terms if you'll mention them."
         value={brief.offer}
         onChange={(v) => set("offer", v)}
+        max={EXPRESS_FIELD_LIMITS.offer}
         rows={3}
         placeholder="e.g. I plan and coordinate the whole trip — booking, payments, rooming lists, and day-of support. No cost to the organizer."
       />
@@ -183,6 +210,7 @@ export default function ExpressBriefForm({
         hint="Results, client stories, testimonials, experience. Leave it blank if you don't have any yet — we'll build credibility from your experience and process, never invented results."
         value={brief.proof}
         onChange={(v) => set("proof", v)}
+        max={EXPRESS_FIELD_LIMITS.proof}
         rows={2}
         optional
       />
@@ -191,6 +219,7 @@ export default function ExpressBriefForm({
         hint="Who you are, what you do, how long you've done it, and why you care about this audience. Don't polish it — we'll turn it into your introduction."
         value={brief.aboutYou}
         onChange={(v) => set("aboutYou", v)}
+        max={EXPRESS_FIELD_LIMITS.aboutYou}
         rows={3}
         placeholder="e.g. I've planned group trips for 12 years. I started after organizing my own church's first cruise and loved seeing everyone so happy."
       />

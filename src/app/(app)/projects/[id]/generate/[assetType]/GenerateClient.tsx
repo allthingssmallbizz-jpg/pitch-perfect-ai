@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CRITICAL_RISK_EXPLANATION } from "@/lib/strategy/blueprint";
 import AgentAtWork from "@/components/AgentAtWork";
 import ExpressBriefForm, { missingExpressFields } from "./ExpressBriefForm";
-import { emptyExpressBrief, estimateSpeakingMinutes, expressMinutes, type ExpressBrief } from "@/lib/express";
+import { emptyExpressBrief, estimateSpeakingMinutes, expressMinutes, fitExpressBrief, type ExpressBrief } from "@/lib/express";
 import { AGENTS, getAgent } from "@/lib/agents/config";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
@@ -572,7 +572,9 @@ export default function GenerateClient({
   // this browser tab only, so the choice is made consciously each session rather than forever.
   const strategySkipKey = `pp-strategy-skip:${projectId}`;
   const [skipStrategy, setSkipStrategy] = useState(false);
-  const [expressBrief, setExpressBrief] = useState<ExpressBrief>(express?.defaults ?? emptyExpressBrief());
+  const [expressBrief, setExpressBrief] = useState<ExpressBrief>(
+    express?.defaults ? fitExpressBrief(express.defaults) : emptyExpressBrief()
+  );
   const expressMissing = assetType === "express_deck" ? missingExpressFields(expressBrief) : [];
   const expressKitBlocked = assetType === "express_kit" && !express?.hasDeck;
   // Read after mount, not in the initializer, so the server-rendered HTML and the first client
