@@ -50,7 +50,7 @@ import { getCurrentBlueprint } from "@/lib/strategy/server";
 import { applyApprovedFields } from "@/lib/strategy/fields";
 import { formatStrategyBlueprintBlock, type Blueprint } from "@/lib/strategy/blueprint";
 import { STRATEGY_GATED_ASSET_TYPES } from "@/lib/strategy/schema";
-import { expressBriefSchema, parseStoredExpressBrief, type ExpressBrief } from "@/lib/express";
+import { expressBriefSchema, fitExpressBrief, parseStoredExpressBrief, type ExpressBrief } from "@/lib/express";
 
 export const runtime = "nodejs";
 // Without this, the function is bound by the hosting plan's default timeout — on Vercel's free
@@ -142,7 +142,10 @@ export async function POST(req: NextRequest) {
   const isExpress = assetType === "express_deck" || assetType === "express_kit";
   let expressBrief: ExpressBrief | null = null;
   if (assetType === "express_deck") {
-    const parsedBrief = expressBriefSchema.safeParse(rawExpressBrief);
+    // Over-long answers are trimmed to fit instead of failing the whole request.
+    const parsedBrief = expressBriefSchema.safeParse(
+      rawExpressBrief && typeof rawExpressBrief === "object" ? fitExpressBrief(rawExpressBrief as Record<string, unknown>) : rawExpressBrief
+    );
     if (!parsedBrief.success) {
       return NextResponse.json(
         { error: parsedBrief.error.issues[0]?.message ?? "Fill in your presentation details first." },

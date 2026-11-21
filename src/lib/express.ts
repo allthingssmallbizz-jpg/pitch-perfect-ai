@@ -44,7 +44,7 @@ export type ExpressAudienceType = keyof typeof EXPRESS_AUDIENCE_TYPES;
 // Generous limits — answers pre-filled from Discovery or the Bio can be long. The form stops typing
 // at these and shows a counter, so a member never hits a confusing error on Generate.
 export const EXPRESS_FIELD_LIMITS = {
-  setting: 1000,
+  setting: 3000,
   audience: 4000,
   problem: 4000,
   goal: 2000,
@@ -86,11 +86,13 @@ export const expressBriefSchema = z.object({
   aboutYou: field("aboutYou").min(3, "Tell us a little about yourself."),
 });
 
-// Pre-filled answers are cut to fit, so a long Discovery answer never blocks Generate.
-export function fitExpressBrief(brief: ExpressBrief): ExpressBrief {
+// Long answers are trimmed to fit rather than rejected — a too-long answer should never block
+// Generate. Used on pre-filled answers in the form and on everything the server receives.
+export function fitExpressBrief<T extends Partial<Record<ExpressTextField, unknown>>>(brief: T): T {
   const next = { ...brief };
   for (const key of Object.keys(EXPRESS_FIELD_LIMITS) as ExpressTextField[]) {
-    next[key] = (next[key] ?? "").slice(0, EXPRESS_FIELD_LIMITS[key]);
+    const value = next[key];
+    if (typeof value === "string") (next as Record<string, unknown>)[key] = value.trim().slice(0, EXPRESS_FIELD_LIMITS[key]);
   }
   return next;
 }

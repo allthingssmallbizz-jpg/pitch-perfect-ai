@@ -163,13 +163,14 @@ export default function ExpressBriefForm({
         <label className="text-sm font-medium" htmlFor="express-setting">
           Where are you presenting, and to whom? <span className="text-primary">*</span>
         </label>
-        <Input
+        <Textarea
           id="express-setting"
           value={brief.setting}
           onChange={(e) => set("setting", e.target.value.slice(0, EXPRESS_FIELD_LIMITS.setting))}
           maxLength={EXPRESS_FIELD_LIMITS.setting}
+          rows={2}
           placeholder="e.g. Women's ministry leaders at First Baptist Church · Chamber of Commerce lunch · A meeting with the HR director at Acme"
-          className="mt-1"
+          className="mt-1 text-sm"
         />
         <LengthNote value={brief.setting} max={EXPRESS_FIELD_LIMITS.setting} />
       </div>
