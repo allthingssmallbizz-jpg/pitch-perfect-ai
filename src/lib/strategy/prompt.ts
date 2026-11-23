@@ -5,6 +5,23 @@
 
 import { STRATEGY_CATEGORIES, PRESENTATION_FRAMEWORKS } from "./schema";
 import { STRATEGY_FIELD_GROUPS, type StrategyFields } from "./fields";
+import { checkBasisMath, isValueBasisType, VALUE_BASIS_TYPES } from "@/lib/valueBasis";
+
+// The software's own read of every priced item — category, basis, and the verified arithmetic of
+// any rate × quantity basis — so the review judges values on correct math.
+function formatValueBasisChecks(fields: StrategyFields): string {
+  const rows = [
+    ...fields.stack_items.map((item, i) => ({ id: `stack_items[${i}]`, kind: item.category === "bonus" ? "Bonus" : "Stack item", item })),
+    ...fields.fast_action_bonuses.map((item, i) => ({ id: `fast_action_bonuses[${i}]`, kind: "Fast action bonus", item })),
+  ].filter((r) => r.item.name?.trim() || r.item.value?.trim());
+  if (!rows.length) return "";
+  const lines = rows.map(({ id, kind, item }) => {
+    const type = isValueBasisType(item.basis_type) ? VALUE_BASIS_TYPES[item.basis_type] : null;
+    const math = checkBasisMath(item.value, item.basis);
+    return `- ${id} — ${kind} "${item.name || "(unnamed)"}": assigned value ${item.value || "(none)"}; basis category: ${type?.label ?? "(not chosen)"}${type?.kind === "estimate" ? " (an estimate)" : ""}; basis: ${item.basis?.trim() ? "given" : "MISSING"}${math ? `; computed check: ${math.summary}` : ""}`;
+  });
+  return `\n\nVALUE BASIS CHECKS (computed by the software from the data above — the arithmetic is verified):\n${lines.join("\n")}`;
+}
 
 // JSON.stringify leaves "<" alone, so a member typing "</client_discovery>" could otherwise close
 // the data tag early. Unicode-escaping it keeps the JSON identical in meaning.
@@ -16,12 +33,12 @@ function fieldIdGuide(fields: StrategyFields): string {
   const lines = STRATEGY_FIELD_GROUPS.flatMap((g) => g.fields.map((f) => `- ${f.key}: ${f.label}`));
   fields.stack_items.forEach((item, i) => {
     lines.push(
-      `- stack_items[${i}].name / stack_items[${i}].value: ${item.category === "bonus" ? "Bonus" : "Stack item"} "${item.name}"`
+      `- stack_items[${i}].name / stack_items[${i}].value / stack_items[${i}].basis: ${item.category === "bonus" ? "Bonus" : "Stack item"} "${item.name}"`
     );
   });
   fields.fast_action_bonuses.forEach((item, i) => {
     lines.push(
-      `- fast_action_bonuses[${i}].name / .value / .condition: Fast action bonus "${item.name}"`
+      `- fast_action_bonuses[${i}].name / .value / .basis / .condition: Fast action bonus "${item.name}"`
     );
   });
   lines.push("- general: an issue that spans several fields (nothing to rewrite in one field)");
@@ -35,6 +52,15 @@ Non-negotiable rules:
 - Never fabricate anything: no testimonials, results, case studies, statistics, dates, capacities, values, credentials, or audience details that the client did not provide. When information is missing, say it is missing, ask for it, and use [brackets] in suggested rewrites for what the client must supply.
 - Never present a suggestion as a verified fact. Evidence status "verified" is only for claims where the client supplied a checkable source (a named publication, link, documented record). Anything the client simply states is "client_reported". Something you are suggesting is "proposed".
 - Don't invent urgency or exaggerate consequences. Don't manufacture retail values; a bonus value is only "supported" when discovery gives a defensible basis (an actual price it's sold at, its real delivery cost, a comparable market price the client named).
+- VALUE BASIS: every stack item, bonus, and fast action bonus can carry a "basis" — the client's own reason for its value (market value, their hourly rate, a comparable sale, what they charge for it on its own). Read it for every item and judge it:
+  • A specific, checkable basis that adds up (e.g. "my hourly rate $150 × 3 hours = $450", "sold on its own for $297", "comparable CPA consultation $250") supports the value — say so in that bonus's value_basis and count it in total_supported_value.
+  • A basis that doesn't add up (the math is wrong, or the value is far above what the basis supports) means the value isn't supported — recommend a corrected value on stack_items[i].value (or fast_action_bonuses[i].value) and explain the mismatch.
+  • Use the VALUE BASIS CHECKS block (computed by the software) for every rate × quantity calculation — trust its arithmetic over your own, and never call a value "conservative" or "inflated" when the computed check says otherwise. A value below its own calculation is a conservative value, which is fine; keep it.
+  • Evidence status per item (set offer_review.bonuses[].evidence_status): an actual standalone or historical selling price the client states is client_reported (verified only with a checkable source like a public price page); a comparable market value or customer-savings figure is proposed — an estimate — unless real supporting examples are given; an hourly-rate or cost calculation that adds up is client_reported; no basis is missing_evidence; a basis that contradicts the value is contradictory.
+  • Never reject or drop an item just because its basis is an estimate — flag its evidence status and say exactly what would make the valuation more credible (a link to comparable offers, a past invoice, a published rate card).
+  • Flag overlapping benefits: when two items deliver the same thing (or a bonus repeats part of the core offer), mark double_counted and recommend combining or removing one so the total isn't inflated.
+  • offer_review.bonuses must include one entry for EVERY stack item, bonus, and fast action bonus, using each item's exact name, so the client can see every value, its basis, and its evidence status. Never change an assigned value yourself — recommend a corrected value only as a suggestion the client can accept.
+  • A vague basis ("worth it," "industry standard," "priceless") or no basis at all means the value is unsupported — recommend adding one with field_id stack_items[i].basis (or fast_action_bonuses[i].basis), using [brackets] for the facts only the client knows, e.g. "[your hourly rate] × [hours] for this session." A large stated value with no basis at all is a misleading-value concern, not just a weakness.
 - Never double-count anything that is already part of the core offer.
 - Be fair. A strong, specific discovery deserves a strong assessment — don't invent problems to look thorough.
 - Write for a non-technical business owner: plain language, short sentences, no jargon.`;
@@ -62,6 +88,7 @@ ${fieldIdGuide(fields)}
 
 Return everything by calling the submit_strategy_review tool.`;
 
+  const basisChecks = formatValueBasisChecks(fields);
   const revisedNote = Object.keys(carriedRevisions).length
     ? `\n\nThe client already reviewed and accepted rewritten answers for these fields in an earlier review — the data above contains the accepted versions: ${Object.keys(carriedRevisions).join(", ")}.`
     : "";
@@ -72,7 +99,7 @@ ${asDataJson(fields)}
 
 <presenter_background>
 ${asDataJson(presenterBio ?? "(no presenter bio provided)")}
-</presenter_background>${revisedNote}
+</presenter_background>${revisedNote}${basisChecks}
 
 Review this strategy now.`;
 

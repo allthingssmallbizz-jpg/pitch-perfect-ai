@@ -165,8 +165,12 @@ export const strategyAnalysisSchema = z.object({
         value_basis: z.string().describe("Why the value is or isn't supportable."),
         eligibility: z.string().nullable(),
         availability: z.string().nullable(),
-        double_counted: z.boolean().describe("True if it's already part of the core offer."),
+        double_counted: z.boolean().describe("True if it's already part of the core offer, or overlaps another item's benefit."),
         verdict: z.enum(["keep", "revise", "drop"]),
+        // Optional so reviews saved before Value Basis existed still read correctly.
+        evidence_status: evidenceStatus
+          .optional()
+          .describe("Evidence status of this item's value, judged from its value basis (see VALUE BASIS rules)."),
       })
     ),
     total_supported_value: z.string().nullable().describe("Sum of only the supported values, or null if none are supportable."),

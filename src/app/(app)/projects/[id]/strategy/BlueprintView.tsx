@@ -1,4 +1,6 @@
 import type { Blueprint } from "@/lib/strategy/blueprint";
+import { EVIDENCE_LABELS } from "@/lib/strategy/schema";
+import { isValueBasisType, VALUE_BASIS_TYPES } from "@/lib/valueBasis";
 
 function Row({ n, label, children }: { n: number; label: string; children: React.ReactNode }) {
   return (
@@ -51,6 +53,13 @@ export default function BlueprintView({ blueprint: b }: { blueprint: Blueprint }
             {b.bonus_stack.map((x, i) => (
               <li key={i}>
                 {x.name} — {x.supported_value ?? <span className="text-muted-foreground">no supported dollar value (presented as an added benefit)</span>}
+                {x.member_basis && (
+                  <div className="text-xs text-muted-foreground">
+                    Value basis{x.basis_type && isValueBasisType(x.basis_type) ? ` (${VALUE_BASIS_TYPES[x.basis_type].label})` : ""}:{" "}
+                    {x.member_basis}
+                    {x.evidence_status ? ` · ${EVIDENCE_LABELS[x.evidence_status] ?? x.evidence_status}` : ""}
+                  </div>
+                )}
               </li>
             ))}
             {b.total_supported_value && <li className="font-medium">Total supported value: {b.total_supported_value}</li>}

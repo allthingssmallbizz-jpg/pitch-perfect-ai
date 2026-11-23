@@ -114,17 +114,23 @@ export function extractStrategyFields(project: Project): StrategyFields {
 export function serializeStrategyFields(fields: StrategyFields): string {
   const ordered: Record<string, unknown> = {};
   for (const key of STRATEGY_TEXT_FIELD_KEYS) ordered[key] = fields[key];
+  // `basis` is included only when filled in, so items without one hash exactly as they did before
+  // the field existed — adding the field never marks an existing review or approval "changed".
   ordered.stack_items = fields.stack_items.map((i) => ({
     name: i.name,
     value: i.value,
     category: i.category ?? "stack",
     image_path: i.image_path ?? null,
+    ...(i.basis?.trim() ? { basis: i.basis } : {}),
+    ...(i.basis_type ? { basis_type: i.basis_type } : {}),
   }));
   ordered.fast_action_bonuses = fields.fast_action_bonuses.map((i) => ({
     name: i.name,
     value: i.value,
     condition: i.condition,
     image_path: i.image_path ?? null,
+    ...(i.basis?.trim() ? { basis: i.basis } : {}),
+    ...(i.basis_type ? { basis_type: i.basis_type } : {}),
   }));
   return JSON.stringify(ordered);
 }
@@ -132,7 +138,7 @@ export function serializeStrategyFields(fields: StrategyFields): string {
 // A recommendation can target a plain text field ("audience") or one part of one stack item /
 // fast action bonus ("stack_items[2].value"). "general" covers issues that span several fields;
 // those are advisory and have nothing to apply.
-const ITEM_FIELD = /^(stack_items|fast_action_bonuses)\[(\d+)\]\.(name|value|condition)$/;
+const ITEM_FIELD = /^(stack_items|fast_action_bonuses)\[(\d+)\]\.(name|value|basis|condition)$/;
 
 export function isKnownFieldId(fieldId: string, fields: StrategyFields): boolean {
   if (fieldId === "general") return true;
@@ -190,7 +196,8 @@ export function getFieldLabel(fields: StrategyFields, fieldId: string): string {
         : (item as StackItem | undefined)?.category === "bonus"
           ? "Bonus"
           : "Stack item";
-    const part = m[3] === "value" ? "value" : m[3] === "condition" ? "qualifying condition" : "name";
+    const part =
+      m[3] === "value" ? "value" : m[3] === "basis" ? "value basis" : m[3] === "condition" ? "qualifying condition" : "name";
     return `${kind} "${item?.name || `#${Number(m[2]) + 1}`}" — ${part}`;
   }
   return fieldId;

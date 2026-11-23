@@ -21,6 +21,15 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { parseMoney, formatMoney } from "@/lib/ai/generators/shared";
+import {
+  checkBasisMath,
+  findBasisInNotes,
+  isValueBasisType,
+  needsValueBasis,
+  valueBasisQuestion,
+  VALUE_BASIS_TYPES,
+  type ValueBasisType,
+} from "@/lib/valueBasis";
 import DiscoveryAssistDialog, { type AssistTarget } from "@/components/DiscoveryAssistDialog";
 import WebsiteImportDialog from "@/components/WebsiteImportDialog";
 import OfferBuilderDialog from "@/components/OfferBuilderDialog";
@@ -28,6 +37,7 @@ import DeleteProjectButton from "@/components/DeleteProjectButton";
 import WhyThisMatters from "@/components/WhyThisMatters";
 import { FUNNEL_TYPES, type FunnelType } from "@/lib/funnelType";
 import { useFormDraft } from "@/hooks/useFormDraft";
+import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 
 const AWARENESS_LEVELS = ["Unaware", "Problem-Aware", "Solution-Aware", "Product-Aware", "Most Aware"];
 
@@ -286,6 +296,170 @@ function ItemImageSlot({ path, onChange }: { path?: string; onChange: (path: str
 // One name+value row, reused for both the Stack Items and Bonuses groups below — the only
 // difference between the two groups is the `category` tag stamped onto new rows and the copy
 // around them, so one small presentational component covers both instead of two near-duplicates.
+// Value Basis — beside every dollar value: the category of reasoning plus the member's own
+// explanation ("why is this item worth the amount assigned to it?"). Never changes the value
+// itself. Non-blocking: an item with no basis shows "Basis Needed" but stays fully usable. The
+// Strategy Review reads both (see lib/strategy/prompt.ts), and the math in an hourly/monthly basis
+// is checked here by the software (checkBasisMath).
+// The offer stack auto-saves on its own (see DiscoveryForm's queueOfferStackSave) so a value basis
+// is never lost while the rest of Discovery is still being filled in.
+type OfferStackSave = "idle" | "saving" | "saved" | "error";
+const OfferStackSaveContext = createContext<OfferStackSave>("idle");
+
+function OfferStackSaveStatus() {
+  const status = useContext(OfferStackSaveContext);
+  if (status === "idle") return null;
+  return (
+    <p className={`mt-0.5 text-xs ${status === "error" ? "text-amber-400" : status === "saved" ? "text-emerald-400" : "text-muted-foreground"}`}>
+      {status === "saving"
+        ? "Saving your offer stack…"
+        : status === "saved"
+          ? "Offer stack saved ✓"
+          : "Couldn't auto-save the offer stack — it will still save when you press Save."}
+    </p>
+  );
+}
+
+const ValueBasisContext = createContext<{ projectId: string; notes: string; offer: string }>({
+  projectId: "",
+  notes: "",
+  offer: "",
+});
+
+function ValueBasisFields({
+  item,
+  kind,
+  onChange,
+}: {
+  item: { name: string; value: string; basis?: string; basis_type?: string };
+  kind: "stack" | "bonus" | "fast_action";
+  onChange: (patch: { basis?: string; basis_type?: string }) => void;
+}) {
+  const ctx = useContext(ValueBasisContext);
+  const [helping, setHelping] = useState(false);
+  const [answer, setAnswer] = useState("");
+  const [busy, setBusy] = useState<"answer" | "unsure" | null>(null);
+  const type = isValueBasisType(item.basis_type) ? VALUE_BASIS_TYPES[item.basis_type] : null;
+  const missing = needsValueBasis(item);
+  const math = checkBasisMath(item.value, item.basis);
+  const fromNotes = !item.basis?.trim() ? findBasisInNotes(item, ctx.notes) : null;
+
+  async function ask(notSure: boolean) {
+    setBusy(notSure ? "unsure" : "answer");
+    try {
+      const res = await fetch("/api/discovery/value-basis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: ctx.projectId,
+          itemName: item.name || "this item",
+          value: item.value,
+          kind,
+          answer,
+          notSure,
+          offerContext: ctx.offer,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "Couldn't write a basis right now.");
+      onChange({ basis: data.basis, basis_type: data.basis_type });
+      setHelping(false);
+      setAnswer("");
+      toast.success(data.is_estimate ? "Basis added — labeled as an estimate. Edit it any time." : "Basis added. Edit it any time.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't write a basis right now.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="ml-0 space-y-1.5 rounded-lg border border-border/60 bg-card/30 p-2 sm:ml-14">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Value basis</span>
+        {missing && (
+          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-400">
+            Basis needed
+          </span>
+        )}
+        {type?.kind === "estimate" && item.basis?.trim() && (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">Estimate</span>
+        )}
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <select
+          value={item.basis_type ?? ""}
+          onChange={(e) => onChange({ basis_type: e.target.value || undefined })}
+          aria-label="Value basis category"
+          className="w-full rounded-md border border-border bg-card px-2 py-1.5 text-sm sm:w-56"
+        >
+          <option value="">Choose a category…</option>
+          {(Object.keys(VALUE_BASIS_TYPES) as ValueBasisType[]).map((key) => (
+            <option key={key} value={key}>
+              {VALUE_BASIS_TYPES[key].label}
+            </option>
+          ))}
+        </select>
+        <Textarea
+          value={item.basis ?? ""}
+          onChange={(e) => onChange({ basis: e.target.value.slice(0, 2000) })}
+          aria-label="Value basis explanation"
+          rows={2}
+          placeholder={type?.hint ?? "Why is it worth this amount? e.g. “My hourly rate $150 × 3 hours”"}
+          className="min-h-9 flex-1 text-sm"
+        />
+      </div>
+      {math && (
+        <p className={`text-xs ${math.verdict === "exceeds" ? "text-amber-400" : "text-emerald-400"}`}>Math check: {math.summary}</p>
+      )}
+      {type?.kind === "estimate" && item.basis?.trim() && (
+        <p className="text-xs text-muted-foreground">
+          This is treated as an estimate unless you can point to real examples (links, quotes, prices you found).
+        </p>
+      )}
+      {fromNotes && (
+        <p className="text-xs text-muted-foreground">
+          Your notes mention this item: “{fromNotes}”{" "}
+          <button type="button" className="font-medium text-primary underline" onClick={() => onChange({ basis: fromNotes })}>
+            Copy it here
+          </button>{" "}
+          <span className="text-muted-foreground">(your notes stay as they are)</span>
+        </p>
+      )}
+      {missing && !helping && (
+        <button type="button" className="text-xs font-medium text-primary underline" onClick={() => setHelping(true)}>
+          Help me explain it
+        </button>
+      )}
+      {helping && (
+        <div className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-2">
+          <p className="text-sm">{valueBasisQuestion(item)}</p>
+          <Textarea
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            rows={2}
+            placeholder="Answer in your own words — e.g. “I charged $400 for this last year” or “It's about 3 hours of my time.”"
+            className="text-sm"
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" disabled={busy !== null || !answer.trim()} onClick={() => ask(false)}>
+              {busy === "answer" && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
+              Write my basis (1 credit)
+            </Button>
+            <Button type="button" size="sm" variant="outline" disabled={busy !== null} onClick={() => ask(true)}>
+              {busy === "unsure" && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
+              I&apos;m not sure — suggest one
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setHelping(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StackRow({
   item,
   onChange,
@@ -296,23 +470,28 @@ function StackRow({
   onRemove: () => void;
 }) {
   return (
-    <div className="flex gap-2">
-      <ItemImageSlot path={item.image_path} onChange={(image_path) => onChange({ image_path })} />
-      <Input
-        value={item.name}
-        onChange={(e) => onChange({ name: e.target.value })}
-        placeholder="e.g. Private Q&A call"
-        className="flex-1"
-      />
-      <Input
-        value={item.value}
-        onChange={(e) => onChange({ value: e.target.value })}
-        placeholder="e.g. $497"
-        className="w-28"
-      />
-      <Button type="button" variant="ghost" size="icon" onClick={onRemove} title="Remove">
-        <X className="h-4 w-4" />
-      </Button>
+    <div className="space-y-1.5">
+      <div className="flex gap-2">
+        <ItemImageSlot path={item.image_path} onChange={(image_path) => onChange({ image_path })} />
+        <Input
+          value={item.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="e.g. Private Q&A call"
+          className="min-w-0 flex-1"
+          aria-label="Item name"
+        />
+        <Input
+          value={item.value}
+          onChange={(e) => onChange({ value: e.target.value })}
+          placeholder="e.g. $497"
+          className="w-24 sm:w-28"
+          aria-label="Assigned value"
+        />
+        <Button type="button" variant="ghost" size="icon" onClick={onRemove} title="Remove">
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <ValueBasisFields item={item} kind={item.category === "bonus" ? "bonus" : "stack"} onChange={onChange} />
     </div>
   );
 }
@@ -366,6 +545,13 @@ function ValueStackEditor({
         Pieces of the actual program/package itself (a module, a template library, a live
         implementation week) — introduced as &quot;included in the program,&quot; not as a separate gift.
       </p>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">Value basis:</span> under each value, say why it&apos;s worth that
+        amount — what you sell it for, what you&apos;ve charged before, comparable market value, your hourly rate, what
+        it costs to deliver, or what it saves the customer. A value with a clear basis is believable; the Strategy
+        Review checks every one. Your values are never changed.
+      </p>
+      <OfferStackSaveStatus />
       <div className="mt-2 space-y-2">
         {stackIndexes.map(([item, i]) => (
           <StackRow key={i} item={item} onChange={(patch) => updateItem(i, patch)} onRemove={() => removeItem(i)} />
@@ -443,7 +629,8 @@ function FastActionBonusEditor({
       </p>
       <div className="mt-2 space-y-2">
         {items.map((item, i) => (
-          <div key={i} className="flex flex-wrap gap-2">
+          <div key={i} className="space-y-1.5">
+          <div className="flex flex-wrap gap-2">
             <ItemImageSlot path={item.image_path} onChange={(image_path) => updateItem(i, { image_path })} />
             <Input
               value={item.name}
@@ -456,6 +643,7 @@ function FastActionBonusEditor({
               onChange={(e) => updateItem(i, { value: e.target.value })}
               placeholder="e.g. $997"
               className="w-24"
+              aria-label="Assigned value"
             />
             <Input
               value={item.condition}
@@ -466,6 +654,8 @@ function FastActionBonusEditor({
             <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(i)} title="Remove">
               <X className="h-4 w-4" />
             </Button>
+          </div>
+          <ValueBasisFields item={item} kind="fast_action" onChange={(patch) => updateItem(i, patch)} />
           </div>
         ))}
       </div>
@@ -515,6 +705,36 @@ export default function DiscoveryForm({
   const [coreOfferValue, setCoreOfferValue] = useState(project.core_offer_value ?? "");
   const [stackItems, setStackItems] = useState<StackItem[]>(project.stack_items ?? []);
   const [fastActionBonuses, setFastActionBonuses] = useState<FastActionBonus[]>(project.fast_action_bonuses ?? []);
+  // Auto-save for the offer stack (values, value bases, images): a moment after an edit, the lists
+  // are saved exactly as entered. The full Save still saves them too.
+  const [offerStackSave, setOfferStackSave] = useState<OfferStackSave>("idle");
+  const saveOfferStackSoon = useDebouncedCallback(async (stack: StackItem[], fab: FastActionBonus[]) => {
+    try {
+      const res = await fetch(`/api/projects/${project.id}/offer-stack`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stack_items: stack, fast_action_bonuses: fab }),
+      });
+      setOfferStackSave(res.ok ? "saved" : "error");
+    } catch {
+      setOfferStackSave("error");
+    }
+  }, 1200);
+  function changeStackItems(next: StackItem[]) {
+    setStackItems(next);
+    setOfferStackSave("saving");
+    saveOfferStackSoon(next, fastActionBonuses);
+  }
+  function changeFastActionBonuses(next: FastActionBonus[]) {
+    setFastActionBonuses(next);
+    setOfferStackSave("saving");
+    saveOfferStackSoon(stackItems, next);
+  }
+  const valueBasisContext = {
+    projectId: project.id,
+    notes: project.bonuses ?? "",
+    offer: [project.offer_name, project.product, project.price ? `Price: ${project.price}` : ""].filter(Boolean).join(" — "),
+  };
   // Signed thumbnail URLs for item images (the bucket is private). Fetched once for images saved
   // in an earlier session; new uploads add their own URL as they land.
   const [offerImageUrls, setOfferImageUrls] = useState<Record<string, string>>({});
@@ -633,6 +853,8 @@ export default function DiscoveryForm({
     // Wanting to delete a project you no longer plan to finish is exactly the case that gate was
     // never meant to catch.
     <DemoContext.Provider value={Boolean(project.is_demo)}>
+    <ValueBasisContext.Provider value={valueBasisContext}>
+    <OfferStackSaveContext.Provider value={offerStackSave}>
     <div className="card-elevated space-y-6 rounded-2xl p-6">
     {project.is_demo && (
       <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">
@@ -972,7 +1194,7 @@ export default function DiscoveryForm({
           />
         </div>
         <OfferImageContext.Provider value={offerImageContext}>
-          <ValueStackEditor coreValue={coreOfferValue} items={stackItems} onItemsChange={setStackItems} />
+          <ValueStackEditor coreValue={coreOfferValue} items={stackItems} onItemsChange={changeStackItems} />
         </OfferImageContext.Provider>
         <Field
           label="Scarcity / urgency"
@@ -984,7 +1206,7 @@ export default function DiscoveryForm({
           onAssist={setAssistTarget}
         />
         <OfferImageContext.Provider value={offerImageContext}>
-          <FastActionBonusEditor items={fastActionBonuses} onItemsChange={setFastActionBonuses} />
+          <FastActionBonusEditor items={fastActionBonuses} onItemsChange={changeFastActionBonuses} />
         </OfferImageContext.Provider>
         <Field
           label="Primary call to action"
@@ -1117,6 +1339,8 @@ export default function DiscoveryForm({
         </DialogContent>
       </Dialog>
     </div>
+    </OfferStackSaveContext.Provider>
+    </ValueBasisContext.Provider>
     </DemoContext.Provider>
   );
 }

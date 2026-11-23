@@ -18,6 +18,7 @@ import {
   type StrategyAnalysis,
 } from "@/lib/strategy/schema";
 import RecommendationCard from "./RecommendationCard";
+import ValueBasisTable from "./ValueBasisTable";
 import BlueprintView from "./BlueprintView";
 
 type Props = {
@@ -648,6 +649,11 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
                   </>
                 )}
               </section>
+
+              <ValueBasisTable
+                fields={strategyFieldsFromJson(review.input_fields)}
+                bonuses={analysis.offer_review.bonuses}
+              />
 
               {analysis.offer_review.bonuses.length > 0 && (
                 <section>

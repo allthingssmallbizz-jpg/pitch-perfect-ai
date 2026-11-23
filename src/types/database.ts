@@ -124,6 +124,11 @@ export type AwarenessLevel =
 export type StackItem = {
   name: string;
   value: string;
+  // Why it's worth that value — market value, an hourly rate, a comparable sale, what the
+  // member charges for it on its own. Read by the Strategy Review and every stack generator.
+  // basis_type is the category (see VALUE_BASIS_TYPES in lib/valueBasis.ts).
+  basis?: string;
+  basis_type?: string;
   category?: "stack" | "bonus";
   // Optional product image (a mockup, cover, screenshot) — a path in the slide-images bucket,
   // uploaded from Discovery and placeable on the slide that introduces this item.
@@ -138,6 +143,9 @@ export type StackItem = {
 export type FastActionBonus = {
   name: string;
   value: string;
+  // Same as StackItem.basis / basis_type.
+  basis?: string;
+  basis_type?: string;
   condition: string;
   // Optional product image — same as StackItem.image_path.
   image_path?: string;

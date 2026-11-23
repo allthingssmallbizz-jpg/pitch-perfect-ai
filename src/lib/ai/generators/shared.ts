@@ -1,11 +1,21 @@
 import type { AssetType, Project } from "@/types/database";
 import { getFunnelTypeLabel } from "@/lib/funnelType";
+import { describeValueBasis } from "@/lib/valueBasis";
 
 // Best-effort — strips everything but digits and a decimal point ("$1,997" -> 1997, "$297/mo"
 // -> 297). Returns null for anything that doesn't parse to a real positive number rather than
 // guessing, since a wrong number in a sum is worse than one missing line in it. Exported so
 // DiscoveryForm's Value Stack editor can show the member the exact same running total the
 // generator prompt actually sees, instead of two slightly different pieces of arithmetic.
+// The member's reason for each value (category + explanation + the software's own math check) —
+// see lib/valueBasis.ts. When a basis is given the value can be presented with it ("a CPA charges
+// $250 for this session"); when it isn't, the value is still the member's own number and no reason
+// is ever invented for it.
+function valueBasisNote(item: { value?: string; basis?: string; basis_type?: string }): string {
+  const text = describeValueBasis(item);
+  return text ? ` (${text}${item.basis?.trim() ? " — use it to make the value believable when presenting it" : ""})` : "";
+}
+
 export function parseMoney(value: string): number | null {
   const n = Number(value.replace(/[^0-9.]/g, ""));
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -45,12 +55,12 @@ function formatValueStackBlock(project: Project): string {
   ];
   let total = coreValue ?? 0;
   for (const item of stackItems) {
-    lines.push(`Stack item (part of the core offer): ${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"}${item.image_path ? PRODUCT_IMAGE_NOTE : ""}`);
+    lines.push(`Stack item (part of the core offer): ${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"}${valueBasisNote(item)}${item.image_path ? PRODUCT_IMAGE_NOTE : ""}`);
     const v = item.value?.trim() ? parseMoney(item.value) : null;
     if (v) total += v;
   }
   for (const item of bonusItems) {
-    lines.push(`Bonus (a separate extra, not part of the core offer): ${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"}${item.image_path ? PRODUCT_IMAGE_NOTE : ""}`);
+    lines.push(`Bonus (a separate extra, not part of the core offer): ${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"}${valueBasisNote(item)}${item.image_path ? PRODUCT_IMAGE_NOTE : ""}`);
     const v = item.value?.trim() ? parseMoney(item.value) : null;
     if (v) total += v;
   }
@@ -86,7 +96,7 @@ function formatFastActionBonusBlock(project: Project): string {
   ];
   for (const item of items) {
     lines.push(
-      `${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"} — reserved for: ${item.condition?.trim() || "(no qualifying condition given — don't invent one, ask the member to add it)"}${item.image_path ? PRODUCT_IMAGE_NOTE : ""}`
+      `${item.name?.trim() || "(unnamed)"} — ${item.value?.trim() || "(no value given)"}${valueBasisNote(item)} — reserved for: ${item.condition?.trim() || "(no qualifying condition given — don't invent one, ask the member to add it)"}${item.image_path ? PRODUCT_IMAGE_NOTE : ""}`
     );
   }
   return lines.join("\n");

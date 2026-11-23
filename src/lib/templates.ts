@@ -624,14 +624,14 @@ export const TEMPLATES: Template[] = [
       // act now) before the offer is revealed.
       core_offer_value: "$1,500",
       stack_items: [
-        { name: "1-on-1 Funding Strategy Session (60 minutes)", value: "$500", category: "stack" },
-        { name: "Written 3-Path Funding Comparison Report — HELOC vs. cash-out refinance vs. business funding", value: "$750", category: "stack" },
-        { name: "Lender Shopping across 30+ lenders, with one point of contact from first call to funding", value: "$1,000", category: "stack" },
-        { name: "Funding Readiness Review — credit profile, income documents, and equity checked before you apply", value: "$297", category: "bonus" },
-        { name: "Self-Employed Income Worksheet", value: "$97", category: "bonus" },
-        { name: "Debt Payoff Cash-Flow Comparison", value: "$197", category: "bonus" },
+        { name: "1-on-1 Funding Strategy Session (60 minutes)", value: "$500", category: "stack", basis_type: "hourly_rate", basis: "My consulting rate of $500/hour × 1 hour" },
+        { name: "Written 3-Path Funding Comparison Report — HELOC vs. cash-out refinance vs. business funding", value: "$750", category: "stack", basis_type: "hourly_rate", basis: "About 3 hours of analysis at $250/hour × 3 hours" },
+        { name: "Lender Shopping across 30+ lenders, with one point of contact from first call to funding", value: "$1,000", category: "stack", basis_type: "comparable_market", basis: "Estimated: comparable to what independent loan consultants charge to shop a file across lenders" },
+        { name: "Funding Readiness Review — credit profile, income documents, and equity checked before you apply", value: "$297", category: "bonus", basis_type: "standalone_price", basis: "Sold on its own for $297" },
+        { name: "Self-Employed Income Worksheet", value: "$97", category: "bonus", basis_type: "standalone_price", basis: "Sold on its own for $97" },
+        { name: "Debt Payoff Cash-Flow Comparison", value: "$197", category: "bonus", basis_type: "comparable_market", basis: "Estimated: comparable to a one-time financial planning cash-flow review" },
         { name: "Business Credit Builder Roadmap", value: "$297", category: "bonus" },
-        { name: "12-Month Equity Check-Ups (quarterly reviews)", value: "$397", category: "bonus" },
+        { name: "12-Month Equity Check-Ups (quarterly reviews)", value: "$397", category: "bonus", basis_type: "hourly_rate", basis: "4 quarterly reviews at $100/session × 4 sessions" },
       ],
       fast_action_bonuses: [
         {

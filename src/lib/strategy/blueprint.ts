@@ -35,7 +35,18 @@ export type Blueprint = {
   core_offer: { summary: string; price: string };
   proof: string;
   claim_statuses: { claim: string; status: string }[];
-  bonus_stack: { name: string; supported_value: string | null; verdict: string; note: string }[];
+  bonus_stack: {
+    name: string;
+    supported_value: string | null;
+    verdict: string;
+    note: string;
+    // The member's own Value Basis and assigned value for this item, when it matches a stack item
+    // by name. Optional: blueprints approved before Value Basis existed don't have them.
+    assigned_value?: string;
+    member_basis?: string;
+    basis_type?: string;
+    evidence_status?: string;
+  }[];
   total_supported_value: string | null;
   value_explanation: string;
   scarcity: { claim: string; status: string; note: string }[];
@@ -137,12 +148,21 @@ export function buildBlueprint(input: {
     core_offer: { summary: analysis.one_sentence_offer || analysis.offer_review.core_offer_summary, price: f.price },
     proof: f.proof,
     claim_statuses: analysis.claims.map((c) => ({ claim: c.claim, status: c.status })),
-    bonus_stack: analysis.offer_review.bonuses.map((b) => ({
-      name: b.name,
-      supported_value: b.supported_value,
-      verdict: b.verdict,
-      note: b.value_basis,
-    })),
+    bonus_stack: analysis.offer_review.bonuses.map((b) => {
+      const own = [...f.stack_items, ...f.fast_action_bonuses].find(
+        (i) => i.name?.trim().toLowerCase() === b.name.trim().toLowerCase()
+      );
+      return {
+        name: b.name,
+        supported_value: b.supported_value,
+        verdict: b.verdict,
+        note: b.value_basis,
+        ...(own?.value?.trim() ? { assigned_value: own.value.trim() } : {}),
+        ...(own?.basis?.trim() ? { member_basis: own.basis.trim() } : {}),
+        ...(own?.basis_type ? { basis_type: own.basis_type } : {}),
+        ...(b.evidence_status ? { evidence_status: b.evidence_status } : {}),
+      };
+    }),
     total_supported_value: analysis.offer_review.total_supported_value,
     value_explanation: analysis.offer_review.value_explanation,
     scarcity: analysis.scarcity_items.map((s) => ({ claim: s.claim, status: s.status, note: s.note })),
