@@ -639,11 +639,15 @@ export default function GenerateClient({
   }, []);
   const expressKitBlocked = assetType === "express_kit" && !express?.hasDeck;
   // Read after mount, not in the initializer, so the server-rendered HTML and the first client
-  // render agree (sessionStorage doesn't exist on the server).
+  // render agree (browser storage doesn't exist on the server). Remembered per project on this
+  // device (localStorage, not just this browser session) — a member who already chose to continue
+  // was being locked out again on every new visit.
   useEffect(() => {
     try {
+      const remembered =
+        window.localStorage.getItem(strategySkipKey) === "1" || window.sessionStorage.getItem(strategySkipKey) === "1";
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (window.sessionStorage.getItem(strategySkipKey) === "1") setSkipStrategy(true);
+      if (remembered) setSkipStrategy(true);
     } catch {
       // Storage blocked — the member just sees the checkpoint card again.
     }
@@ -661,7 +665,7 @@ export default function GenerateClient({
   const [skipWarningOpen, setSkipWarningOpen] = useState(false);
   function continueWithoutStrategyReview() {
     try {
-      window.sessionStorage.setItem(strategySkipKey, "1");
+      window.localStorage.setItem(strategySkipKey, "1");
     } catch {
       // Private mode etc. — the choice still holds for this page view.
     }
@@ -1797,7 +1801,7 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
               )}
             </div>
             {skipWarningOpen && (
-              <div className="mt-4 rounded-xl border-2 border-red-500/60 bg-red-500/10 p-4 text-sm">
+              <div id="strategy-skip-warning" className="mt-4 scroll-mt-24 rounded-xl border-2 border-red-500/60 bg-red-500/10 p-4 text-sm">
                 <p className="font-semibold text-red-400">
                   ⚠ Critical warning
                   {(strategyStatus.openCritical ?? 0) > 0
@@ -1881,9 +1885,24 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             ) {
               return;
             }
+            // Never a dead button: without an approved strategy, clicking opens the critical
+            // warning (with "I understand — continue anyway") instead of doing nothing.
+            if (strategyBlocked) {
+              setSkipWarningOpen(true);
+              setTimeout(
+                () => document.getElementById("strategy-skip-warning")?.scrollIntoView({ behavior: "smooth", block: "center" }),
+                50
+              );
+              toast.message("Your strategy hasn't been reviewed yet — read the warning, then choose how to continue.");
+              return;
+            }
+            if (expressKitBlocked) {
+              toast.error("Build your Pitch Perfect Express presentation first — the Speaker Kit is made from it.");
+              return;
+            }
             run();
           }}
-          disabled={loading || strategyBlocked || expressKitBlocked || expressMissing.length > 0}
+          disabled={loading}
         >
           <Sparkles className="mr-2 h-4 w-4" />
           {loading ? "Generating..." : content ? "Regenerate" : "Generate"}
