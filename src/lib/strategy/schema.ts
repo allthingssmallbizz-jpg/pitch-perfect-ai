@@ -202,7 +202,7 @@ export const strategyAnalysisSchema = z.object({
   recommended_framework: z.object({ name: z.enum(PRESENTATION_FRAMEWORKS), reason: z.string() }),
   follow_up_questions: z
     .array(z.object({ field_id: z.string(), question: z.string() }))
-    .describe("Questions for missing information, most important first. At most 5."),
+    .describe("Questions for missing information, most important first. At most 8."),
   assumptions: z.array(z.string()).describe("Every assumption this review made. Empty if none."),
 });
 

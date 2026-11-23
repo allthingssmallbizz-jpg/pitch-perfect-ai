@@ -65,10 +65,37 @@ Non-negotiable rules:
 - Be fair. A strong, specific discovery deserves a strong assessment — don't invent problems to look thorough.
 - Write for a non-technical business owner: plain language, short sentences, no jargon.`;
 
+// What the previous review found and what the client did about it — turns a rerun into a
+// re-check of that list instead of a fresh hunt for new problems.
+export type StrategyRecheck = {
+  previousVersion: number;
+  findings: { field_id: string; issue: string; critical: boolean; client_decision: string }[];
+  changedFieldIds: string[];
+};
+
+function formatRecheck(recheck: StrategyRecheck): string {
+  return `
+
+<previous_review version="${recheck.previousVersion}">
+${asDataJson(recheck.findings)}
+</previous_review>
+
+<fields_changed_since_previous_review>
+${asDataJson(recheck.changedFieldIds)}
+</fields_changed_since_previous_review>
+
+RE-CHECK MODE. This is a re-check of review v${recheck.previousVersion}. The client was told that review listed everything, worked through it, and now wants to confirm they're done. Do this:
+1. For each earlier finding: if the problem is fixed, don't report it again — score that area as improved. If it's still there, report it again with the same field_id.
+2. Respect the client's decisions: when they kept their original answer ("rejected"), confirmed a claim is true ("attested"), or removed it ("excluded"), don't raise it again unless that field changed.
+3. Check every field listed as changed for new problems. Some changed fields hold wording this review suggested and the client accepted — only flag those if the facts the client filled in create a real problem.
+4. Don't raise new issues on fields that haven't changed and weren't flagged before — the earlier review already passed them. The only exception is an obvious critical problem the earlier review missed; report it (the software shows it to the client as optional).`;
+}
+
 export function buildStrategyReviewPrompt(
   fields: StrategyFields,
   presenterBio: string | null,
-  carriedRevisions: Record<string, { original: string; revised: string }>
+  carriedRevisions: Record<string, { original: string; revised: string }>,
+  recheck?: StrategyRecheck | null
 ): { system: string; user: string } {
   const categories = STRATEGY_CATEGORIES.map((c) => `- ${c.key} (max ${c.max}): ${c.label} — ${c.criteria}`).join("\n");
 
@@ -79,9 +106,11 @@ ${categories}
 
 Critical issues (report these in critical_issues, not just as recommendations): fabricated or unsupported proof; misleading or unverified scarcity/urgency stated as fact (e.g. "only 5 seats left" with no evidence, fake countdowns, invented deadlines, bonuses called exclusive when they're routinely available); unsupported guarantees or income/result claims (e.g. "guaranteed to earn $10,000 in 30 days"); misleading price comparisons or inflated, unsubstantiated values (e.g. "$10,000 value" with no basis). Ordinary weaknesses (vague audience, generic differentiator) are recommendations, not critical issues.
 
-Recommendations: one per weak field, most important first, at most 12. Each must name the field_id it applies to, state the issue, explain why it matters to the potential buyer, and give a rewritten, stronger answer built only from facts in discovery. Set requires_confirmation true whenever the rewrite adds, narrows, or assumes anything the client must confirm. When the field can't be improved without more information, give a follow_up_question (one focused question with concrete options, e.g. "Are you primarily targeting solo women travelers, retired couples, or organized groups?").
+COMPLETENESS: the client works through this review's list, fixes everything, then runs one re-check before building the presentation. So list EVERYTHING now, in this one pass — every critical issue and every weak field, across every answer, every stack item, bonus, and fast action bonus, the guarantee, the urgency, the proof, and the presenter background. Never hold an issue back for a later review. Keep each item short so the full list fits.
 
-Also: classify each major claim's evidence status; list the main purchase objections with an ethical response for each; review the offer, every bonus, the value stack, and any fast-action incentive (deadline, eligibility, what the buyer gets, what happens after expiration, whether it can realistically be fulfilled — and for travel offers, supplier terms, capacity, cancellation, deposits, payment deadlines, and whether promised extras can be delivered); validate each scarcity/urgency claim; judge whether the funnel and CTA fit the decision; judge the awareness stage (recommend a different one only when discovery supports it); pick the best presentation framework from: ${PRESENTATION_FRAMEWORKS.join(", ")}, with a short reason; list the most important follow-up questions (at most 5); and list every assumption you made.
+Recommendations: one per weak field, most important first, at most 20. Each must name the field_id it applies to, state the issue, explain why it matters to the potential buyer, and give a rewritten, stronger answer built only from facts in discovery. Set requires_confirmation true whenever the rewrite adds, narrows, or assumes anything the client must confirm. When the field can't be improved without more information, give a follow_up_question (one focused question with concrete options, e.g. "Are you primarily targeting solo women travelers, retired couples, or organized groups?").
+
+Also: classify each major claim's evidence status; list the main purchase objections with an ethical response for each; review the offer, every bonus, the value stack, and any fast-action incentive (deadline, eligibility, what the buyer gets, what happens after expiration, whether it can realistically be fulfilled — and for travel offers, supplier terms, capacity, cancellation, deposits, payment deadlines, and whether promised extras can be delivered); validate each scarcity/urgency claim; judge whether the funnel and CTA fit the decision; judge the awareness stage (recommend a different one only when discovery supports it); pick the best presentation framework from: ${PRESENTATION_FRAMEWORKS.join(", ")}, with a short reason; list the most important follow-up questions (at most 8); and list every assumption you made.
 
 Valid field_id values for this client (use exactly these):
 ${fieldIdGuide(fields)}
@@ -99,7 +128,7 @@ ${asDataJson(fields)}
 
 <presenter_background>
 ${asDataJson(presenterBio ?? "(no presenter bio provided)")}
-</presenter_background>${revisedNote}${basisChecks}
+</presenter_background>${revisedNote}${basisChecks}${recheck ? formatRecheck(recheck) : ""}
 
 Review this strategy now.`;
 

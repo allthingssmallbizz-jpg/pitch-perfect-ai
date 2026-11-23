@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import type { StrategyRecommendation } from "@/types/database";
 import type { StrategyState } from "@/lib/strategy/server";
+import type { RecheckSummary } from "@/lib/strategy/recheck";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { buildBlueprint, checkApproval, CRITICAL_RISK_EXPLANATION, type Blueprint } from "@/lib/strategy/blueprint";
@@ -69,6 +70,8 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
   const review = state.review;
   const pending = review?.status === "pending";
   const analysis = review?.status === "complete" ? (review.analysis as StrategyAnalysis | null) : null;
+  // Added by the server when this review re-checked an earlier one.
+  const recheck = (analysis as (StrategyAnalysis & { recheck?: RecheckSummary }) | null)?.recheck ?? null;
   const categories = (review?.status === "complete" ? (review.category_scores as CategoryScore[] | null) : null) ?? [];
   const recs = state.recommendations;
 
@@ -343,6 +346,27 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
 
             {/* ── Review ─────────────────────────────────────────── */}
             <TabsContent value="review" className="mt-4 space-y-5">
+              {recheck && (
+                <section className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+                  <p className="font-medium">
+                    Re-check of review v{recheck.previous_version}:{" "}
+                    {recheck.previous_items > 0
+                      ? `${recheck.resolved} of ${recheck.previous_items} earlier ${recheck.previous_items === 1 ? "item" : "items"} resolved.`
+                      : "nothing was open from last time."}
+                  </p>
+                  <p className="mt-0.5 text-xs text-emerald-200/80">
+                    {[
+                      recheck.still_open ? `${recheck.still_open} still open` : null,
+                      recheck.new_on_changed ? `${recheck.new_on_changed} from answers you changed` : null,
+                      recheck.optional_extras ? `${recheck.optional_extras} optional ${recheck.optional_extras === 1 ? "suggestion" : "suggestions"}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "No new issues."}{" "}
+                    A re-check only confirms your fixes and checks answers you changed — it doesn&apos;t go looking for
+                    new problems in answers that already passed.
+                  </p>
+                </section>
+              )}
               <section className="rounded-xl border border-border bg-card/40 p-4">
                 <p className="text-sm">{analysis.summary}</p>
                 <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -374,17 +398,39 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
 
               {recs.some((r) => !r.is_critical) && (
                 <section>
-                  <h2 className="text-sm font-semibold">Top priority improvements</h2>
+                  <h2 className="text-sm font-semibold">
+                    Everything to improve ({recs.filter((r) => !r.is_critical && r.severity !== "low").length}
+                    {recs.some((r) => !r.is_critical && r.severity === "low") ? " + optional" : ""})
+                  </h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    This is the complete list — nothing is held back for later. Work through all of it in Improve My
+                    Strategy, then reanalyze once to confirm.
+                  </p>
                   <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm">
                     {recs
-                      .filter((r) => !r.is_critical)
-                      .slice(0, 3)
+                      .filter((r) => !r.is_critical && r.severity !== "low")
                       .map((r) => (
-                        <li key={r.id}>
+                        <li key={r.id} className={r.approval_status !== "pending" ? "text-muted-foreground line-through" : ""}>
                           <span className="font-medium">{r.field_label}:</span> {r.issue}
                         </li>
                       ))}
                   </ol>
+                  {recs.some((r) => !r.is_critical && r.severity === "low") && (
+                    <>
+                      <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Optional polish — nice to have, fine to skip
+                      </p>
+                      <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                        {recs
+                          .filter((r) => !r.is_critical && r.severity === "low")
+                          .map((r) => (
+                            <li key={r.id} className={r.approval_status !== "pending" ? "line-through" : ""}>
+                              <span className="font-medium">{r.field_label}:</span> {r.issue.replace(/^Optional — /, "")}
+                            </li>
+                          ))}
+                      </ul>
+                    </>
+                  )}
                   <Button size="sm" className="mt-3" onClick={() => setTab("improve")}>
                     Improve My Strategy
                   </Button>
@@ -530,6 +576,11 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
               <details className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm" open={decidedCount === 0}>
                 <summary className="cursor-pointer font-medium">How this works</summary>
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                  <li>
+                    <span className="text-foreground">Everything is listed at once.</span> Go through every item,
+                    then press Reanalyze once — the re-check confirms your fixes and only looks for new problems in
+                    answers you changed. Items marked Optional are nice-to-haves you can skip.
+                  </li>
                   <li>
                     Each item is one suggestion for one Discovery answer. Pick an option and you&apos;ll move to the
                     next item automatically. Your Discovery answers are never changed.

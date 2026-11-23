@@ -12,6 +12,8 @@ import {
   STRATEGY_REVIEW_MAX_OUTPUT_TOKENS,
 } from "@/lib/strategy/schema";
 import { buildStrategyReviewPrompt } from "@/lib/strategy/prompt";
+import { applyRecheck, buildRecheckContext } from "@/lib/strategy/recheck";
+import { strategyFieldsFromJson } from "@/lib/strategy/fields";
 import {
   buildAnalysisInput,
   getOwnedProjectForStrategy,
@@ -74,6 +76,15 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ pr
     ? await admin.from("strategy_recommendations").select("*").eq("review_id", lastComplete.id)
     : { data: [] as StrategyRecommendation[] };
   const { fields, carried } = buildAnalysisInput(project, lastComplete ?? null, lastRecs ?? []);
+  // A rerun re-checks the previous review's list rather than starting a fresh hunt.
+  const recheck = lastComplete
+    ? buildRecheckContext(
+        lastComplete.review_version,
+        strategyFieldsFromJson(lastComplete.input_fields),
+        lastRecs ?? [],
+        fields
+      )
+    : null;
 
   const { data: latest } = await admin
     .from("strategy_reviews")
@@ -108,7 +119,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ pr
   const timer = setTimeout(() => controller.abort(), Math.max(0, deadline - Date.now()));
   try {
     const presenterBio = await getPresenterBioBlock(admin, project.presenter_bio_profile_id);
-    const { system, user } = buildStrategyReviewPrompt(fields, presenterBio, carried);
+    const { system, user } = buildStrategyReviewPrompt(fields, presenterBio, carried, recheck);
     // Low effort: the review is a careful read against written rules, not open-ended reasoning —
     // at the default effort the model's thinking alone could take several minutes.
     const result = await generateStructured(
@@ -123,15 +134,15 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ pr
       { effort: "low", signal: controller.signal, deadline, minRetryMs: RETRY_MIN_MS }
     );
     clearTimeout(timer);
-    const analysis = result.data;
-    const { categories, total } = scoreCategories(analysis);
+    const aiAnalysis = result.data;
+    const { categories, total } = scoreCategories(aiAnalysis);
 
     const toFieldId = (id: string) => (isKnownFieldId(id, fields) ? id : "general");
     type NewRec = Omit<StrategyRecommendation, "id" | "created_at" | "updated_at" | "decided_at" | "coach_messages">;
     const recs: NewRec[] = [];
     const base = { review_id: pending.id, project_id: projectId, user_id: userId, final_answer: null, client_note: null };
 
-    for (const issue of analysis.critical_issues) {
+    for (const issue of aiAnalysis.critical_issues) {
       const fieldId = toFieldId(issue.field_id);
       recs.push({
         ...base,
@@ -151,7 +162,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ pr
       });
     }
     const order = { high: 0, medium: 1, low: 2 } as const;
-    for (const rec of [...analysis.recommendations].sort((a, b) => order[a.severity] - order[b.severity])) {
+    for (const rec of [...aiAnalysis.recommendations].sort((a, b) => order[a.severity] - order[b.severity])) {
       const fieldId = toFieldId(rec.field_id);
       recs.push({
         ...base,
@@ -172,7 +183,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ pr
     }
     // Missing-information questions that don't already belong to a recommendation become their
     // own items, so the coach can collect the answer and turn it into a suggested revision.
-    for (const q of analysis.follow_up_questions.slice(0, 5)) {
+    for (const q of aiAnalysis.follow_up_questions.slice(0, 8)) {
       const fieldId = toFieldId(q.field_id);
       if (recs.some((r) => r.field_id === fieldId && fieldId !== "general" && r.follow_up_question)) continue;
       recs.push({
@@ -193,12 +204,29 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ pr
       });
     }
 
-    if (recs.length) {
-      const { error: recError } = await admin.from("strategy_recommendations").insert(recs);
+    // On a re-check, only earlier findings that are still open and problems in changed answers
+    // keep their strength; anything new in an answer that already passed becomes optional.
+    let finalRecs = recs;
+    let recheckSummary = null;
+    if (recheck) {
+      const applied = applyRecheck(recs, recheck);
+      finalRecs = applied.recs;
+      recheckSummary = applied.summary;
+    }
+    const SEVERITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+    const rank = (r: NewRec) => (r.is_critical ? 0 : (SEVERITY_RANK[r.severity] ?? 2));
+    finalRecs = finalRecs
+      .map((r, i) => ({ r, i }))
+      .sort((a, b) => rank(a.r) - rank(b.r) || a.i - b.i)
+      .map(({ r }, position) => ({ ...r, position }));
+    const analysis = recheckSummary ? { ...aiAnalysis, recheck: recheckSummary } : aiAnalysis;
+
+    if (finalRecs.length) {
+      const { error: recError } = await admin.from("strategy_recommendations").insert(finalRecs);
       if (recError) throw new Error("Could not save the recommendations.");
     }
 
-    const critical = recs.filter((r) => r.is_critical).length;
+    const critical = finalRecs.filter((r) => r.is_critical).length;
     await admin
       .from("strategy_reviews")
       .update({
