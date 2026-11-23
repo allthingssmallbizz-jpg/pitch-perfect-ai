@@ -241,7 +241,11 @@ export async function generateStructured<T>(
   systemPrompt: string,
   userPrompt: string,
   maxOutputTokens: number,
-  tool: { name: string; description: string; schema: import("zod").ZodType<T> }
+  tool: { name: string; description: string; schema: import("zod").ZodType<T> },
+  // `effort` trades thinking depth for speed (a long review at the default effort can take
+  // minutes). `signal` stops the call when the caller's time budget runs out; `minRetryMs` is
+  // how much budget must remain (per `deadline`) before the one validation retry is attempted.
+  options?: { effort?: GenerateEffort; signal?: AbortSignal; deadline?: number; minRetryMs?: number }
 ): Promise<{ data: T; model: string; inputTokens: number; outputTokens: number; costUsd: number }> {
   const { toJSONSchema } = await import("zod");
   const anthropic = getClient();
@@ -254,6 +258,11 @@ export async function generateStructured<T>(
   let lastError = "";
 
   for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) {
+      // Not enough time left for a second full answer — fail cleanly now rather than be cut off.
+      if (options?.signal?.aborted) break;
+      if (options?.deadline && Date.now() + (options.minRetryMs ?? 0) > options.deadline) break;
+    }
     const prompt =
       attempt === 0
         ? userPrompt
@@ -271,7 +280,8 @@ export async function generateStructured<T>(
         },
       ],
       tool_choice: { type: "tool", name: tool.name },
-    });
+      ...(options?.effort ? { output_config: { effort: options.effort } } : {}),
+    }, options?.signal);
     inputTokens += message.usage.input_tokens;
     outputTokens += message.usage.output_tokens;
     model = message.model;

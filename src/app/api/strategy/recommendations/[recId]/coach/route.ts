@@ -56,7 +56,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rec
       name: "coach_reply",
       description: "Reply to the business owner about this one strategy issue.",
       schema: coachReplySchema,
-    });
+    }, { effort: "low" });
     const reply = result.data;
     const now = new Date().toISOString();
     const userText =

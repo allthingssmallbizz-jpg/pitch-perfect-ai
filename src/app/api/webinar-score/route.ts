@@ -37,7 +37,13 @@ const requestSchema = z.object({
 });
 
 // Scores an existing webinar against the framework. Credits are charged only when it succeeds.
+// Scoring stops itself before the platform's 300-second limit so it always ends with a clear
+// message; the one validation retry runs only if enough of the budget is left.
+const SCORE_BUDGET_MS = 270 * 1000;
+const RETRY_MIN_MS = 100 * 1000;
+
 export async function POST(req: NextRequest) {
+  const startedAt = Date.now();
   const supabase = await createClient();
   const {
     data: { user },
@@ -79,13 +85,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Could not start scoring — please try again." }, { status: 500 });
   }
 
+  const deadline = startedAt + SCORE_BUDGET_MS;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(0, deadline - Date.now()));
   try {
     const { system, user: userPrompt } = buildWebinarScorePrompt(input);
-    const result = await generateStructured(system, userPrompt, WEBINAR_SCORE_MAX_OUTPUT_TOKENS, {
-      name: "submit_webinar_score",
-      description: "Submit the complete webinar score.",
-      schema: webinarScoreAnalysisSchema,
-    });
+    const result = await generateStructured(
+      system,
+      userPrompt,
+      WEBINAR_SCORE_MAX_OUTPUT_TOKENS,
+      {
+        name: "submit_webinar_score",
+        description: "Submit the complete webinar score.",
+        schema: webinarScoreAnalysisSchema,
+      },
+      { effort: "low", signal: controller.signal, deadline, minRetryMs: RETRY_MIN_MS }
+    );
+    clearTimeout(timer);
     const { categories, total } = scoreWebinar(result.data);
     const title = input.title || result.data.webinar_title || "My webinar";
 
@@ -108,7 +124,12 @@ export async function POST(req: NextRequest) {
     await decrementCredits(user.id, WEBINAR_SCORE_CREDIT_COST);
     return NextResponse.json({ id: pending.id, score: total });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Scoring failed";
+    clearTimeout(timer);
+    const message = controller.signal.aborted
+      ? "It took longer than allowed and was stopped."
+      : err instanceof Error
+        ? err.message
+        : "Scoring failed";
     await admin
       .from("webinar_scores")
       .update({ status: "failed", error: message, updated_at: new Date().toISOString() })

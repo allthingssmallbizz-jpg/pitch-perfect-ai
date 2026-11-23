@@ -17,6 +17,8 @@ import {
   getOwnedProjectForStrategy,
   hashStrategyFields,
   loadStrategyState,
+  STALE_PENDING_MS,
+  STALE_PENDING_ERROR,
 } from "@/lib/strategy/server";
 import type { StrategyRecommendation } from "@/types/database";
 
@@ -24,10 +26,11 @@ export const runtime = "nodejs";
 // A full review is one long structured AI call (plus at most one validation retry).
 export const maxDuration = 300;
 
-// A pending review older than this was almost certainly killed mid-run (platform timeout) — it's
-// marked failed so the member can retry instead of being blocked by the one-pending-per-project
-// index forever.
-const STALE_PENDING_MS = 6 * 60 * 1000;
+// The review stops itself before the platform's 300-second limit, so it always ends with a clear
+// "didn't finish, nothing charged" instead of being killed silently and leaving the page waiting.
+const REVIEW_BUDGET_MS = 270 * 1000;
+// The one validation retry only runs if at least this much of the budget is left.
+const RETRY_MIN_MS = 100 * 1000;
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
@@ -40,6 +43,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pro
 // Runs (or reruns) the Strategy Review. Never modifies Discovery: the analyzed inputs, the AI
 // output, and every recommendation are stored on new strategy rows.
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
+  const startedAt = Date.now();
   const { projectId } = await params;
   const owned = await getOwnedProjectForStrategy(projectId);
   if ("error" in owned) return NextResponse.json({ error: owned.error }, { status: owned.status });
@@ -48,7 +52,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ pr
 
   await admin
     .from("strategy_reviews")
-    .update({ status: "failed", error: "Timed out — please run the review again.", updated_at: new Date().toISOString() })
+    .update({ status: "failed", error: STALE_PENDING_ERROR, updated_at: new Date().toISOString() })
     .eq("project_id", projectId)
     .eq("status", "pending")
     .lt("created_at", new Date(Date.now() - STALE_PENDING_MS).toISOString());
@@ -99,14 +103,26 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ pr
     );
   }
 
+  const deadline = startedAt + REVIEW_BUDGET_MS;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(0, deadline - Date.now()));
   try {
     const presenterBio = await getPresenterBioBlock(admin, project.presenter_bio_profile_id);
     const { system, user } = buildStrategyReviewPrompt(fields, presenterBio, carried);
-    const result = await generateStructured(system, user, STRATEGY_REVIEW_MAX_OUTPUT_TOKENS, {
-      name: "submit_strategy_review",
-      description: "Submit the complete strategy review.",
-      schema: strategyAnalysisSchema,
-    });
+    // Low effort: the review is a careful read against written rules, not open-ended reasoning —
+    // at the default effort the model's thinking alone could take several minutes.
+    const result = await generateStructured(
+      system,
+      user,
+      STRATEGY_REVIEW_MAX_OUTPUT_TOKENS,
+      {
+        name: "submit_strategy_review",
+        description: "Submit the complete strategy review.",
+        schema: strategyAnalysisSchema,
+      },
+      { effort: "low", signal: controller.signal, deadline, minRetryMs: RETRY_MIN_MS }
+    );
+    clearTimeout(timer);
     const analysis = result.data;
     const { categories, total } = scoreCategories(analysis);
 
@@ -202,9 +218,11 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ pr
 
     return NextResponse.json(await loadStrategyState(admin, project));
   } catch (err) {
+    clearTimeout(timer);
     console.error("Strategy review failed:", err);
-    const message =
-      err instanceof Error && err.message.startsWith("The AI returned an unusable response")
+    const message = controller.signal.aborted
+      ? "The strategy review took longer than allowed and was stopped. Nothing was charged and your answers are unchanged — please run it again."
+      : err instanceof Error && err.message.startsWith("The AI returned an unusable response")
         ? err.message
         : "The strategy review couldn't finish. Nothing was charged and your answers are unchanged — please try again.";
     await admin

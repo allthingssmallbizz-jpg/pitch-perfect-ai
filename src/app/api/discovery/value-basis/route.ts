@@ -77,7 +77,7 @@ ${asDataJson({
       name: "submit_value_basis",
       description: "Submit the value basis for this item.",
       schema: replySchema,
-    });
+    }, { effort: "low" });
     let basis = result.data.basis.trim();
     if ((result.data.is_estimate || input.notSure) && !/^estimat/i.test(basis)) basis = `Estimated: ${basis}`;
     await createAdminClient().from("generations").insert({

@@ -55,10 +55,23 @@ export type StrategyState = {
   discoveryChangedSinceApproval: boolean;
 };
 
+// A review still "pending" after this long was cut off by the platform mid-run (a review stops
+// itself at 4½ minutes; the hard limit is 5). It's marked failed so the page stops waiting and the
+// member can run it again — and so the one-pending-per-project rule doesn't block a rerun.
+export const STALE_PENDING_MS = 5.5 * 60 * 1000;
+export const STALE_PENDING_ERROR =
+  "The strategy review didn't finish in time. Nothing was charged and your answers are unchanged — please run it again.";
+
 export async function loadStrategyState(
   admin: SupabaseClient<Database>,
   project: Project
 ): Promise<StrategyState> {
+  await admin
+    .from("strategy_reviews")
+    .update({ status: "failed", error: STALE_PENDING_ERROR, updated_at: new Date().toISOString() })
+    .eq("project_id", project.id)
+    .eq("status", "pending")
+    .lt("created_at", new Date(Date.now() - STALE_PENDING_MS).toISOString());
   const [{ data: review }, { data: blueprint }] = await Promise.all([
     admin
       .from("strategy_reviews")
