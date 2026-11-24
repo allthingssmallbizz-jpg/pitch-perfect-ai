@@ -437,6 +437,54 @@ export default function StrategyClient({ projectId, initialState, discoveryIncom
                 </section>
               )}
 
+              {categories.some((c) => c.points < c.max) && (
+                <section className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+                  <h2 className="text-sm font-semibold">
+                    Where your missing {categories.reduce((sum, c) => sum + (c.max - c.points), 0)} points are
+                  </h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Your score measures how strong each part of your strategy is — it&apos;s separate from critical
+                    issues, so clearing those doesn&apos;t make it 100. 85+ is Presentation Ready; you don&apos;t need
+                    100 to build your webinar. Some points (like proof) only come from real things you add — client
+                    results, testimonials, documented numbers — not from rewording.
+                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {[...categories]
+                      .filter((c) => c.points < c.max)
+                      .sort((a, b) => b.max - b.points - (a.max - a.points))
+                      .map((c) => (
+                        <li key={c.key} className="text-sm">
+                          <p>
+                            <span className="font-medium">{c.label}</span>{" "}
+                            <span className="text-amber-400">
+                              −{c.max - c.points} {c.max - c.points === 1 ? "point" : "points"}
+                            </span>{" "}
+                            <span className="text-xs text-muted-foreground">
+                              ({c.points}/{c.max})
+                            </span>
+                          </p>
+                          {c.criteria_missed.length > 0 ? (
+                            <ul className="mt-0.5 list-disc pl-5 text-xs text-muted-foreground">
+                              {c.criteria_missed.map((x, i) => (
+                                <li key={i}>{x}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="mt-0.5 text-xs text-muted-foreground">{c.rationale}</p>
+                          )}
+                        </li>
+                      ))}
+                  </ul>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    To earn these back, add what&apos;s missing in{" "}
+                    <Link href={`/projects/${projectId}#discovery-form`} className="underline">
+                      Discovery
+                    </Link>
+                    , then press Reanalyze.
+                  </p>
+                </section>
+              )}
+
               <section>
                 <h2 className="text-sm font-semibold">Category scores</h2>
                 <div className="mt-2 space-y-2">

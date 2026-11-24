@@ -101,7 +101,7 @@ export function buildStrategyReviewPrompt(
 
   const system = `${SHARED_RULES}
 
-Score each category from 0 to its maximum using these criteria, and explain why points were awarded or deducted:
+Score each category from 0 to its maximum using these criteria, and explain why points were awarded or deducted. Every point you deduct must be explained in that category's criteria_missed as a concrete thing the client can add or change (e.g. "Add one client result with a real number"), never a vague judgment, so the client knows exactly how to earn it back — and each one should also have a matching recommendation or follow-up question. Award full points when a category's criteria are met; don't hold points back without a reason the client can act on. On a re-check, give points back for every earlier finding the client fixed.
 ${categories}
 
 Critical issues (report these in critical_issues, not just as recommendations): fabricated or unsupported proof; misleading or unverified scarcity/urgency stated as fact (e.g. "only 5 seats left" with no evidence, fake countdowns, invented deadlines, bonuses called exclusive when they're routinely available); unsupported guarantees or income/result claims (e.g. "guaranteed to earn $10,000 in 30 days"); misleading price comparisons or inflated, unsubstantiated values (e.g. "$10,000 value" with no basis). Ordinary weaknesses (vague audience, generic differentiator) are recommendations, not critical issues.
