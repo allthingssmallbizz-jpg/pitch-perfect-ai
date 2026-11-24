@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkGuardrails, decrementCredits } from "@/lib/credits";
 import { generateStructured } from "@/lib/ai/anthropic";
@@ -10,8 +11,9 @@ import {
   strategyAnalysisSchema,
   STRATEGY_REVIEW_CREDIT_COST,
   STRATEGY_REVIEW_MAX_OUTPUT_TOKENS,
+  STRATEGY_REVIEW_PARTS,
 } from "@/lib/strategy/schema";
-import { buildStrategyReviewPrompt } from "@/lib/strategy/prompt";
+import { buildStrategyReviewPrompt, strategyReviewPartInstruction } from "@/lib/strategy/prompt";
 import { applyRecheck, buildRecheckContext } from "@/lib/strategy/recheck";
 import { strategyFieldsFromJson } from "@/lib/strategy/fields";
 import {
@@ -122,19 +124,31 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ pr
     const { system, user } = buildStrategyReviewPrompt(fields, presenterBio, carried, recheck);
     // Low effort: the review is a careful read against written rules, not open-ended reasoning —
     // at the default effort the model's thinking alone could take several minutes.
-    const result = await generateStructured(
-      system,
-      user,
-      STRATEGY_REVIEW_MAX_OUTPUT_TOKENS,
-      {
-        name: "submit_strategy_review",
-        description: "Submit the complete strategy review.",
-        schema: strategyAnalysisSchema,
-      },
-      { effort: "low", signal: controller.signal, deadline, minRetryMs: RETRY_MIN_MS }
+    // The three parts are written at the same time, so the review takes about as long as its
+    // longest part rather than all three back to back.
+    const parts = await Promise.all(
+      STRATEGY_REVIEW_PARTS.map((part, i) =>
+        generateStructured(
+          system,
+          `${user}${strategyReviewPartInstruction(i, STRATEGY_REVIEW_PARTS.length, part.focus)}`,
+          STRATEGY_REVIEW_MAX_OUTPUT_TOKENS,
+          { name: part.tool, description: part.description, schema: part.schema as z.ZodType<Record<string, unknown>> },
+          { effort: "low", signal: controller.signal, deadline, minRetryMs: RETRY_MIN_MS }
+        )
+      )
     );
     clearTimeout(timer);
-    const aiAnalysis = result.data;
+    const merged = strategyAnalysisSchema.safeParse(Object.assign({}, ...parts.map((p) => p.data)));
+    if (!merged.success) {
+      throw new Error(
+        `The AI returned an unusable response (${merged.error.issues[0]?.path.join(".") ?? "incomplete review"}). Please try again.`
+      );
+    }
+    const aiAnalysis = merged.data;
+    const result = {
+      model: parts[0].model,
+      costUsd: parts.reduce((sum, p) => sum + p.costUsd, 0),
+    };
     const { categories, total } = scoreCategories(aiAnalysis);
 
     const toFieldId = (id: string) => (isKnownFieldId(id, fields) ? id : "general");

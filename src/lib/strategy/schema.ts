@@ -208,6 +208,47 @@ export const strategyAnalysisSchema = z.object({
 
 export type StrategyAnalysis = z.infer<typeof strategyAnalysisSchema>;
 
+// The review is written in three parts at the same time — the score, the fix list, and the offer
+// review — because one answer covering everything was long enough to run past the output limit
+// and the time limit. Each part is a slice of the same schema; the server merges them back into
+// one StrategyAnalysis and validates the whole.
+export const STRATEGY_REVIEW_PARTS = [
+  {
+    key: "assessment",
+    tool: "submit_strategy_assessment",
+    description: "Submit the score and assessment part of the strategy review.",
+    schema: strategyAnalysisSchema.pick({
+      summary: true,
+      one_sentence_offer: true,
+      categories: true,
+      claims: true,
+      objections: true,
+      scarcity_items: true,
+      funnel: true,
+      awareness: true,
+      recommended_framework: true,
+      assumptions: true,
+    }),
+    focus:
+      "the summary, the one-sentence offer, the score for every category (with criteria_met and criteria_missed), claims and their evidence status, objections, scarcity/urgency items, funnel, awareness stage, recommended framework, and assumptions",
+  },
+  {
+    key: "fixes",
+    tool: "submit_strategy_fixes",
+    description: "Submit the fix list part of the strategy review.",
+    schema: strategyAnalysisSchema.pick({ critical_issues: true, recommendations: true, follow_up_questions: true }),
+    focus:
+      "the complete fix list: critical issues, recommendations, and follow-up questions. Every weakness that would cost points in any scoring category must appear here as a recommendation or a follow-up question, so the client can earn those points back",
+  },
+  {
+    key: "offer",
+    tool: "submit_strategy_offer_review",
+    description: "Submit the offer review part of the strategy review.",
+    schema: strategyAnalysisSchema.pick({ offer_review: true }),
+    focus: "the offer review: the core offer, every stack item, bonus, and fast action bonus (one entry each), the supported value, and industry-specific checks",
+  },
+] as const;
+
 export const coachReplySchema = z.object({
   reply: z.string().describe("Your answer to the business owner, plain language, 2-6 sentences."),
   suggested_answer: z

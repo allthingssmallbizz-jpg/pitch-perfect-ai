@@ -115,7 +115,7 @@ Also: classify each major claim's evidence status; list the main purchase object
 Valid field_id values for this client (use exactly these):
 ${fieldIdGuide(fields)}
 
-Return everything by calling the submit_strategy_review tool.`;
+The review is written in three parts by three reviewers working at the same time from the same data and rules. You write only the part named at the end of the message — the other parts are covered elsewhere. Return it by calling the tool provided.`;
 
   const basisChecks = formatValueBasisChecks(fields);
   const revisedNote = Object.keys(carriedRevisions).length
@@ -133,6 +133,11 @@ ${asDataJson(presenterBio ?? "(no presenter bio provided)")}
 Review this strategy now.`;
 
   return { system, user };
+}
+
+// Names the one part of the review this call writes (see STRATEGY_REVIEW_PARTS).
+export function strategyReviewPartInstruction(index: number, total: number, focus: string): string {
+  return `\n\nYOUR PART (${index + 1} of ${total}): ${focus}. Write only this part.`;
 }
 
 export type CoachMode = "why" | "alternative" | "message";
