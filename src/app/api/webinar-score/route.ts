@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkGuardrails, decrementCredits } from "@/lib/credits";
-import { generateStructured } from "@/lib/ai/anthropic";
+import { describeAiError, generateStructured } from "@/lib/ai/anthropic";
 import { buildWebinarScorePrompt } from "@/lib/webinarScore/prompt";
 import {
   scoreWebinar,
@@ -127,9 +127,10 @@ export async function POST(req: NextRequest) {
     clearTimeout(timer);
     const message = controller.signal.aborted
       ? "It took longer than allowed and was stopped."
-      : err instanceof Error
-        ? err.message
-        : "Scoring failed";
+      : (() => {
+          const ai = describeAiError(err);
+          return ai ? `${ai[0].toUpperCase()}${ai.slice(1)}.` : err instanceof Error ? err.message : "Scoring failed";
+        })();
     await admin
       .from("webinar_scores")
       .update({ status: "failed", error: message, updated_at: new Date().toISOString() })

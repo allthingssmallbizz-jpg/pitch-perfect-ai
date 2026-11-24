@@ -11,6 +11,33 @@ function getClient(): Anthropic {
 
 export const DEFAULT_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
 
+// A plain-language reason for an AI service failure, so a member (and whoever reads the error)
+// knows what actually went wrong instead of a generic "couldn't finish". Null when the error
+// didn't come from the AI service.
+export function describeAiError(err: unknown): string | null {
+  if (err instanceof Anthropic.APIConnectionError) return "couldn't reach the AI service — try again in a minute";
+  if (!(err instanceof Anthropic.APIError)) return null;
+  const body = err.error as { error?: { message?: unknown } } | undefined;
+  const text = String(body?.error?.message ?? err.message ?? "");
+  const status = err.status;
+  if (/credit balance|spend(ing)? limit|usage limit|billing/i.test(text)) {
+    return "the AI account is out of credit or reached its spending limit — check Plans & Billing in the Anthropic console";
+  }
+  if (status === 401 || status === 403) return "the AI key was rejected — check ANTHROPIC_API_KEY in Vercel";
+  if (status === 404 || (status === 400 && /model/i.test(text) && /not.found|invalid|unknown|not supported/i.test(text))) {
+    return `the AI model "${DEFAULT_MODEL}" isn't available — check ANTHROPIC_MODEL in Vercel`;
+  }
+  if (status === 429) return "the AI service's rate limit was reached — wait a minute and try again";
+  if (status === 529 || /overloaded/i.test(text)) return "the AI service is overloaded right now — try again in a few minutes";
+  if (status && status >= 500) return "the AI service had a temporary error — try again in a minute";
+  if (status === 400) return `the AI service rejected the request: ${text.slice(0, 200)}`;
+  return text ? text.slice(0, 200) : null;
+}
+
+// Some models reject a forced tool choice (400). Once seen, structured calls ask for the tool in
+// the prompt instead, for the rest of this server instance.
+let forcedToolChoiceUnsupported = false;
+
 // $ per million tokens. Override via env if your negotiated/current pricing differs —
 // verify against https://docs.claude.com/en/docs/about-claude/pricing before relying on
 // these for real billing decisions.
@@ -263,11 +290,16 @@ export async function generateStructured<T>(
       if (options?.signal?.aborted) break;
       if (options?.deadline && Date.now() + (options.minRetryMs ?? 0) > options.deadline) break;
     }
+    const basePrompt = forcedToolChoiceUnsupported
+      ? `${userPrompt}\n\nRespond only by calling the ${tool.name} tool.`
+      : userPrompt;
     const prompt =
       attempt === 0
-        ? userPrompt
-        : `${userPrompt}\n\nYour previous response did not match the required schema (${lastError}). Call the ${tool.name} tool again with every required field present and correctly typed.`;
-    const message = await createMessage(anthropic, {
+        ? basePrompt
+        : `${basePrompt}\n\nYour previous response did not match the required schema (${lastError}). Call the ${tool.name} tool again with every required field present and correctly typed.`;
+    let message: Anthropic.Message;
+    try {
+      message = await createMessage(anthropic, {
       model: DEFAULT_MODEL,
       max_tokens: maxOutputTokens,
       system: systemParam(systemPrompt),
@@ -279,9 +311,23 @@ export async function generateStructured<T>(
           input_schema: jsonSchema as Anthropic.Tool["input_schema"],
         },
       ],
-      tool_choice: { type: "tool", name: tool.name },
+      tool_choice: forcedToolChoiceUnsupported ? { type: "auto" } : { type: "tool", name: tool.name },
       ...(options?.effort ? { output_config: { effort: options.effort } } : {}),
     }, options?.signal);
+    } catch (err) {
+      if (
+        !forcedToolChoiceUnsupported &&
+        err instanceof Anthropic.APIError &&
+        err.status === 400 &&
+        /tool_choice/i.test(String(err.message))
+      ) {
+        console.warn(`Model ${DEFAULT_MODEL} rejected a forced tool choice — asking for the tool in the prompt instead.`);
+        forcedToolChoiceUnsupported = true;
+        attempt--;
+        continue;
+      }
+      throw err;
+    }
     inputTokens += message.usage.input_tokens;
     outputTokens += message.usage.output_tokens;
     model = message.model;

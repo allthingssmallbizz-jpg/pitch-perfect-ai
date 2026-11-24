@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkGuardrails, decrementCredits } from "@/lib/credits";
-import { generateStructured } from "@/lib/ai/anthropic";
+import { describeAiError, generateStructured } from "@/lib/ai/anthropic";
 import { getPresenterBioBlock } from "@/lib/ai/presenterBio";
 import { getFieldLabel, getFieldValue, isKnownFieldId, extractStrategyFields } from "@/lib/strategy/fields";
 import {
@@ -35,6 +35,14 @@ export const maxDuration = 300;
 const REVIEW_BUDGET_MS = 270 * 1000;
 // The one validation retry only runs if at least this much of the budget is left.
 const RETRY_MIN_MS = 100 * 1000;
+
+// " (reason)" for the failure message, or "" when there's nothing useful to add.
+function failureReason(err: unknown): string {
+  const ai = describeAiError(err);
+  if (ai) return ` (${ai})`;
+  if (err instanceof Error && err.message === "Could not save the recommendations.") return " (the results couldn't be saved)";
+  return "";
+}
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
@@ -266,7 +274,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ pr
       ? "The strategy review took longer than allowed and was stopped. Nothing was charged and your answers are unchanged — please run it again."
       : err instanceof Error && err.message.startsWith("The AI returned an unusable response")
         ? err.message
-        : "The strategy review couldn't finish. Nothing was charged and your answers are unchanged — please try again.";
+        : `The strategy review couldn't finish${failureReason(err)}. Nothing was charged and your answers are unchanged — please try again.`;
     await admin
       .from("strategy_reviews")
       .update({ status: "failed", error: message, updated_at: new Date().toISOString() })
