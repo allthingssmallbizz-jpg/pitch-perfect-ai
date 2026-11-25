@@ -41,8 +41,9 @@ let forcedToolChoiceUnsupported = false;
 // $ per million tokens. Override via env if your negotiated/current pricing differs —
 // verify against https://docs.claude.com/en/docs/about-claude/pricing before relying on
 // these for real billing decisions.
-const INPUT_COST_PER_MTOK = Number(process.env.ANTHROPIC_INPUT_COST_PER_MTOK ?? 3);
-const OUTPUT_COST_PER_MTOK = Number(process.env.ANTHROPIC_OUTPUT_COST_PER_MTOK ?? 15);
+// Defaults are claude-sonnet-5's list prices ($2 input / $10 output per million tokens).
+const INPUT_COST_PER_MTOK = Number(process.env.ANTHROPIC_INPUT_COST_PER_MTOK ?? 2);
+const OUTPUT_COST_PER_MTOK = Number(process.env.ANTHROPIC_OUTPUT_COST_PER_MTOK ?? 10);
 
 export function estimateCostUsd(inputTokens: number, outputTokens: number): number {
   return (
