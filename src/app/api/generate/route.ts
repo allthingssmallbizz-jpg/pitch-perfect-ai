@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkGuardrails, decrementCredits } from "@/lib/credits";
-import { generateCompleteAsset, type GenerateEffort, type GenerateResult } from "@/lib/ai/anthropic";
+import { describeAiError, generateCompleteAsset, type GenerateEffort, type GenerateResult } from "@/lib/ai/anthropic";
 import {
   isWebinarScriptSectionIncomplete,
   planWebinarScriptSections,
@@ -739,8 +739,14 @@ export async function POST(req: NextRequest) {
     // one specific agent impossible to diagnose without direct database access. Anthropic SDK
     // error messages don't carry anything sensitive (rate limits, invalid-request details,
     // content-policy refusals) — safe to show directly instead of guessing blind.
+    // An AI service failure (out of credit, rate limit, overloaded…) is explained in plain language.
+    const aiReason = describeAiError(err);
     return NextResponse.json(
-      { error: `Generation failed: ${message} You were not charged credits.` },
+      {
+        error: aiReason
+          ? `Generation failed: ${aiReason}. You were not charged credits.`
+          : `Generation failed: ${message} You were not charged credits.`,
+      },
       { status: 502 }
     );
   }
