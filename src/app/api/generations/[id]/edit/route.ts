@@ -8,6 +8,7 @@ import { WEB_PAGE_ASSET_TYPES, stripHtmlCodeFence } from "@/lib/ai/generators/ht
 import { buildPageEditPrompt, PAGE_EDIT_CREDIT_COST, PAGE_EDIT_MAX_OUTPUT_TOKENS } from "@/lib/ai/generators/pageEdit";
 import { buildTextEditPrompt, TEXT_EDIT_CREDIT_COST, TEXT_EDIT_MAX_OUTPUT_TOKENS } from "@/lib/ai/generators/textEdit";
 import { parseVideoEmbedUrl, upsertVideoEmbed, removeVideoEmbed } from "@/lib/videoEmbed";
+import { tagAiUsage } from "@/lib/ai/usageLog";
 
 // Asset types that can use the plain markdown edit path below (in addition to the HTML-page path
 // every asset in WEB_PAGE_ASSET_TYPES already had) — an explicit allowlist rather than "anything
@@ -81,6 +82,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if ("error" in owned) return NextResponse.json({ error: owned.error }, { status: owned.status });
 
   const { userId, generation } = owned;
+  tagAiUsage({ feature: `edit:${generation.asset_type}`, userId, projectId: generation.project_id });
   const isWebPageAsset = WEB_PAGE_ASSET_TYPES.includes(generation.asset_type);
   const isTextEditableAsset = TEXT_EDITABLE_ASSET_TYPES.includes(generation.asset_type);
   if (!isWebPageAsset && !isTextEditableAsset) {

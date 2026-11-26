@@ -13,6 +13,7 @@ import {
   getAnalyzerSystemPrompt,
 } from "@/lib/ai/analyzer";
 import { recordGenerationVersion } from "@/lib/generations";
+import { tagAiUsage } from "@/lib/ai/usageLog";
 
 export const runtime = "nodejs";
 
@@ -49,6 +50,7 @@ export async function POST(req: NextRequest) {
     content: string;
   };
 
+  tagAiUsage({ feature: "analyze", userId: user.id, projectId });
   const { data: project, error: projectError } = await supabase
     .from("projects")
     .select("id")

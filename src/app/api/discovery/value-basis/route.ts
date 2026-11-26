@@ -7,6 +7,7 @@ import { generateStructured } from "@/lib/ai/anthropic";
 import { DISCOVERY_ASSIST_CREDIT_COST } from "@/lib/ai/discoveryAssist";
 import { asDataJson } from "@/lib/strategy/prompt";
 import { checkBasisMath, VALUE_BASIS_TYPES, type ValueBasisType } from "@/lib/valueBasis";
+import { tagAiUsage } from "@/lib/ai/usageLog";
 
 export const runtime = "nodejs";
 
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  tagAiUsage({ feature: "value_basis_help", userId: user.id });
 
   const parsed = requestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });

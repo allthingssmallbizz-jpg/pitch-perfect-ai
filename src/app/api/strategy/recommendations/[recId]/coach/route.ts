@@ -7,6 +7,7 @@ import { getOwnedCurrentRecommendation } from "@/lib/strategy/access";
 import { applyAcceptedRevisions, strategyFieldsFromJson } from "@/lib/strategy/fields";
 import { buildCoachPrompt } from "@/lib/strategy/prompt";
 import { coachReplySchema, STRATEGY_COACH_CREDIT_COST, STRATEGY_COACH_MAX_OUTPUT_TOKENS } from "@/lib/strategy/schema";
+import { tagAiUsage } from "@/lib/ai/usageLog";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rec
   const owned = await getOwnedCurrentRecommendation(recId);
   if ("error" in owned) return NextResponse.json({ error: owned.error }, { status: owned.status });
   const { userId, rec, review } = owned;
+  tagAiUsage({ feature: "strategy_coach", userId, projectId: rec.project_id });
 
   const parsed = requestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

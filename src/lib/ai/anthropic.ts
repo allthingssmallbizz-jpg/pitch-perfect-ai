@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { recordAiCall, usageFromMessage } from "./usageLog";
 
 let client: Anthropic | null = null;
 
@@ -98,7 +99,43 @@ async function createMessage(
   // `signal` lets a caller with its own time budget (the sectioned Webinar Script) stop a call
   // cleanly before the platform kills the whole function without a trace.
   const stream = anthropic.messages.stream(params, signal ? { signal } : undefined);
-  return stream.finalMessage();
+  // Every call is logged (lib/ai/usageLog.ts) — including ones that fail or are stopped partway,
+  // which the API still bills for what was written. For those, output is estimated from the text
+  // received so far (~3.5 characters per token), since the final token count never arrives.
+  const started = Date.now();
+  let receivedChars = 0;
+  stream.on("streamEvent", (event) => {
+    if (event.type !== "content_block_delta") return;
+    const d = event.delta as { text?: string; partial_json?: string; thinking?: string };
+    receivedChars += (d.text ?? d.partial_json ?? d.thinking ?? "").length;
+  });
+  try {
+    const message = await stream.finalMessage();
+    await recordAiCall({
+      model: message.model,
+      status: message.stop_reason === "max_tokens" ? "cut_off" : "ok",
+      usage: usageFromMessage(message.usage),
+      durationMs: Date.now() - started,
+      requestId: stream.request_id ?? null,
+    });
+    return message;
+  } catch (err) {
+    const partial = stream.currentMessage;
+    const usage = usageFromMessage(partial?.usage);
+    const estimatedOutput = Math.round(receivedChars / 3.5);
+    const estimated = estimatedOutput > usage.outputTokens;
+    if (estimated) usage.outputTokens = estimatedOutput;
+    await recordAiCall({
+      model: partial?.model ?? params.model,
+      status: signal?.aborted || err instanceof Anthropic.APIUserAbortError ? "stopped" : "error",
+      usage,
+      outputEstimated: estimated,
+      durationMs: Date.now() - started,
+      error: describeAiError(err) ?? (err instanceof Error ? err.message : String(err)),
+      requestId: stream.request_id ?? (err instanceof Anthropic.APIError ? err.requestID : null) ?? null,
+    });
+    throw err;
+  }
 }
 
 // Single call site for every generator. Output length is always capped server-side

@@ -601,6 +601,26 @@ export type StrategyBlueprint = {
 // Matches the GenericSchema/GenericTable shape those packages expect (Row/Insert/Update/
 // Relationships, plus Views/Functions on the schema) — see
 // node_modules/@supabase/postgrest-js/src/types/common/common.ts.
+// One row per call to the Anthropic API (0057_ai_usage_log.sql) — see lib/ai/usageLog.ts.
+export type AiUsageLog = {
+  id: number;
+  created_at: string;
+  user_id: string | null;
+  project_id: string | null;
+  feature: string;
+  model: string | null;
+  status: "ok" | "cut_off" | "stopped" | "error";
+  input_tokens: number;
+  output_tokens: number;
+  cache_write_tokens: number;
+  cache_read_tokens: number;
+  output_estimated: boolean;
+  cost_usd: number;
+  duration_ms: number | null;
+  error: string | null;
+  request_id: string | null;
+};
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row;
   Insert: Insert;
@@ -629,6 +649,7 @@ export type Database = {
       strategy_recommendations: Table<StrategyRecommendation>;
       strategy_blueprints: Table<StrategyBlueprint>;
       webinar_scores: Table<WebinarScore>;
+      ai_usage_log: Table<AiUsageLog>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

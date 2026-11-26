@@ -10,6 +10,7 @@ import {
   DISCOVERY_ASSIST_MAX_OUTPUT_TOKENS,
   buildDiscoveryAssistPrompt,
 } from "@/lib/ai/discoveryAssist";
+import { tagAiUsage } from "@/lib/ai/usageLog";
 
 export const runtime = "nodejs";
 
@@ -34,6 +35,7 @@ export async function POST(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  tagAiUsage({ feature: "discovery_assist", userId: user.id });
 
   const parsed = requestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

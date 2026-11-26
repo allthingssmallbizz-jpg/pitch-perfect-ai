@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ensureProfile } from "@/lib/profile";
@@ -117,7 +118,15 @@ export default async function AdminPage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
-      <h1 className="mb-6 font-display text-2xl font-semibold text-gradient-silver">Admin</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-2xl font-semibold text-gradient-silver">Admin</h1>
+        <Link
+          href="/admin/ai-spend"
+          className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-sm font-medium hover:bg-primary/20"
+        >
+          AI Spend — daily cost and what it went on →
+        </Link>
+      </div>
 
       {error === "cant-demote-self" && (
         <p className="mb-6 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">

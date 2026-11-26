@@ -11,6 +11,7 @@ import {
   buildSocialComparePrompt,
 } from "@/lib/ai/socialCompare";
 import { recordGenerationVersion } from "@/lib/generations";
+import { tagAiUsage } from "@/lib/ai/usageLog";
 
 export const runtime = "nodejs";
 // Two external page fetches (each potentially following redirects) plus a preview-image
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  tagAiUsage({ feature: "social_compare", userId: user.id });
 
   const parsed = requestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

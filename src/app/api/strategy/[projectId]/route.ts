@@ -25,6 +25,7 @@ import {
   STALE_PENDING_ERROR,
 } from "@/lib/strategy/server";
 import type { StrategyRecommendation } from "@/types/database";
+import { tagAiUsage } from "@/lib/ai/usageLog";
 
 export const runtime = "nodejs";
 // A full review is one long structured AI call (plus at most one validation retry).
@@ -60,6 +61,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ pr
   const owned = await getOwnedProjectForStrategy(projectId);
   if ("error" in owned) return NextResponse.json({ error: owned.error }, { status: owned.status });
   const { userId, project } = owned;
+  tagAiUsage({ feature: "strategy_review", userId, projectId });
   const admin = createAdminClient();
 
   await admin

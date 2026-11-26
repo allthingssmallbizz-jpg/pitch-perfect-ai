@@ -12,6 +12,7 @@ import {
   buildHeadlineLabPrompt,
   parseRatedHeadlines,
 } from "@/lib/ai/headlineLab";
+import { tagAiUsage } from "@/lib/ai/usageLog";
 
 export const runtime = "nodejs";
 
@@ -30,6 +31,7 @@ export async function POST(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  tagAiUsage({ feature: "headlines", userId: user.id });
 
   const parsed = requestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

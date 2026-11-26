@@ -8,6 +8,7 @@ import { PRESENTATION_TYPE_LABELS } from "@/lib/ai/analyzer";
 import { VIDEO_ANALYZER_CREDIT_COST } from "@/lib/ai/videoAnalyzer";
 import { runVideoAnalysisPipeline } from "@/lib/video/pipeline";
 import type { PresentationType } from "@/types/database";
+import { tagAiUsage } from "@/lib/ai/usageLog";
 
 export const runtime = "nodejs";
 // Transcription + frame extraction + analysis for a long video won't fit in a default
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest) {
   if (!generation || generation.user_id !== user.id) {
     return NextResponse.json({ error: "Generation not found" }, { status: 404 });
   }
+  tagAiUsage({ feature: "video_analysis", userId: user.id });
   if (generation.status !== "pending") {
     return NextResponse.json({ error: "This analysis has already been started." }, { status: 409 });
   }

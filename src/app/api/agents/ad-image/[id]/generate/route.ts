@@ -9,6 +9,7 @@ import { getBrandVoiceBlock } from "@/lib/ai/brandVoice";
 import { AD_IMAGE_CREDIT_COST, AD_IMAGE_MAX_OUTPUT_TOKENS, buildAdImageCopyPrompt, parseImageAdCopy } from "@/lib/ai/generators/adImage";
 import { getAgent } from "@/lib/agents/config";
 import { recordGenerationVersion } from "@/lib/generations";
+import { tagAiUsage } from "@/lib/ai/usageLog";
 
 export const runtime = "nodejs";
 
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  tagAiUsage({ feature: "ad_image", userId: user.id });
 
   const parsed = requestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

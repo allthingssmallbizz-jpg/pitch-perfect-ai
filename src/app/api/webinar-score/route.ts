@@ -14,6 +14,7 @@ import {
   WEBINAR_SCORE_MAX_OUTPUT_TOKENS,
   WEBINAR_SCORE_MIN_CHARS,
 } from "@/lib/webinarScore/schema";
+import { tagAiUsage } from "@/lib/ai/usageLog";
 
 export const runtime = "nodejs";
 // One long structured AI call (plus at most one validation retry).
@@ -49,6 +50,7 @@ export async function POST(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  tagAiUsage({ feature: "webinar_score", userId: user.id });
 
   const parsed = requestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

@@ -11,6 +11,7 @@ import {
   buildWebsiteImportPrompt,
   parseWebsiteImportResponse,
 } from "@/lib/ai/websiteImport";
+import { tagAiUsage } from "@/lib/ai/usageLog";
 
 export const runtime = "nodejs";
 // Fetching an external site plus a full-context Claude call can run past a default timeout on
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  tagAiUsage({ feature: "discovery_import_website", userId: user.id });
 
   const parsed = requestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

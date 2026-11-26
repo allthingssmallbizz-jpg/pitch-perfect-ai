@@ -51,6 +51,7 @@ import { applyApprovedFields } from "@/lib/strategy/fields";
 import { formatStrategyBlueprintBlock, type Blueprint } from "@/lib/strategy/blueprint";
 import { STRATEGY_GATED_ASSET_TYPES } from "@/lib/strategy/schema";
 import { expressBriefSchema, fitExpressBrief, parseStoredExpressBrief, type ExpressBrief } from "@/lib/express";
+import { tagAiUsage } from "@/lib/ai/usageLog";
 
 export const runtime = "nodejs";
 // Without this, the function is bound by the hosting plan's default timeout — on Vercel's free
@@ -135,6 +136,7 @@ export async function POST(req: NextRequest) {
       expressBrief?: unknown;
     };
 
+  tagAiUsage({ feature: `generate:${assetType}`, userId: user.id, projectId });
   const generator = ASSET_GENERATORS[assetType];
   // Pitch Perfect Express has its own short intake (the room, the goal, the offer, the time), so
   // it doesn't require the full webinar Discovery brief or a complete Bio — whatever exists is
