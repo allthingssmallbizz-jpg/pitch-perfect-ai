@@ -298,6 +298,23 @@ export default async function GenerateAssetPage({
     .order("created_at", { ascending: false })
     .limit(30);
 
+  // Recent attempts that didn't finish (out of credit, timed out…), so a member can see they
+  // happened and why — otherwise a failed run leaves no trace and "my generation disappeared."
+  const { data: failedGenerationRows } = await supabase
+    .from("generations")
+    .select("id, created_at, error")
+    .eq("project_id", id)
+    .eq("asset_type", generator.assetType)
+    .eq("status", "failed")
+    .gte("created_at", new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString())
+    .order("created_at", { ascending: false })
+    .limit(5);
+  const failedGenerations = (failedGenerationRows ?? []).map((g) => ({
+    id: g.id,
+    createdAt: g.created_at,
+    error: g.error ?? null,
+  }));
+
   // Landing Page's content is a real HTML document — raw tags would otherwise show up as
   // literal text in this preview snippet instead of readable copy.
   function toPastGeneration(g: NonNullable<typeof pastGenerationRows>[number]) {
@@ -306,7 +323,7 @@ export default async function GenerateAssetPage({
     return {
       id: g.id,
       createdAt: g.created_at,
-      preview: cleaned.replace(/\s+/g, " ").trim().slice(0, 120),
+      preview: cleaned.replace(/\*\*/g, "").replace(/\s+/g, " ").trim().slice(0, 120),
       moduleIdentifier: g.module_identifier,
       title: g.title,
       isDemo: Boolean(g.is_demo),
@@ -605,6 +622,7 @@ export default async function GenerateAssetPage({
         initialPublishedAt={initialPublishedAt}
         initialStats={initialStats}
         initialPastGenerations={pastGenerations}
+        initialFailedGenerations={failedGenerations}
         courseModules={courseModules}
         challengeDays={challengeDays}
         initialCompletedGenerations={completedGenerations}

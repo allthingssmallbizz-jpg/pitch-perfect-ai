@@ -94,6 +94,8 @@ export type PastGeneration = {
   title: string | null;
   isDemo?: boolean;
 };
+// A recent attempt that didn't finish — shown under Past generations with the reason.
+export type FailedGeneration = { id: string; createdAt: string; error: string | null };
 // A generation a member has explicitly marked "Completed" (Agent Cora's Completed Courses
 // section) — same shape as PastGeneration plus when it was approved.
 export type CompletedGeneration = PastGeneration & { approvedAt: string };
@@ -332,6 +334,7 @@ export default function GenerateClient({
   initialPublishedAt,
   initialStats,
   initialPastGenerations,
+  initialFailedGenerations = [],
   courseModules,
   challengeDays,
   initialCompletedGenerations,
@@ -362,6 +365,7 @@ export default function GenerateClient({
   initialPublishedAt: string | null;
   initialStats: PageStats | null;
   initialPastGenerations: PastGeneration[];
+  initialFailedGenerations?: FailedGeneration[];
   // Cora's three module-scoped tools only — the real module list parsed out of this project's
   // Course Outline (see courseModules.ts), replacing free-text guessing with a dropdown of the
   // actual modules and powering "Build the next module" below. Empty for every other agent, and
@@ -674,6 +678,7 @@ export default function GenerateClient({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [pastGenerations, setPastGenerations] = useState<PastGeneration[]>(initialPastGenerations);
+  const [failedGenerations, setFailedGenerations] = useState<FailedGeneration[]>(initialFailedGenerations);
   const [completedGenerations, setCompletedGenerations] = useState<CompletedGeneration[]>(initialCompletedGenerations);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -1128,6 +1133,10 @@ export default function GenerateClient({
       }
       if (!res.ok) {
         const message = data.error || "Generation failed.";
+        setFailedGenerations((prev) => [
+          { id: `local-${Date.now()}`, createdAt: new Date().toISOString(), error: message },
+          ...prev.slice(0, 4),
+        ]);
         if (mountedRef.current) setError(message);
         else toast.error(`${generatorLabel} didn't finish generating: ${message}`);
         return;
@@ -1177,7 +1186,9 @@ export default function GenerateClient({
     // A fresh generation is a brand-new row — never already published under this id.
     setPublishSlug(null);
     setPublishedAt(null);
-    const previewSource = isWebPageAsset ? stripHtmlTags(String(data.content)) : String(data.content).replace(/\s+/g, " ").trim();
+    const previewSource = isWebPageAsset
+      ? stripHtmlTags(String(data.content))
+      : String(data.content).replace(/\*\*/g, "").replace(/\s+/g, " ").trim();
     setPastGenerations((prev) => [
       {
         id: data.generationId,
@@ -1907,6 +1918,17 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           <Sparkles className="mr-2 h-4 w-4" />
           {loading ? "Generating..." : content ? "Regenerate" : "Generate"}
         </Button>
+        {assetType === "express_deck" && !content && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void saveExpressBrief(expressBrief)}
+            disabled={expressSave === "saving"}
+          >
+            {expressSave === "saving" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {expressSave === "saved" ? "Saved ✓" : "Save my answers"}
+          </Button>
+        )}
         {loading && (
           <Button type="button" variant="outline" onClick={stopGenerating}>
             <Square className="mr-2 h-4 w-4" />
@@ -1944,9 +1966,21 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
             )}
             {generationId && (
               <>
-                <Button variant="outline" onClick={saveVersion} disabled={saving}>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (assetType === "express_deck") void saveExpressBrief(expressBrief);
+                    void saveVersion();
+                  }}
+                  disabled={saving}
+                  title={
+                    assetType === "express_deck"
+                      ? "Saves this presentation (and your answers) — it stays in Past generations below"
+                      : undefined
+                  }
+                >
                   {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  {saved ? "Saved!" : "Save"}
+                  {saved ? "Saved!" : assetType === "express_deck" ? "Save presentation" : "Save"}
                 </Button>
                 {isCourseAsset &&
                   (completedGenerations.some((g) => g.id === generationId) ? (
@@ -2356,6 +2390,20 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
         </details>
       )}
 
+      {pastGenerations.length === 0 && (
+        <div className="mb-4 rounded-xl border border-dashed border-border bg-card/20 px-4 py-3 text-sm">
+          <p className="font-medium text-muted-foreground">
+            <History className="mr-1.5 inline h-4 w-4" />
+            Past generations from this agent (0)
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Nothing finished yet. Every generation that finishes is saved here automatically — you can reopen,
+            rename, or delete it any time.
+          </p>
+          <FailedAttemptsList attempts={failedGenerations} />
+        </div>
+      )}
+
       {pastGenerations.length > 0 && (
         <details className="mb-4 rounded-xl border border-border bg-card/30" open={pastGenerations.length <= 3}>
           <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground">
@@ -2420,6 +2468,11 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
               </li>
             ))}
           </ul>
+          {failedGenerations.length > 0 && (
+            <div className="border-t border-border px-4 py-2.5">
+              <FailedAttemptsList attempts={failedGenerations} />
+            </div>
+          )}
         </details>
       )}
 
@@ -2570,6 +2623,26 @@ This is a slide-by-slide outline. Every slide below has two labeled parts:
           Click Generate to build this asset from your project&apos;s discovery data.
         </div>
       )}
+    </div>
+  );
+}
+
+// Recent attempts that didn't finish, with the reason — nothing was saved and nothing was charged.
+function FailedAttemptsList({ attempts }: { attempts: FailedGeneration[] }) {
+  if (!attempts.length) return null;
+  return (
+    <div className="mt-2">
+      <p className="text-xs font-medium text-amber-400">
+        Recent attempts that didn&apos;t finish ({attempts.length}) — nothing was saved and you weren&apos;t charged
+      </p>
+      <ul className="mt-1 space-y-1">
+        {attempts.map((a) => (
+          <li key={a.id} className="text-xs text-muted-foreground">
+            <span className="tabular-nums">{formatWhen(a.createdAt)}</span>
+            {a.error ? ` — ${a.error.replace(/^Generation failed:\s*/, "").slice(0, 220)}` : ""}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
